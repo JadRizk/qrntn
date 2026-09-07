@@ -234,9 +234,13 @@ function mkAuthoredRepo(
 	return repo
 }
 
-function promote(repo, extra = []) {
-	const r = spawnSync('node', [join(repo, 'skills', 'skill-adopt', 'scripts', 'promote.mjs'), 'tidy-notes', '--json', ...extra], {
+function promote(repo, extra = [], { env = process.env } = {}) {
+	// `process.execPath`, not 'node' — the last case in this file runs with a
+	// PATH that has no node on it, and a runner that resolved its own
+	// interpreter through PATH could not stage that fixture at all.
+	const r = spawnSync(process.execPath, [join(repo, 'skills', 'skill-adopt', 'scripts', 'promote.mjs'), 'tidy-notes', '--json', ...extra], {
 		cwd: repo,
+		env,
 		encoding: 'utf8'
 	})
 	let json = null
@@ -630,6 +634,20 @@ scripts/ ships nothing executable — go.mjs is a config stub read by install.sh
 	)
 	check('authored, catalog check non-zero: refused', r.has('the catalog check exits non-zero'), r.whys.join(' | '))
 	check('authored, catalog check non-zero: catalog entry itself was fine', !r.has('no catalog.json entry'), r.whys.join(' | '))
+	// The refusal has to carry the child's own words, not just name the gate.
+	//
+	// Stated plainly, because it would be easy to read more into these two than
+	// they hold: they do NOT catch the null-stream defect they were written
+	// alongside. `(r.stdout + r.stderr)` is `null + null` — 0, not '' — only
+	// when a spawn fails to LAUNCH, and since promote spawns process.execPath
+	// that no longer happens from the CLI. Both assertions pass against the old
+	// expression too; this was checked, not assumed. What they do hold is that
+	// the detail is the child's output rather than a constant or an empty
+	// string. The launch-failure branch of spawnDetail is unguarded, and can
+	// only be guarded by importing it — see the note on its definition.
+	const detail = (r.json?.refusals ?? []).find((x) => x.why === 'the catalog check exits non-zero')?.detail ?? ''
+	check('authored, catalog check non-zero: the refusal quotes the child', /no-such-skill/.test(detail), JSON.stringify(detail))
+	check('authored, catalog check non-zero: no null stream glued into the detail', detail.length > 0 && !/null/.test(detail), JSON.stringify(detail))
 }
 
 // the move itself, authored version — every case above skipped it via --dry-run
@@ -673,6 +691,68 @@ scripts/ ships nothing executable — go.mjs is a config stub read by install.sh
 	check('absent ledger.mjs: the refusal says where it looked', (r.json?.refusals ?? []).some((x) => /scripts/.test(x.detail ?? '')), r.raw.slice(0, 300))
 	check('absent ledger.mjs: exits 1, having started', r.code === 1, `exit ${r.code}`)
 	check('absent ledger.mjs: nothing was promoted', r.json?.promoted === false, r.raw.slice(0, 200))
+}
+
+// ── the interpreter comes from this process, never from PATH ────────────────
+//
+// Every script promote spawns — the scanner, check-catalog, ledger.mjs, and the
+// skill's own tests — was spawned as the bare string 'node', which is a PATH
+// lookup. Node is on PATH in a login shell and frequently nowhere else: under
+// nvm, fnm, volta or asdf the binary sits in a version directory that a shell
+// profile puts there, so the same promotion that passes in a terminal resolved
+// no interpreter at all from a GUI launcher, a hook or a cron entry — and
+// refused with 'the re-scan produced no readable result', a refusal that names
+// the scanner for a fault in the environment.
+//
+// Asserting on promote.mjs's source would only restate the fix. This stages the
+// condition instead: a real promotion, with a PATH that genuinely has no node
+// on it, required to promote anyway. git stays reachable on that PATH, so a
+// pass here says the interpreter was resolved independently of PATH rather than
+// that the fixture happened to avoid spawning anything.
+{
+	const PATH_WITHOUT_NODE = '/usr/bin:/bin:/usr/sbin:/sbin'
+	const env = { ...process.env, PATH: PATH_WITHOUT_NODE }
+	const nodeOnPath = spawnSync('node', ['--version'], { env, encoding: 'utf8' }).status === 0
+	const gitOnPath = spawnSync('git', ['--version'], { env, encoding: 'utf8' }).status === 0
+
+	if (nodeOnPath || !gitOnPath) {
+		// Loudly, and never counted as a pass. A machine with node in /usr/bin, or
+		// without git there, cannot stage this case — and a skip nobody sees is
+		// how a suite stops covering something without anyone deciding it should.
+		console.log(
+			`  SKIP  interpreter independent of PATH — ${nodeOnPath ? 'node is reachable on' : 'git is missing from'} ${PATH_WITHOUT_NODE}, so the condition cannot be staged on this machine`
+		)
+	} else {
+		const repo = mkRepo('no-node-on-path', {
+			files: {
+				'SKILL.md': SKILL_MD,
+				'scripts/go.mjs': 'console.log(1)\n',
+				'scripts/go.test.mjs': 'process.exit(0)\n',
+				'scripts/self-test.mjs': 'process.exit(0)\n'
+			}
+		})
+		execFileSync('git', ['init', '--quiet'], { cwd: repo })
+		execFileSync('git', ['config', 'user.email', 't@t.t'], { cwd: repo })
+		execFileSync('git', ['config', 'user.name', 't'], { cwd: repo })
+		writeFileSync(join(repo, '.gitignore'), 'inbox/*\n')
+		execFileSync('git', ['add', '-A'], { cwd: repo })
+		execFileSync('git', ['commit', '--quiet', '-m', 'init'], { cwd: repo })
+
+		const r = promote(repo, [], { env })
+
+		check('no node on PATH: no refusals', r.whys.length === 0, r.whys.join(' | '))
+		check('no node on PATH: exits 0', r.code === 0, `exit ${r.code} ${r.raw.slice(0, 200)}`)
+		// One assertion per spawn site, so a regression at any one of the four
+		// names itself rather than arriving as a bare non-zero exit.
+		check('no node on PATH: the re-scan ran', !r.has('the re-scan produced no readable result'), r.whys.join(' | '))
+		check('no node on PATH: the catalog check ran', !r.has('the catalog check exits non-zero'), r.whys.join(' | '))
+		check('no node on PATH: the ledger write ran', existsSync(join(repo, 'ledger', 'tidy-notes.json')), 'no ledger/tidy-notes.json')
+		check("no node on PATH: the skill's own tests ran", r.json?.tests?.ran === 2, JSON.stringify(r.json?.tests))
+		check('no node on PATH: promoted', r.json?.promoted === true, r.raw.slice(0, 200))
+		// git was on that PATH throughout. If staging worked while the four node
+		// spawns would have failed, the PATH was pared rather than emptied.
+		check('no node on PATH: git was still reachable, so the fixture pared PATH rather than broke it', r.json?.staged === true, JSON.stringify(r.json?.stageError))
+	}
 }
 
 console.log(`\n${pass} passed, ${failures.length} failed`)

@@ -72,6 +72,45 @@ const SKILLS = join(LIBRARY, 'skills')
 const refusals = []
 const refuse = (why, detail) => refusals.push({ why, detail })
 
+// ── spawning this program's own interpreter ─────────────────────────────
+//
+// `process.execPath`, never the bare string 'node'. A bare name is a PATH
+// lookup, and PATH is not guaranteed to hold the interpreter that is running
+// this file — under fnm, volta or asdf it resolves through a shim, and in a
+// launch context with a thin environment it resolves to a different Node or to
+// nothing at all. Promotion would then re-scan and write the ledger with an
+// interpreter nobody chose, or refuse with a reason that names the scanner
+// rather than the missing `node`.
+//
+// check.mjs already spawns its gates this way. These four call sites did not,
+// and four copies of one decision is how they came to disagree — so it is a
+// helper now, and there is one place left to get it wrong.
+const node = (args, opts = {}) => spawnSync(process.execPath, args, { encoding: 'utf8', ...opts })
+
+// The tail of a failed spawn, as a sentence a refusal can carry.
+//
+// `r.stdout` and `r.stderr` are null when the child never launched, and
+// `null + null` is 0 rather than '' — so `(r.stdout + r.stderr).trim()` threw a
+// TypeError on the one path that most needs to produce a reason, turning three
+// named refusals into a raw stack trace. A crash exits non-zero and so reads
+// exactly like a refusal, while having refused nothing.
+//
+// A spawn that fails to start carries its reason in `r.error` and nowhere else.
+// Naming it is the difference between 'the ledger write exits non-zero' with an
+// empty detail and one that says ENOENT.
+//
+// The `r.error` branch has no test. It cannot be reached from the CLI now that
+// the interpreter is process.execPath, and reaching it directly means importing
+// this file — which today runs a promotion on import, because promote.mjs has
+// no `isMain` guard where audit-skill, check-catalog, ledger, refresh and usage
+// all have one. That guard is the prerequisite, and it is not written yet.
+function spawnDetail(r, lines) {
+	const out = ((r.stdout ?? '') + (r.stderr ?? '')).trim()
+	if (out) return out.split('\n').slice(-lines).join(' · ')
+	if (r.error) return `${r.error.code ?? r.error.name}: ${r.error.message}`
+	return `exit ${r.status}, no output`
+}
+
 // ── the audit record's machine-checkable contract ────────────────────────────
 
 // Placeholders left in place are the commonest way a record looks complete and
@@ -222,13 +261,11 @@ function rescan(dir, extraBlocking = []) {
 		refuse('skill-audit not found', 'the adapted artefact cannot be re-scanned, so it cannot be promoted')
 		return
 	}
-	const r = spawnSync('node', [scanner, dir, '--json', '--exclude', 'AUDIT.md', '--exclude', 'ORIGIN.md'], {
-		encoding: 'utf8'
-	})
+	const r = node([scanner, dir, '--json', '--exclude', 'AUDIT.md', '--exclude', 'ORIGIN.md'])
 	let parsed = null
 	try { parsed = JSON.parse(r.stdout) } catch { /* asserted below */ }
 	if (!parsed) {
-		refuse('the re-scan produced no readable result', (r.stderr || '').slice(0, 200))
+		refuse('the re-scan produced no readable result', spawnDetail(r, 5))
 		return
 	}
 	const blocking = (parsed.findings ?? []).filter((f) => f.sev === 'BLOCK' || extraBlocking.includes(f.code))
@@ -283,9 +320,9 @@ function checkCatalog() {
 		refuse('check-catalog.mjs not found', `looked beside this script and in ${join(LIBRARY, 'scripts')} — the catalog cannot be verified before promoting`)
 		return
 	}
-	const r = spawnSync('node', [script], { encoding: 'utf8', cwd: LIBRARY })
+	const r = node([script], { cwd: LIBRARY })
 	if (r.status !== 0) {
-		refuse('the catalog check exits non-zero', (r.stdout + r.stderr).trim().split('\n').slice(-5).join(' · '))
+		refuse('the catalog check exits non-zero', spawnDetail(r, 5))
 	}
 }
 
@@ -319,13 +356,9 @@ function checkLedgerReachable() {
 
 function writeLedgerEntry(name, skillDir, date) {
 	const script = ledgerScript()
-	const r = spawnSync(
-		'node',
-		[script, '--write-structural', name, '--skill-dir', skillDir, '--date', date, '--library', LIBRARY],
-		{ encoding: 'utf8' }
-	)
+	const r = node([script, '--write-structural', name, '--skill-dir', skillDir, '--date', date, '--library', LIBRARY])
 	if (r.status !== 0) {
-		refuse('the ledger write exits non-zero', (r.stdout + r.stderr).trim().split('\n').slice(-3).join(' · '))
+		refuse('the ledger write exits non-zero', spawnDetail(r, 3))
 		return false
 	}
 	return true
@@ -362,8 +395,8 @@ function runTests(dir, skillMdText = null) {
 		return { ran: tests.length }
 	}
 	for (const t of [...tests, ...(selfTest ? [selfTest] : [])]) {
-		const r = spawnSync('node', [join(scripts, t)], { encoding: 'utf8' })
-		if (r.status !== 0) refuse(`tests failed: ${t}`, (r.stdout + r.stderr).trim().split('\n').slice(-3).join(' · '))
+		const r = node([join(scripts, t)])
+		if (r.status !== 0) refuse(`tests failed: ${t}`, spawnDetail(r, 3))
 	}
 	return { ran: tests.length + (selfTest ? 1 : 0) }
 }
