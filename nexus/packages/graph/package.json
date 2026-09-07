@@ -1,0 +1,15 @@
+{
+  "name": "@nexus/graph",
+  "private": true,
+  "type": "module",
+  "$vendored": {
+    "from": "../nexus/packages/graph (private nexus-ds repo)",
+    "note": "One-time copy, no live dependency back to ../nexus. Owned from here — improve and adapt in place rather than re-syncing.",
+    "copiedAt": "2026-08-25"
+  },
+  "peerDependencies": {
+    "react": "^18.3.0 || ^19.0.0",
+    "react-dom": "^18.3.0 || ^19.0.0",
+    "three": "^0.170.0"
+  }
+}

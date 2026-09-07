@@ -1,0 +1,14 @@
+{
+  "name": "@nexus/react",
+  "private": true,
+  "type": "module",
+  "$vendored": {
+    "from": "../nexus/packages/react (private nexus-ds repo)",
+    "note": "One-time copy, no live dependency back to ../nexus. Owned from here. Depends on the sibling vendored copy of @nexus/tokens, not a workspace link (resolved via vite.config.ts / tsconfig.json path aliases pointing at ../tokens/src).",
+    "copiedAt": "2026-08-25"
+  },
+  "peerDependencies": {
+    "react": "^18.3.0 || ^19.0.0",
+    "react-dom": "^18.3.0 || ^19.0.0"
+  }
+}

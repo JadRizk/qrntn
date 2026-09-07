@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nexus</title>
+    <style>
+      html, body, #root { margin: 0; padding: 0; width: 100%; height: 100%; background: #08090A; }
+      /* a11y/domOverlay.ts's focusable entity buttons: invisible until
+         focused, a visible ring only then — the WebGL canvas already draws
+         the glyph these sit over. */
+      .nx-entity { border-radius: 50%; }
+      .nx-entity:focus-visible {
+        outline: 2px solid #DFF5C7;
+        outline-offset: 2px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,20 @@
+/* ============================================================================
+   ui/dock.css — the one thing the left dock can't express through an inline
+   `style` prop: which parts of the column take pointer input.
+
+   App-level, not part of the vendored @nexus/react: the dock is Nexus's own
+   chrome, and @nexus/react is a copy of an upstream design system that
+   shouldn't grow app-specific rules.
+   ========================================================================== */
+
+/* The column is pointer-transparent — only the panels in it take input. The
+   gaps between them, and the empty column below the last one, stay live canvas
+   you can drag and zoom through. Without this the dock would be one 210px-wide
+   dead strip down the left of the graph, most of it covering nothing. */
+.nx-dock {
+  pointer-events: none;
+}
+
+.nx-dock .nx-panel {
+  pointer-events: auto;
+}

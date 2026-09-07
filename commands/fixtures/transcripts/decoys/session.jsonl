@@ -1,0 +1,2 @@
+{"type": "assistant", "timestamp": "2026-08-23T14:00:00.000Z", "sessionId": "fixture", "cwd": "/fixture", "message": {"role": "assistant", "content": [{"type": "tool_use", "id": "d1", "name": "Task", "input": {"skill": "dataviz", "prompt": "a subagent that happens to name a skill"}}]}}
+{"type": "assistant", "timestamp": "2026-08-23T14:01:00.000Z", "sessionId": "fixture", "cwd": "/fixture", "message": {"role": "assistant", "content": [{"type": "tool_use", "id": "d2", "name": "SkillSearch", "input": {"skill": "artifact-design"}}]}}

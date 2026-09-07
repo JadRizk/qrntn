@@ -1,0 +1,7 @@
+dist/
+
+# The repo root's own .gitignore has a bare `index.html` rule for the atlas's
+# generated file, which matches at any depth — including this one, Nexus's
+# own hand-authored Vite entry point. Un-ignored here on purpose: this file
+# is source, not build output.
+!/index.html
