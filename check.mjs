@@ -38,6 +38,24 @@ const gates = [
 	...tests.map((f) => ({ name: `test · ${f}`, slow: false, run: () => node(join(COMMANDS, f)) })),
 	...selfTests.map((f) => ({ name: `self-test · ${f}`, slow: true, run: () => node(join(COMMANDS, f)) })),
 	{
+		// SK-94. record.schema.json is generated from packages/record/schema.ts and
+		// committed, so the zero-dependency commands can validate without a
+		// toolchain. A generated file that is committed and not checked is a file
+		// that drifts — the same contract the plugin manifest has in the library.
+		name: 'record · the compiled schema matches its zod source',
+		slow: true,
+		run: () => {
+			const dir = join(HERE, 'nexus')
+			if (!existsSync(join(dir, 'node_modules'))) {
+				return { status: 0, skipped: 'nexus/node_modules absent — run npm ci --prefix nexus' }
+			}
+			const r = spawnSync('npx', ['--prefix', dir, 'tsx', join(dir, 'scripts', 'build-record-schema.mjs'), '--check'], {
+				encoding: 'utf8',
+			})
+			return { status: r.status, out: (r.stdout ?? '') + (r.stderr ?? '') }
+		},
+	},
+	{
 		name: 'nexus · verify (typecheck, vitest, data integrity)',
 		slow: true,
 		run: () => {

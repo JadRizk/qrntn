@@ -22,8 +22,9 @@
     "baseUrl": ".",
     "paths": {
       "@nexus/tokens": ["./packages/tokens/src/index.ts"],
-      "@nexus/react": ["./packages/react/src/index.ts"]
+      "@nexus/react": ["./packages/react/src/index.ts"],
+      "@nexus/record": ["./packages/record/schema.ts"]
     }
   },
-  "include": ["src", "scripts", "vitest.config.ts"]
+  "include": ["src", "scripts", "packages/record", "vitest.config.ts"]
 }

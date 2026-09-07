@@ -15,6 +15,8 @@ export default defineConfig({
       { find: '@nexus/tokens/tokens.css', replacement: resolvePath('./packages/tokens/src/tokens.css') },
       { find: '@nexus/tokens', replacement: resolvePath('./packages/tokens/src/index.ts') },
       { find: '@nexus/react', replacement: resolvePath('./packages/react/src/index.ts') },
+      // SK-94: the record's shape, shared with the zero-dependency commands.
+      { find: '@nexus/record', replacement: resolvePath('./packages/record/schema.ts') },
     ],
   },
   server: {
