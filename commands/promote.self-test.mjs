@@ -162,7 +162,7 @@ const MUTATIONS = [
 	},
 	{
 		name: 'the destination is never staged',
-		find: "execFileSync('git', ['add', join('skills', name), join('ledger', `${name}.json`)], { cwd: LIBRARY })",
+		find: "execFileSync('git', ['add', join('skills', name), join('ledger', `${name}.json`)], { cwd: LIBRARY, stdio: 'pipe' })",
 		replace: 'void 0'
 	},
 	{

@@ -129,6 +129,24 @@ try {
 		const r = run('intake.mjs', [], lib)
 		check('intake: refuses with a usage line rather than a stack trace', /usage:/.test(r.all) && !/ERR_MODULE_NOT_FOUND/.test(r.all), r.all.slice(0, 200))
 	}
+	{
+		// The door this suite left shut. Every command above is invoked with
+		// `--library`, but only the ones that take no positional argument —
+		// so the case where a command has to tell a flag's value apart from
+		// its own argument was never asked, of either command that has one.
+		// Both got it wrong, in opposite directions: `intake` counted the
+		// directory as a second source and refused a correct invocation,
+		// `promote` read it as the skill name whenever it came first.
+		const r = run('intake.mjs', [join(lib, 'no-such-source'), '--library', lib])
+		check('intake: --library is a flag with a value, not a second source', !/one source at a time/.test(r.all), r.all.slice(0, 200))
+		check('intake: refuses about the source it could not use', /source|fetch|not a/i.test(r.all), r.all.slice(0, 200))
+	}
+	{
+		const r = run('promote.mjs', ['--library', lib, 'incoming', '--json'])
+		let json = null
+		try { json = JSON.parse(r.out) } catch { /* asserted below */ }
+		check('promote: --library before the name still targets the name', json?.name === 'incoming', JSON.stringify(json?.name) + r.all.slice(0, 200))
+	}
 } finally {
 	rmSync(lib, { recursive: true, force: true })
 }

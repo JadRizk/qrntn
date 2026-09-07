@@ -265,7 +265,15 @@ function computeOrigin(skillDir) {
 	const originText = hasOrigin ? readFileSync(originPath, 'utf8') : ''
 	const auditText = readFileSync(auditPath, 'utf8')
 
-	const source = firstMatch(originText, [/\|\s*\*\*Source\*\*\s*\|\s*([^\n|]+?)\s*\|/]) ??
+	// Both branches strip the backticks intake.mjs may have written around the
+	// source. It formats a local path as inline code and a remote URL bare, so
+	// this pattern used to capture ``/path/to/src`` verbatim for every
+	// path-sourced skill, and refresh then fetched a repository whose name
+	// began with a backtick. The AUDIT.md branch below had always stripped
+	// them; the fixtures write the URL form, so the two never disagreed in a
+	// test. Backticks cannot occur inside a real source, so excluding them from
+	// the capture is safe in both.
+	const source = firstMatch(originText, [/\|\s*\*\*Source\*\*\s*\|\s*`?([^\n|`]+?)`?\s*\|/]) ??
 		firstMatch(auditText, [/\|\s*\*\*Source\*\*\s*\|\s*`?([^\n|`]+?)`?(?:\s*→[^\n|]*)?\s*\|/])
 
 	const commit = firstMatch(originText, [/\*\*Resolved commit\*\*\s*\|\s*`([0-9a-f]{7,40})`/i]) ??

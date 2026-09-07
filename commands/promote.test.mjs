@@ -25,15 +25,31 @@ import { fileURLToPath } from 'node:url'
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = mkdtempSync(join(tmpdir(), 'promote-test-'))
 
-// Locate a real skill-audit to copy into each fixture. Walking up from HERE
-// works in the repo, and also inside self-test.mjs's sandbox — it copies a
-// real skills/skill-audit to the same relative place, which this loop's own
-// first iteration finds. The ~/.claude/skills fallback below is the one
-// remaining case that covers: this file copied out and run from somewhere
-// with neither a real checkout nor a seeded sandbox above it. Without either,
-// every mutant would crash instead of failing an assertion, and a crash is
-// not evidence that the assertion exists.
+// Locate a real skill-audit to copy into each fixture.
+//
+// The scanner beside this file is the one this tool ships, and it is checked
+// first. Before SK-97 it was not: this walked up looking for a skill-shaped
+// `skills/skill-audit/scripts/audit-skill.mjs`, which the extracted repository
+// does not have — it holds the scanner as a plain sibling — so every direct run
+// fell through to `~/.claude/skills/skill-audit`, and the suite passed or
+// exited 2 according to what happened to be installed on the machine running
+// it. It exited 2 the day that install went away, having asserted nothing. That
+// is the same host-coupling the split was about, in a test rather than a
+// command, and a suite that reaches outside the repository is not testing the
+// repository.
+//
+// Fixtures copy the scanner as a directory, so the sibling is staged into the
+// shape they expect. The walk is kept after it for self-test.mjs's sandbox,
+// which seeds a real skills/skill-audit at the same relative place, and the
+// ~/.claude fallback after that for this file copied out and run with neither.
 function findScanner() {
+	const sibling = join(HERE, 'audit-skill.mjs')
+	if (existsSync(sibling)) {
+		const staged = join(ROOT, '.scanner')
+		mkdirSync(join(staged, 'scripts'), { recursive: true })
+		cpSync(sibling, join(staged, 'scripts', 'audit-skill.mjs'))
+		return staged
+	}
 	let d = HERE
 	for (let i = 0; i < 6; i++) {
 		const c = join(d, 'skills', 'skill-audit')

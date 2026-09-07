@@ -203,7 +203,13 @@ ${inventory}
 
 function main(argv) {
 	const args = argv.slice(2)
-	const TAKES_VALUE = new Set(['--name', '--subpath', '--ref'])
+	// `--library` is read straight off argv by resolveLibrary() above, but it
+	// still has to be declared here: a value-taking flag this parser does not
+	// know about leaves its value in `positional`, and the source count check
+	// below then refuses a perfectly good invocation for having two sources.
+	// Two readers of one argv is the shape that hid this — the root resolver
+	// ran before main() and never told it what it had consumed.
+	const TAKES_VALUE = new Set(['--name', '--subpath', '--ref', '--library'])
 	const flags = {}
 	const positional = []
 	for (let i = 0; i < args.length; i++) {
@@ -218,7 +224,7 @@ function main(argv) {
 	}
 	const flag = (n) => (typeof flags[n] === 'string' ? flags[n] : null)
 	const src = positional[0]
-	if (!src) refuse('usage: intake.mjs <source> [--name X] [--subpath P] [--ref R]')
+	if (!src) refuse('usage: intake.mjs <source> [--name X] [--subpath P] [--ref R] [--library D]')
 	if (positional.length > 1) refuse(`one source at a time, got ${positional.length}`)
 
 	const ref = flag('--ref')
@@ -254,7 +260,16 @@ function main(argv) {
 		const landed = walk(dest, dest)
 		// Belt and braces: the copy is re-walked and re-checked, because the
 		// containment claim has to hold for the bytes that actually landed.
-		if (!relative(INBOX, realpathSync(dest)).startsWith(name)) refuse('quarantine escape after copy')
+		// Both sides canonical, or the check answers a different question than the
+		// one it is asking. INBOX is built from a path the caller supplied, which
+		// may run through a symlink; `realpathSync(dest)` has none left. Compared
+		// as they came, a library under a symlinked parent — every `--library`
+		// pointed inside macOS's own $TMPDIR, /var being a link to /private/var —
+		// produced a `../../..` relative path and a landing inside quarantine was
+		// refused as an escape from it. Nothing caught it because the suites
+		// invoke intake through the working directory, and process.cwd() is
+		// already resolved.
+		if (!relative(realpathSync(INBOX), realpathSync(dest)).startsWith(name)) refuse('quarantine escape after copy')
 
 		writeOrigin(dest, { source, sha, subpath, ref, files: landed, name, licence })
 

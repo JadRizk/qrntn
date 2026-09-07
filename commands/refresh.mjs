@@ -123,13 +123,34 @@ function parseInventoryTable(text) {
 	return files.size ? files : null
 }
 
+// The sentinel intake.mjs writes when a skill came from a whole repository.
+// Compared case-insensitively and whitespace-loosely because it is prose in a
+// markdown cell, not a value anyone promised to keep stable.
+const subpathOrRoot = (v) => (v && /^repository root$/i.test(v.trim()) ? null : v)
+
 export function resolveProvenance(skillDir) {
 	const originPath = join(skillDir, 'ORIGIN.md')
 	if (existsSync(originPath)) {
 		const text = readFileSync(originPath, 'utf8')
 		return {
-			source: firstMatch(text, [/\|\s*\*\*Source\*\*\s*\|\s*([^\n|]+?)\s*\|/]),
-			subpath: firstMatch(text, [/\|\s*\*\*Subpath\*\*\s*\|\s*`?([^\n|`]+?)`?\s*\|/]),
+			// Backticks stripped, as the Subpath row below has always done.
+			// intake.mjs writes a local source as inline code and a remote URL
+			// bare, so without the `?` spans this captured ``/path/to/src``
+			// whole and the clone below asked git for a repository whose name
+			// started with a backtick. Every fixture writes the URL form, which
+			// is why the two rows could disagree for as long as they did.
+			source: firstMatch(text, [/\|\s*\*\*Source\*\*\s*\|\s*`?([^\n|`]+?)`?\s*\|/]),
+			// intake.mjs writes the Subpath cell for a human: a backticked path
+			// when there is one, and the words "repository root" when there is
+			// not. Read as a path that sentinel becomes `<clone>/repository
+			// root`, which never exists, so every skill taken from a whole
+			// repository — the ordinary case — reported `subpath-missing`:
+			// "upstream no longer has repository root — moved or renamed". A
+			// false drift report on every refresh, for the majority of records.
+			// The reader is the right side to fix. ORIGIN.md files already
+			// written say this, they are meant to be permanent, and the prose
+			// is correct for the person the row was written for.
+			subpath: subpathOrRoot(firstMatch(text, [/\|\s*\*\*Subpath\*\*\s*\|\s*`?([^\n|`]+?)`?\s*\|/])),
 			commit: firstMatch(text, [/\*\*Resolved commit\*\*\s*\|\s*`([0-9a-f]{7,40})`/i]),
 			arrivalFiles: parseInventoryTable(text),
 			recordPath: 'ORIGIN.md'
@@ -165,6 +186,13 @@ const sha256 = (p) => createHash('sha256').update(readFileSync(p)).digest('hex')
 
 function walkFiles(dir, root = dir, acc = new Map()) {
 	for (const e of readdirSync(dir)) {
+		// `.git` is the clone's own machinery, never upstream content. intake.mjs
+		// excludes it twice — once when it copies the fetched tree and once when
+		// it builds the arrival inventory — so a walk that includes it is
+		// comparing two different things and reports every object in the
+		// repository as "upstream added since you pinned". The two sides of this
+		// diff have to be gathered the same way or the diff means nothing.
+		if (e === '.git') continue
 		const abs = join(dir, e)
 		const st = lstatSync(abs)
 		if (st.isSymbolicLink()) continue

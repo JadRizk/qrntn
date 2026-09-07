@@ -371,7 +371,13 @@ function runTests(dir, skillMdText = null) {
 // ── main ─────────────────────────────────────────────────────────────────────
 
 const args = process.argv.slice(2)
-const name = args.find((a) => !a.startsWith('--'))
+// `--library <dir>` puts a bare path in argv; it is not the skill name. Same
+// guard, and the same reasoning, as refresh.mjs: without the explicit -1 check
+// `indexOf` returning -1 makes `libraryAt + 1` equal 0 and silently excludes
+// the first positional — here that would turn `promote <name>` into a usage
+// error rather than a wrong target, but the fix belongs in both or neither.
+const libraryAt = args.indexOf('--library')
+const name = args.find((a, i) => !a.startsWith('--') && (libraryAt === -1 || i !== libraryAt + 1))
 const DRY = args.includes('--dry-run')
 
 if (!name) {
@@ -420,6 +426,8 @@ if (!existsSync(dir)) {
 if (origin) checkLedgerReachable()
 
 let promoted = false
+let staged = null
+let stageError = null
 if (!refusals.length && !DRY) {
 	const from = join(INBOX, name)
 	const to = join(SKILLS, name)
@@ -437,12 +445,25 @@ if (!refusals.length && !DRY) {
 	// everything else, which is why it is a section-preserving read-merge-write
 	// rather than a fresh file.
 	writeLedgerEntry(name, to, new Date().toISOString().slice(0, 10))
-	execFileSync('git', ['add', join('skills', name), join('ledger', `${name}.json`)], { cwd: LIBRARY })
+	// Staging is a courtesy, not part of the gate. It runs last, after the move
+	// and the ledger write, so a library that is not a git repository — or a git
+	// invocation that fails for any other reason — used to abort here with a raw
+	// execFileSync dump AFTER the promotion had already happened: the work done,
+	// the record written, and the command reporting failure. Version control is
+	// the library's choice; this tool does not require one, so an unstageable
+	// promotion is reported and not thrown.
+	try {
+		execFileSync('git', ['add', join('skills', name), join('ledger', `${name}.json`)], { cwd: LIBRARY, stdio: 'pipe' })
+		staged = true
+	} catch (e) {
+		staged = false
+		stageError = (e.stderr?.toString() ?? e.message ?? '').trim().split('\n')[0]
+	}
 	promoted = true
 }
 
 if (args.includes('--json')) {
-	console.log(JSON.stringify({ name, origin, promoted, refusals, tests }, null, 2))
+	console.log(JSON.stringify({ name, origin, promoted, staged, stageError, refusals, tests }, null, 2))
 } else if (refusals.length) {
 	console.log(`\nrefused to promote ${name} — ${refusals.length} unmet condition(s)\n`)
 	for (const r of refusals) {
@@ -454,6 +475,7 @@ if (args.includes('--json')) {
 	console.log(`\n${name} would promote — every condition met${tests.ran ? `, ${tests.ran} test file(s) passed` : ''}\n`)
 } else {
 	console.log(`\npromoted  inbox/${name} → skills/${name}${tests.ran ? `  (${tests.ran} test file(s) passed)` : ''}`)
+	if (staged === false) console.log(`not staged — ${stageError || 'git add failed'}`)
 	console.log(
 		origin === 'authored' ? 'Declare its edges, then ./install.sh\n' : 'Add it to catalog.json, declare its edges, then ./install.sh\n'
 	)
