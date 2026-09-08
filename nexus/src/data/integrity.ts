@@ -221,3 +221,63 @@ export function resolveEntityKind(
 export function referencedNames(edges: ReadonlyArray<Pick<EdgeRecord, 'to'>>): string[] {
   return [...new Set(edges.map((e) => e.to))]
 }
+
+// ── §5's library resolution, and what the root is called ────────────────────
+//
+// export-graph.mjs used to fix its root three directories up from its own
+// file, so it could only ever export the tree it lived in — the exact defect
+// SK-97 found in six of seven commands and fixed there ("named, or the place
+// you are standing, never inferred from where the tool happens to be
+// installed"). This script never got that fix, which is why `pratiq view`
+// could not be pointed at anybody else's library.
+//
+// Pure and string-only on purpose: this module is bundled for the browser, so
+// it must not import node:path. The caller resolves the path and takes the
+// basename; what lives here is the DECISION, which is the part worth testing.
+
+export type LibrarySource = 'flag' | 'env' | 'cwd'
+
+export type LibraryChoice =
+  | { readonly ok: true; readonly path: string; readonly from: LibrarySource }
+  | { readonly ok: false; readonly error: string }
+
+/**
+ * `--library <dir>`, then `SKILL_LIBRARY`, then the working directory — the
+ * same order, and the same refusal, as every verb in commands/.
+ */
+export function chooseLibrary(
+  argv: readonly string[],
+  env: Readonly<Record<string, string | undefined>>,
+  cwd: string
+): LibraryChoice {
+  const i = argv.indexOf('--library')
+  if (i !== -1) {
+    const value = argv[i + 1]
+    // A flag with no value is a usage error, not a silent fall-through to the
+    // working directory — that would export a different library than the one
+    // the caller asked for and say nothing about it.
+    if (!value || value.startsWith('--')) return { ok: false, error: '--library needs a directory' }
+    return { ok: true, path: value, from: 'flag' }
+  }
+  const env_ = env['SKILL_LIBRARY']
+  if (env_) return { ok: true, path: env_, from: 'env' }
+  return { ok: true, path: cwd, from: 'cwd' }
+}
+
+/**
+ * What the synthetic origin node is called.
+ *
+ * It is the LIBRARY's name, not this tool's. The node used to read "Nexus",
+ * which named the viewer rather than the thing being viewed — so pointing the
+ * viewer at a stranger's library stamped our product across the middle of
+ * their data. A catalog may name itself; otherwise the honest answer is the
+ * directory you are standing in, which is the same fallback the library
+ * resolution above ends on.
+ */
+export function originTitle(catalogTitle: unknown, libraryName: string): string {
+  if (typeof catalogTitle === 'string' && catalogTitle.trim() !== '') return catalogTitle.trim()
+  if (libraryName.trim() !== '') return libraryName.trim()
+  // Only reachable for a filesystem root, where basename() is empty. Naming
+  // the tool here would be the bug this function exists to remove.
+  return 'library'
+}

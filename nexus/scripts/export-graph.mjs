@@ -1,8 +1,24 @@
 #!/usr/bin/env node
 //
-// export-graph.mjs — the data export, §5. Repo root is resolved from this
-// module's own URL, never cwd, because it must work the same way whether
-// `npm run export:data` is invoked from nexus/ or from the repo root.
+// export-graph.mjs — the data export, §5.
+//
+// THE LIBRARY IS NAMED, NEVER INFERRED. This script used to fix its input root
+// three directories up from its own file, on the stated grounds that it "must
+// work the same way whether `npm run export:data` is invoked from nexus/ or
+// from the repo root". That reasoning was right about the OUTPUT and wrong
+// about the INPUT, and it conflated the two: graph.json belongs to the viewer,
+// so OUT_PATH still resolves from this module's URL and always will. The
+// library does not belong to the viewer, so fixing it here meant this script
+// could only ever export the tree it happened to live in — the exact defect
+// SK-97 measured in six of seven commands and fixed there, which this one
+// never got. It is why the viewer could not be pointed at anyone else's
+// library, and why the origin node said "Nexus": with one possible input, a
+// hardcoded label looked like a fact.
+//
+// Now: `--library <dir>`, then `SKILL_LIBRARY`, then the working directory —
+// the same order and the same refusal as every verb in commands/. The decision
+// itself lives in src/data/integrity.ts, with the other pure pieces of this
+// pipeline, so it is unit-tested rather than only exercised by running this.
 //
 // The ONLY place Nexus touches files outside its own directory, and it only
 // reads them: edges.json, catalog.json, ledger/*.json, skills/*/SKILL.md
@@ -17,14 +33,37 @@
 // src/data/integrity.ts and are imported from there, not reimplemented.
 
 import { existsSync, readFileSync, readdirSync, writeFileSync, mkdirSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { basename, dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { GraphSnapshotSchema } from '../src/data/types.ts'
-import { parseRejectedTable, resolveEntityKind } from '../src/data/integrity.ts'
+import { chooseLibrary, originTitle, parseRejectedTable, resolveEntityKind } from '../src/data/integrity.ts'
 
-const REPO_ROOT = dirname(dirname(dirname(fileURLToPath(import.meta.url))))
+function refuse(message) {
+  console.error(`refused: ${message}`)
+  // 2 — could not run, matching the convention a publish freezes.
+  process.exit(2)
+}
+
+const choice = chooseLibrary(process.argv.slice(2), process.env, process.cwd())
+if (!choice.ok) refuse(choice.error)
+const LIBRARY = resolve(choice.path)
+
+// The OUTPUT still belongs to the viewer, so it is still resolved from this
+// module's own URL. That half of the original reasoning was correct.
 const OUT_PATH = join(dirname(fileURLToPath(import.meta.url)), '..', 'public', 'data', 'graph.json')
+
+// Named refusals rather than an ENOENT stack trace naming a path the reader
+// has no reason to recognise — the same two things `init` refuses on.
+if (!existsSync(join(LIBRARY, 'skills'))) {
+  refuse(
+    `no skills/ directory in ${LIBRARY} — pratiq acts on a library whose skills live in skills/\n` +
+      `  name one with --library <dir>, or SKILL_LIBRARY; otherwise this is the directory you are standing in`
+  )
+}
+if (!existsSync(join(LIBRARY, 'catalog.json'))) {
+  refuse(`${join(LIBRARY, 'catalog.json')} does not exist — not a skill library, or not one with a catalog`)
+}
 
 // ------------------------------------------------------------------ utils
 
@@ -91,8 +130,14 @@ const PROVENANCE_FILES = new Set(['SKILL.md', 'AUDIT.md', 'ORIGIN.md'])
 
 // ------------------------------------------------------------ categories
 
-const catalog = readJSON(join(REPO_ROOT, 'catalog.json'))
-const categories = catalog.categories.map((c) => ({ id: c.id, title: c.title, blurb: c.blurb }))
+const catalog = readJSON(join(LIBRARY, 'catalog.json'))
+// `blurb` defaults rather than being required. A catalog written by
+// `pratiq init` has none — buildCatalog() emits {id, title, skills} — so
+// requiring it here made a library this project's own tool creates
+// unexportable, which nothing noticed while the input root was hardcoded to
+// a tree that happened to have them. The schema still guarantees a string in
+// the output; the same default is already applied to `unfiled` below.
+const categories = catalog.categories.map((c) => ({ id: c.id, title: c.title, blurb: c.blurb ?? '' }))
 const skillToCategory = new Map()
 for (const c of catalog.categories) {
   for (const name of c.skills) skillToCategory.set(name, c.id)
@@ -101,11 +146,12 @@ const filedIds = new Set(categories.map((c) => c.id))
 
 // ----------------------------------------------------------------- edges
 
-const rawEdges = readJSON(join(REPO_ROOT, 'edges.json')).edges
+const edgesPath = join(LIBRARY, 'edges.json')
+const rawEdges = existsSync(edgesPath) ? (readJSON(edgesPath).edges ?? []) : []
 
 // ---------------------------------------------------------------- skills
 
-const skillsRoot = join(REPO_ROOT, 'skills')
+const skillsRoot = join(LIBRARY, 'skills')
 const skillDirs = readdirSync(skillsRoot, { withFileTypes: true })
   .filter((e) => e.isDirectory() && !e.name.startsWith('.'))
   .map((e) => e.name)
@@ -131,7 +177,7 @@ const skills = skillDirs.map((dir) => {
   const scriptFiles = listFiles(join(skillPath, 'scripts'))
   const refWordsTotal = leafFiles.reduce((n, l) => n + wordCount(readTextOrEmpty(l.path)), 0)
 
-  const ledgerPath = join(REPO_ROOT, 'ledger', `${dir}.json`)
+  const ledgerPath = join(LIBRARY, 'ledger', `${dir}.json`)
   if (!existsSync(ledgerPath)) {
     throw new Error(`export-graph: skills/${dir} has no ledger/${dir}.json — every held skill must have a ledger entry`)
   }
@@ -169,7 +215,7 @@ if (hasUnfiled) categories.push({ id: 'unfiled', title: 'Uncategorised', blurb: 
 
 // -------------------------------------------------------------- rejected
 
-const { refused, declined } = parseRejectedTable(readTextOrEmpty(join(REPO_ROOT, 'REJECTED.md')))
+const { refused, declined } = parseRejectedTable(readTextOrEmpty(join(LIBRARY, 'REJECTED.md')))
 const refusedNames = new Set(refused.map((r) => r.name))
 const declinedNames = new Set(declined.map((r) => r.name))
 
@@ -260,7 +306,7 @@ const refusedNodes = dedupeByName(refused)
 // OriginNodeSchema) — not sourced from any file, unlike every other node
 // here. Exists purely so the graph reads as one connected whole instead of
 // several separate category trees with nothing tying them together.
-const originNode = { kind: 'origin', id: 'origin', title: 'Nexus' }
+const originNode = { kind: 'origin', id: 'origin', title: originTitle(catalog.title, basename(LIBRARY)) }
 
 // ------------------------------------------------------------------ nodes
 

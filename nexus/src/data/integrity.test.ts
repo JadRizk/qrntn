@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  checkDanglingEdges,
-  checkDuplicateIds,
-  checkManualOnlyOperative,
-  parseRejectedTable,
-  resolveEntityKind,
-} from './integrity.ts'
+import { checkDanglingEdges, checkDuplicateIds, checkManualOnlyOperative, chooseLibrary, originTitle, parseRejectedTable, resolveEntityKind } from './integrity.ts'
 import type { EdgeRecord, GraphNode, GraphSnapshot } from './types.ts'
 
 function skill(id: string, manualOnly = false): GraphNode {
@@ -209,5 +203,66 @@ describe('parseRejectedTable', () => {
 `
     const { refused } = parseRejectedTable(text)
     expect(refused).toEqual([])
+  })
+})
+
+// ── §5's library resolution ─────────────────────────────────────────────────
+//
+// scripts/export-graph.mjs used to fix its input root three directories up
+// from its own file, so it could only ever export the tree it lived in. These
+// cover the decision it makes instead — the same order every verb in commands/
+// follows, and the same refusal.
+
+describe('chooseLibrary', () => {
+  const noEnv = {}
+
+  it('takes --library first', () => {
+    expect(chooseLibrary(['--library', '/tmp/lib'], { SKILL_LIBRARY: '/env' }, '/cwd')).toEqual({
+      ok: true, path: '/tmp/lib', from: 'flag',
+    })
+  })
+
+  it('falls back to SKILL_LIBRARY, then the working directory', () => {
+    expect(chooseLibrary([], { SKILL_LIBRARY: '/env' }, '/cwd')).toEqual({ ok: true, path: '/env', from: 'env' })
+    expect(chooseLibrary([], noEnv, '/cwd')).toEqual({ ok: true, path: '/cwd', from: 'cwd' })
+  })
+
+  it('refuses --library with no value rather than silently using the cwd', () => {
+    // The dangerous failure: falling through would export a DIFFERENT library
+    // than the one the caller named, and say nothing about it.
+    expect(chooseLibrary(['--library'], noEnv, '/cwd')).toEqual({ ok: false, error: '--library needs a directory' })
+    expect(chooseLibrary(['--library', '--json'], noEnv, '/cwd')).toEqual({
+      ok: false, error: '--library needs a directory',
+    })
+  })
+
+  it('ignores an empty SKILL_LIBRARY instead of resolving to nothing', () => {
+    expect(chooseLibrary([], { SKILL_LIBRARY: '' }, '/cwd')).toEqual({ ok: true, path: '/cwd', from: 'cwd' })
+  })
+})
+
+describe('originTitle', () => {
+  it('prefers a catalog that names itself', () => {
+    expect(originTitle('Cortex', 'pq-lib')).toBe('Cortex')
+    expect(originTitle('  Cortex  ', 'pq-lib')).toBe('Cortex')
+  })
+
+  it('falls back to the library directory', () => {
+    expect(originTitle(undefined, 'pq-lib')).toBe('pq-lib')
+    expect(originTitle('', 'pq-lib')).toBe('pq-lib')
+    expect(originTitle('   ', 'pq-lib')).toBe('pq-lib')
+    expect(originTitle(42, 'pq-lib')).toBe('pq-lib')
+  })
+
+  it('never names this tool', () => {
+    // The whole point. The origin is the library being VIEWED; labelling it
+    // with the viewer's name stamped our product across a stranger's data,
+    // and read as a fact because there was only ever one possible input.
+    const answers = [
+      originTitle(undefined, 'someone-elses-library'),
+      originTitle('Their Library', 'whatever'),
+      originTitle(undefined, ''),
+    ]
+    for (const a of answers) expect(a.toLowerCase()).not.toMatch(/nexus|pratiq/)
   })
 })
