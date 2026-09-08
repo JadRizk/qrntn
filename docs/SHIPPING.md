@@ -126,6 +126,36 @@ collapsing them is how a CI gate starts lying about which problem it found.
 
 **Size:** small.
 
+**Landed**, as `commands/check-library.mjs` with its two test layers. Named for
+the thing it checks rather than `check.mjs`, because two files with that name —
+one shipped and pointed at a stranger's library, one not shipped and pointed at
+this project's own gates — would be confusable in exactly the situation where
+being sure which one ran matters.
+
+It composes and reports; it re-derives nothing. A second implementation of "is
+this skill filed" is the drift `SURFACE.md`'s "cannot drift" clause exists to
+prevent, so the catalog half's own report is passed through rather than
+summarised into a count that would send the reader to run the other command
+anyway.
+
+Three exit codes, and a third absence the section did not distinguish: a folder
+with no `skills/` is **not** sent to `pratiq init`, because init cannot make one
+either and pointing at it would be advice that does not work. Only a library
+that has `skills/` and no `catalog.json` is the init case.
+
+`--install` and `--install-root` are handed through to `ledger` untouched rather
+than re-parsed. This command owns no opinion about where installed skills live;
+adding one would be a second place to change when §4's resolution order changes.
+
+40 assertions, and the self-test's eight mutations are all caught — including
+the two that matter most, since this command's worst failure is not a refusal
+but the word *clean*: reporting a library it only half looked at, and reporting
+one it could not look at because half the tool was missing.
+
+**Not wired up**, for the same reason as `init`: absent from `bin/pratiq.mjs`'s
+`VERBS` table and `package.json`'s `files` allowlist, both §1's uncommitted
+work. It runs today as `node commands/check-library.mjs --library <dir>`.
+
 ### 3 · `pratiq init`
 
 The ninth verb, added because the measurement above says day one is a refusal.
