@@ -35,6 +35,30 @@ import { readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { basename, extname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+// ── colour, which is optional ───────────────────────────────────────────────
+//
+// Guarded, because promote.test.mjs deploys this scanner by COPYING THIS ONE
+// FILE into a skill's scripts/ folder, where commands/tint.mjs is not beside
+// it. A static import would make that copy die with ERR_MODULE_NOT_FOUND
+// before it audited anything.
+//
+// The fallback is identity, which is exactly what tint.mjs itself returns on a
+// pipe. Severity is carried by the WORD — BLOCK, REVIEW, NOTE — and the ink is
+// only a second copy of it, so a report with the colour stripped says the same
+// thing. That is the test for whether an ink belongs anywhere in this file.
+//
+// `enabled` is here because the real object has it. A fallback that is merely
+// good enough for today's call sites breaks the day someone adds one, and it
+// breaks ONLY in the copied-alone path — the one that runs on a user's machine
+// after promotion and which nothing here executes.
+let tint = { state: (t) => t, warn: (t) => t, alarm: (t) => t, dim: (t) => t, enabled: () => false };
+try {
+  const mod = await import('./tint.mjs');
+  tint = mod.tint;
+} catch {
+  // Deployed alone. Plain text is correct, not a failure.
+}
+
 // ── limits ───────────────────────────────────────────────────────────────────
 // The first four mirror the platform's own validator (skill-creator's
 // quick_validate.py) so that a skill failing here would also fail there. The
@@ -1216,9 +1240,15 @@ if (invokedAsScript()) {
     process.exit(exitCode);
   }
 
+  // Padded FIRST, coloured second. padEnd on a string that already carries
+  // escape sequences counts those bytes as width, and the column quietly
+  // collapses for exactly the readers who enabled colour.
+  const sevInk = (sev, text) =>
+    sev === SEV.BLOCK ? tint.alarm(text) : sev === SEV.REVIEW ? tint.warn(text) : tint.dim(text);
+
   const line = (f) => {
     const where = f.line ? `${f.file}:${f.line}:${f.col}` : f.file;
-    process.stdout.write(`  ${f.sev.padEnd(6)} ${f.code.padEnd(24)} ${where}\n`);
+    process.stdout.write(`  ${sevInk(f.sev, f.sev.padEnd(6))} ${f.code.padEnd(24)} ${where}\n`);
     if (f.evidence) process.stdout.write(`         ${JSON.stringify(f.evidence)}\n`);
     process.stdout.write(`         ${f.why}\n\n`);
   };
@@ -1235,8 +1265,22 @@ if (invokedAsScript()) {
     if (!setAside.length) process.stdout.write('  (no findings in excluded files)\n\n');
   }
 
-  process.stdout.write(`  ${counts.BLOCK} block · ${counts.REVIEW} review · ${counts.NOTE} note`);
-  process.stdout.write(excluded ? ` · ${excluded} set aside\n` : '\n');
-  process.stdout.write(`  verdict: ${verdict}\n\n`);
+  // A zero count is not news. Only a count that actually found something may
+  // spend an ink — "0 block" in alarm red is the interface shouting about the
+  // absence of a problem, which is how an alarm colour stops meaning anything.
+  const count = (n, word, ink) => (n ? ink(`${n} ${word}`) : tint.dim(`${n} ${word}`));
+  process.stdout.write(
+    `  ${count(counts.BLOCK, 'block', tint.alarm)} · ${count(counts.REVIEW, 'review', tint.warn)} · ${tint.dim(`${counts.NOTE} note`)}`
+  );
+  // The newline stays OUTSIDE the ink. Wrapping it puts the reset sequence at
+  // the start of the next line, which is harmless in a terminal and ugly in a
+  // captured log — and this is the only line in the file that could get it
+  // wrong, because it is the only one whose text ends the row.
+  process.stdout.write(excluded ? `${tint.dim(` · ${excluded} set aside`)}\n` : '\n');
+  // The verdict is the one state word this command prints, so it is the one
+  // place the flag itself is spent — and only when the answer is that nothing
+  // is blocking. A verdict of DO NOT ADOPT is not a cleared vessel.
+  const verdictInk = counts.BLOCK ? tint.alarm : counts.REVIEW ? tint.warn : tint.state;
+  process.stdout.write(`  verdict: ${verdictInk(verdict)}\n\n`);
   process.exit(exitCode);
 }

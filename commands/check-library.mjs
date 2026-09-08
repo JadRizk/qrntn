@@ -44,6 +44,26 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { realpathSync } from 'node:fs'
 
+// ── colour, which is optional ───────────────────────────────────────────────
+//
+// The import is GUARDED because these scripts are deployed by copying ONE FILE
+// into a skill's scripts/ folder, where commands/tint.mjs is simply not beside
+// them — promote.test.mjs and refresh.test.mjs both do exactly that, and a
+// static import turns it into an ERR_MODULE_NOT_FOUND before main() ever runs.
+//
+// The fallback is not a degraded mode, it is the SAME STRING tint.mjs produces
+// on anything that is not a terminal. Colour was only ever a second copy of a
+// word that is already there, so a script running without its sibling loses
+// nothing but the escape sequences.
+let refusalLine = (message) => `refused: ${message}`
+try {
+	const mod = await import('./tint.mjs')
+	refusalLine = mod.refusalLine
+} catch {
+	// Deployed alone. Plain text is correct, not a failure.
+}
+
+
 const HERE = dirname(fileURLToPath(import.meta.url))
 
 export function resolveLibrary(argv = process.argv.slice(2)) {
@@ -152,7 +172,7 @@ function main(argv) {
 	}
 	const lib = resolveLibrary(argv)
 	if (lib.error) {
-		console.error(`refused: ${lib.error}`)
+		console.error(refusalLine(lib.error))
 		return 2
 	}
 
@@ -166,7 +186,7 @@ function main(argv) {
 		const i = argv.indexOf('--install-root')
 		if (i !== -1) passthrough.push('--install-root', argv[i + 1] ?? '')
 	} else if (argv.includes('--install-root')) {
-		console.error('refused: --install-root without --install — nothing would look there')
+		console.error(refusalLine('--install-root without --install — nothing would look there'))
 		return 2
 	}
 
@@ -178,7 +198,7 @@ function main(argv) {
 	}
 
 	if (result.code === 2) {
-		console.error(`refused: ${result.why}`)
+		console.error(refusalLine(result.why))
 		if (result.detail) console.error(`  ${result.detail}`)
 		return 2
 	}

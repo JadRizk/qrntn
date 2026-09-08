@@ -25,6 +25,26 @@ import { existsSync, readFileSync, readdirSync, realpathSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+// ── colour, which is optional ───────────────────────────────────────────────
+//
+// The import is GUARDED because these scripts are deployed by copying ONE FILE
+// into a skill's scripts/ folder, where commands/tint.mjs is simply not beside
+// them — promote.test.mjs and refresh.test.mjs both do exactly that, and a
+// static import turns it into an ERR_MODULE_NOT_FOUND before main() ever runs.
+//
+// The fallback is not a degraded mode, it is the SAME STRING tint.mjs produces
+// on anything that is not a terminal. Colour was only ever a second copy of a
+// word that is already there, so a script running without its sibling loses
+// nothing but the escape sequences.
+let refusalLine = (message) => `refused: ${message}`
+try {
+	const mod = await import('./tint.mjs')
+	refusalLine = mod.refusalLine
+} catch {
+	// Deployed alone. Plain text is correct, not a failure.
+}
+
+
 // ── the library ─────────────────────────────────────────────────────────────
 //
 // SK-97. Until the split this was `dirname(...)` of this file's own location,
@@ -37,7 +57,7 @@ function resolveLibrary(argv = process.argv.slice(2)) {
 	if (i !== -1) {
 		const value = argv[i + 1]
 		if (!value || value.startsWith('--')) {
-			console.error('refused: --library needs a directory')
+			console.error(refusalLine('--library needs a directory'))
 			process.exit(2)
 		}
 		return resolve(value)
@@ -161,7 +181,7 @@ function main({ repo = LIBRARY } = {}) {
 	// treats them that way — so their absence is simply no declared edges.
 	const catalogPath = join(repo, 'catalog.json')
 	if (!existsSync(catalogPath)) {
-		console.error(`refused: ${catalogPath} does not exist — not a skill library, or not one with a catalog`)
+		console.error(refusalLine(`${catalogPath} does not exist — not a skill library, or not one with a catalog`))
 		process.exit(2)
 	}
 	const catalog = JSON.parse(readFileSync(catalogPath, 'utf8'))

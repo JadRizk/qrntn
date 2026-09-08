@@ -39,6 +39,7 @@
     "commands/promote.mjs",
     "commands/refresh.mjs",
     "commands/usage.mjs",
+    "commands/tint.mjs",
     "commands/TRANSCRIPTS.md",
     "README.md",
     "LICENSE",

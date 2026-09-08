@@ -25,6 +25,15 @@
 //   2   could not run                  (usage error, not a library, no catalog)
 //
 // Plain Node, no dependencies, in keeping with the rest of the tool.
+//
+// NO COLOUR HERE, deliberately, and this is the one surface that stays plain
+// even once commands/tint.mjs has consumers. This file's refusals are packaging
+// faults — "commands/ is missing" — and a module that reports commands/ is
+// missing cannot itself be imported from commands/. Not hypothetical: importing
+// tint.mjs here turned the friendly "this is a packaging fault, please report
+// it" message into an ERR_MODULE_NOT_FOUND stack trace, and pratiq.test.mjs
+// caught it. The front door stays plain so that it still works when nothing
+// else does.
 
 import { spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
