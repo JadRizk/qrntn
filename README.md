@@ -1,4 +1,10 @@
-# pratiq
+<h1><img src="brand/assets/readme-header.png" alt="pratiq" width="100%"></h1>
+
+![signal](https://img.shields.io/badge/signal-Q-FEDD00?style=flat-square&labelColor=0A0C0B)
+![version](https://img.shields.io/badge/version-0.1.0-F2ECD9?style=flat-square&labelColor=0A0C0B)
+![status](https://img.shields.io/badge/status-not%20published-BF6408?style=flat-square&labelColor=0A0C0B)
+![license](https://img.shields.io/badge/license-Apache--2.0-7F7966?style=flat-square&labelColor=0A0C0B)
+![node](https://img.shields.io/badge/node-%E2%89%A5%2020-7F7966?style=flat-square&labelColor=0A0C0B)
 
 **`pratiq` records and gates a human decision about a skill before it is allowed
 to load.**
@@ -75,7 +81,7 @@ npx pratiq refresh
 
 ## The contracts that do not move
 
-`pratiq` is `0.x`, and the surface may move. Three things will not, because a
+`pratiq` is `0.x`, and the surface may move. Four things will not, because a
 publish freezes them whether or not anyone wrote them down.
 
 **Where the library is.** Every verb takes `--library <dir>`, then
@@ -104,6 +110,15 @@ harmless, and there is no line it visibly violates.
 A script consuming these has to tell `1` and `2` apart. Collapsing them is how a
 CI gate starts lying about which problem it found.
 
+**What colour does, and does not, change.** Nine verbs colour `refused:` and
+`audit` colours its severity column, counts and verdict. The words carry the
+meaning and the ink is a second copy of them, so **stripping the escapes
+reproduces the output byte for byte** — a test asserts exactly that. Colour is
+off unless the stream is a terminal, `NO_COLOR` is honoured on its presence
+rather than its value, and `FORCE_COLOR` overrides the terminal check. A script
+reading this output never has to know, and `pratiq audit > report.txt` writes a
+clean file while still colouring the refusal it prints to stderr.
+
 **Explicitly not frozen:** the `--json` shapes. Most commands emit JSON and
 those shapes are still moving in `0.x`.
 
@@ -111,7 +126,10 @@ those shapes are still moving in `0.x`.
 
 `commands/` holds the pipeline — init, intake, audit, promote, overlap, ledger,
 refresh, usage and the catalog check — with every test and mutation self-test
-beside the script it covers. `nexus/` is the viewer. `check.mjs` runs the lot,
+beside the script it covers. `nexus/` is the viewer. `brand/` is where the
+identity was decided — a thesis, and a palette whose every number prints the
+command that reproduces it — and `site/` is the page built from those tokens.
+`check.mjs` runs the lot,
 discovering the suites rather than listing them, because a hand-maintained list
 goes stale and the missing entry is invisible.
 
