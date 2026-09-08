@@ -49,49 +49,33 @@
     },
     {
       "kind": "skill",
-      "id": "animate",
-      "name": "animate",
-      "description": "Build an animation from scratch, making the decisions in the order that determines whether it feels right \u2014 should it animate at all, what purpose, which tool, which properties, which curve and duration, how it interrupts, how it exits. Writes the implementation. Use when asked to animate something, add motion, make a component feel alive, or build a transition. For critiquing existing motion use review-animations; for auditing a whole codebase use improve-animations.",
+      "id": "motion-basics",
+      "name": "motion-basics",
+      "description": "A fixture skill. The description is synthetic and describes nothing real.",
       "category": "motion",
       "origin": "acquired",
       "manualOnly": false,
       "words": 1732,
       "refWords": 1156,
-      "usage": {
-        "invocations": {
-          "d7": 0,
-          "d30": 1,
-          "d90": 1,
-          "all": 1
-        },
-        "lastInvoked": "2026-08-14T15:01:01.403Z"
-      }
+      "usage": null
     },
     {
       "kind": "skill",
-      "id": "apple-design",
-      "name": "apple-design",
-      "description": "Apple's approach to interface design and fluid, physical motion, translated for the web. Use when building or reviewing gesture-driven UI, spring animations, drag/swipe/sheet interactions, momentum and interruptible transitions, translucent materials and depth, typography (optical sizing, tracking, leading), reduced-motion, or the design foundations (feedback, spatial consistency, restraint) behind Apple-style interfaces.",
+      "id": "platform-idiom",
+      "name": "platform-idiom",
+      "description": "A fixture skill. The description is synthetic and describes nothing real.",
       "category": "direction",
       "origin": "acquired",
       "manualOnly": false,
       "words": 3372,
       "refWords": 0,
-      "usage": {
-        "invocations": {
-          "d7": 0,
-          "d30": 1,
-          "d90": 1,
-          "all": 1
-        },
-        "lastInvoked": "2026-08-14T15:01:03.683Z"
-      }
+      "usage": null
     },
     {
       "kind": "skill",
       "id": "design-direction",
       "name": "design-direction",
-      "description": "Define the direction of a design system or brand before any code exists \u2014 thesis, voice, palette, type and form \u2014 validating every colour decision by computation rather than eye. Use when starting a design system from scratch, choosing an accent, deriving status or chart colours, checking contrast and colour-blind separation, setting a type scale, or writing a BRAND.md. Produces BRAND.md and PALETTE.md, the two documents an implementation reads. Stack-agnostic.",
+      "description": "Define the direction of a design system or brand before any code exists — thesis, voice, palette, type and form — validating every colour decision by computation rather than eye. Use when starting a design system from scratch, choosing an accent, deriving status or chart colours, checking contrast and colour-blind separation, setting a type scale, or writing a BRAND.md. Produces BRAND.md and PALETTE.md, the two documents an implementation reads. Stack-agnostic.",
       "category": "direction",
       "origin": "authored",
       "manualOnly": false,
@@ -101,9 +85,9 @@
     },
     {
       "kind": "skill",
-      "id": "grilling",
-      "name": "grilling",
-      "description": "Interview the user in rounds about a plan, decision or design until every branch is resolved \u2014 mapping the decision tree, asking each round's unblocked questions together, and recommending an answer to each. Use when asked to grill me, stress-test a plan, poke holes in a design, pressure-test an idea, or challenge thinking before committing to it. Dispatches sub-agents to look up facts rather than asking for them.",
+      "id": "decision-review",
+      "name": "decision-review",
+      "description": "A fixture skill. The description is synthetic and describes nothing real.",
       "category": "deciding",
       "origin": "acquired",
       "manualOnly": false,
@@ -113,9 +97,9 @@
     },
     {
       "kind": "skill",
-      "id": "pick-ui-library",
-      "name": "pick-ui-library",
-      "description": "Pick the right library for a given frontend task from a curated, opinionated list \u2014 numbers, OTP inputs, charts, command menus, virtualization, drag and drop, toasts, state, styling, and more. Only runs when explicitly invoked; it does not trigger on its own.",
+      "id": "library-choice",
+      "name": "library-choice",
+      "description": "A fixture skill. The description is synthetic and describes nothing real.",
       "category": "building",
       "origin": "acquired",
       "manualOnly": true,
@@ -125,9 +109,9 @@
     },
     {
       "kind": "skill",
-      "id": "prototype",
-      "name": "prototype",
-      "description": "Build multiple genuinely different versions of a UI piece you describe, rendered behind a visual picker so you can flip through them live and promote the one that feels right. Only runs when explicitly invoked; it does not trigger on its own.",
+      "id": "variant-explorer",
+      "name": "variant-explorer",
+      "description": "A fixture skill. The description is synthetic and describes nothing real.",
       "category": "building",
       "origin": "acquired",
       "manualOnly": true,
@@ -137,9 +121,9 @@
     },
     {
       "kind": "skill",
-      "id": "review-animations",
-      "name": "review-animations",
-      "description": "Reviews animation and motion code against a high craft bar derived from Emil Kowalski's design engineering philosophy. Default to flagging; approval is earned.",
+      "id": "motion-review",
+      "name": "motion-review",
+      "description": "A fixture skill. The description is synthetic and describes nothing real.",
       "category": "motion",
       "origin": "acquired",
       "manualOnly": true,
@@ -163,27 +147,19 @@
       "kind": "skill",
       "id": "skill-audit",
       "name": "skill-audit",
-      "description": "Audit a third-party skill before adopting it \u2014 prompt injection, hidden instructions, unsafe scripts, permission grabs \u2014 then judge it against house authoring standards and produce an adoption report. Use when a skill has been pasted, downloaded, copied from a repo or gist, or found online and needs vetting; when asking whether a skill is safe to install; when reviewing a SKILL.md from someone else; or when deciding whether to adopt, revise or reject an incoming skill. Reports only \u2014 it never edits the skill.",
+      "description": "Audit a third-party skill before adopting it — prompt injection, hidden instructions, unsafe scripts, permission grabs — then judge it against house authoring standards and produce an adoption report. Use when a skill has been pasted, downloaded, copied from a repo or gist, or found online and needs vetting; when asking whether a skill is safe to install; when reviewing a SKILL.md from someone else; or when deciding whether to adopt, revise or reject an incoming skill. Reports only — it never edits the skill.",
       "category": "trust",
       "origin": "authored",
       "manualOnly": false,
       "words": 1505,
       "refWords": 4927,
-      "usage": {
-        "invocations": {
-          "d7": 1,
-          "d30": 1,
-          "d90": 1,
-          "all": 1
-        },
-        "lastInvoked": "2026-08-24T10:17:46.482Z"
-      }
+      "usage": null
     },
     {
       "kind": "skill",
       "id": "skill-intake",
       "name": "skill-intake",
-      "description": "Fetch a skill from a link into quarantine without reading it \u2014 pinned to a commit, provenance recorded, nothing executed and nothing judged. Use when a skill has been linked, pasted, cloned or recommended and needs to land somewhere safe before anyone looks at it. Hands off to skill-adopt. Only runs when explicitly invoked; it does not trigger on its own.",
+      "description": "Fetch a skill from a link into quarantine without reading it — pinned to a commit, provenance recorded, nothing executed and nothing judged. Use when a skill has been linked, pasted, cloned or recommended and needs to land somewhere safe before anyone looks at it. Hands off to skill-adopt. Only runs when explicitly invoked; it does not trigger on its own.",
       "category": "trust",
       "origin": "authored",
       "manualOnly": true,
@@ -195,27 +171,19 @@
       "kind": "skill",
       "id": "skill-new",
       "name": "skill-new",
-      "description": "Author a new skill from scratch in this repo \u2014 write it to house style, test what computes, file it in catalog.json, then hand off to promote.mjs. Use when writing a skill that has no ORIGIN.md and no AUDIT.md because nothing arrived from anywhere else \u2014 you are the origin. Only runs when explicitly invoked; it does not trigger on its own.",
+      "description": "Author a new skill from scratch in this repo — write it to house style, test what computes, file it in catalog.json, then hand off to promote.mjs. Use when writing a skill that has no ORIGIN.md and no AUDIT.md because nothing arrived from anywhere else — you are the origin. Only runs when explicitly invoked; it does not trigger on its own.",
       "category": "authoring",
       "origin": "authored",
       "manualOnly": true,
       "words": 1197,
       "refWords": 0,
-      "usage": {
-        "invocations": {
-          "d7": 1,
-          "d30": 1,
-          "d90": 1,
-          "all": 1
-        },
-        "lastInvoked": "2026-08-24T20:01:08.908Z"
-      }
+      "usage": null
     },
     {
       "kind": "skill",
-      "id": "wayfinder",
-      "name": "wayfinder",
-      "description": "Plan a huge chunk of work (more than one agent session can hold) as a shared map of decision tickets on your issue tracker, and resolve them one at a time until the way to the destination is clear.",
+      "id": "route-planner",
+      "name": "route-planner",
+      "description": "A fixture skill. The description is synthetic and describes nothing real.",
       "category": "planning",
       "origin": "acquired",
       "manualOnly": true,
@@ -225,8 +193,8 @@
     },
     {
       "kind": "leaf",
-      "id": "animate/RECIPES.md",
-      "owner": "animate",
+      "id": "motion-basics/RECIPES.md",
+      "owner": "motion-basics",
       "file": "RECIPES.md",
       "leafKind": "ref",
       "words": 1156
@@ -289,32 +257,32 @@
     },
     {
       "kind": "leaf",
-      "id": "grilling/openai.yaml",
-      "owner": "grilling",
+      "id": "decision-review/openai.yaml",
+      "owner": "decision-review",
       "file": "openai.yaml",
       "leafKind": "agent",
       "words": 13
     },
     {
       "kind": "leaf",
-      "id": "pick-ui-library/libraries.md",
-      "owner": "pick-ui-library",
+      "id": "library-choice/libraries.md",
+      "owner": "library-choice",
       "file": "libraries.md",
       "leafKind": "ref",
       "words": 664
     },
     {
       "kind": "leaf",
-      "id": "prototype/PICKER.md",
-      "owner": "prototype",
+      "id": "variant-explorer/PICKER.md",
+      "owner": "variant-explorer",
       "file": "PICKER.md",
       "leafKind": "ref",
       "words": 940
     },
     {
       "kind": "leaf",
-      "id": "review-animations/STANDARDS.md",
-      "owner": "review-animations",
+      "id": "motion-review/STANDARDS.md",
+      "owner": "motion-review",
       "file": "STANDARDS.md",
       "leafKind": "ref",
       "words": 1383
@@ -353,8 +321,8 @@
     },
     {
       "kind": "leaf",
-      "id": "wayfinder/openai.yaml",
-      "owner": "wayfinder",
+      "id": "route-planner/openai.yaml",
+      "owner": "route-planner",
       "file": "openai.yaml",
       "leafKind": "agent",
       "words": 14
@@ -401,76 +369,76 @@
     },
     {
       "kind": "vendor",
-      "id": "emilkowalski/skills",
-      "repo": "emilkowalski/skills",
-      "url": "https://github.com/emilkowalski/skills",
+      "id": "example-org/skills",
+      "repo": "example-org/skills",
+      "url": "https://github.com/example-org/skills",
       "adopted": [
-        "animate",
-        "apple-design",
-        "pick-ui-library",
-        "prototype",
-        "review-animations"
+        "motion-basics",
+        "platform-idiom",
+        "library-choice",
+        "variant-explorer",
+        "motion-review"
       ]
     },
     {
       "kind": "vendor",
-      "id": "mattpocock/skills",
-      "repo": "mattpocock/skills",
-      "url": "https://github.com/mattpocock/skills",
+      "id": "example-dev/skills",
+      "repo": "example-dev/skills",
+      "url": "https://github.com/example-dev/skills",
       "adopted": [
-        "grilling",
-        "wayfinder"
+        "decision-review",
+        "route-planner"
       ]
     },
     {
       "kind": "declined",
-      "id": "animation-vocabulary",
-      "name": "animation-vocabulary",
-      "vendorId": "emilkowalski/skills",
+      "id": "motion-glossary",
+      "name": "motion-glossary",
+      "vendorId": "example-org/skills",
       "date": "2026-08-05",
       "scan": "clean",
-      "why": "Auto-triggers, for a glossary lookup \u2014 the one job cheapest to ask for directly. 2,159 words resident for reverse-naming an effect."
+      "why": "Declined as a fixture. The reason is synthetic and is not a judgement about any real skill."
     },
     {
       "kind": "declined",
-      "id": "system-atlas",
-      "name": "system-atlas",
+      "id": "architecture-atlas",
+      "name": "architecture-atlas",
       "vendorId": null,
       "date": "2026-08-24",
-      "scan": "clean \u2014 0 block, 0 review, 0 note",
-      "why": "**Audited ADOPT, quality Ready, and still not taken.** It renders an architecture discussion as a clickable atlas \u2014 which is the job `skills-atlas` (SK-50) is already specified to do for this collection, from data this repo derives rather than from a discussion. Adopting both would mean two diagram generators disagreeing about what the repository looks like. Worth revisiting if SK-50 is abandoned, or for architecture work outside this repo, where nothing here competes with it."
+      "scan": "clean",
+      "why": "Declined as a fixture. The reason is synthetic and is not a judgement about any real skill."
     },
     {
       "kind": "declined",
-      "id": "emil-design-eng",
-      "name": "emil-design-eng",
-      "vendorId": "emilkowalski/skills",
+      "id": "design-engineering",
+      "name": "design-engineering",
+      "vendorId": "example-org/skills",
       "date": "2026-08-05",
       "scan": "clean",
-      "why": "Weakest description in the repo \u2014 no trigger phrases, describes contents rather than occasions. Largest body at 3,877 words, and the only one that does not disambiguate against its siblings. Broad trigger plus big body plus heavy overlap with `animate` and `review-animations`."
+      "why": "Declined as a fixture. The reason is synthetic and is not a judgement about any real skill."
     },
     {
       "kind": "declined",
-      "id": "find-animation-opportunities",
-      "name": "find-animation-opportunities",
-      "vendorId": "emilkowalski/skills",
+      "id": "motion-finder",
+      "name": "motion-finder",
+      "vendorId": "example-org/skills",
       "date": "2026-08-05",
-      "scan": "1 false positive",
-      "why": "Auto-triggers. The inverse of `improve-animations`, and rarely wanted on demand."
+      "scan": "clean",
+      "why": "Declined as a fixture. The reason is synthetic and is not a judgement about any real skill."
     },
     {
       "kind": "declined",
-      "id": "improve-animations",
-      "name": "improve-animations",
-      "vendorId": "emilkowalski/skills",
+      "id": "motion-sweep",
+      "name": "motion-sweep",
+      "vendorId": "example-org/skills",
       "date": "2026-08-05",
-      "scan": "5 false positives",
-      "why": "Auto-triggers, and overlaps both `review-animations` and `animate`. Worth revisiting when there is a codebase to sweep rather than a diff to review."
+      "scan": "clean",
+      "why": "Declined as a fixture. The reason is synthetic and is not a judgement about any real skill."
     },
     {
       "kind": "ghost",
-      "id": "implement-design-system",
-      "name": "implement-design-system",
+      "id": "downstream-builder",
+      "name": "downstream-builder",
       "referencedBy": [
         "design-direction"
       ]
@@ -479,75 +447,75 @@
   "edges": [
     {
       "kind": "referential",
-      "from": "animate",
-      "to": "pick-ui-library",
+      "from": "motion-basics",
+      "to": "library-choice",
       "render": true,
-      "when": "the task needs a component \u2014 a toast, drawer, command menu \u2014 rather than an animation",
+      "when": "the task needs a component — a toast, drawer, command menu — rather than an animation",
       "note": null,
-      "source": "skills/animate/SKILL.md:73"
+      "source": "skills/motion-basics/SKILL.md:73"
     },
     {
       "kind": "alternative",
-      "from": "animate",
-      "to": "review-animations",
+      "from": "motion-basics",
+      "to": "motion-review",
       "render": true,
       "when": "critiquing motion that already exists rather than building new motion",
       "note": null,
-      "source": "skills/animate/SKILL.md:3"
+      "source": "skills/motion-basics/SKILL.md:3"
     },
     {
       "kind": "alternative",
-      "from": "animate",
-      "to": "improve-animations",
+      "from": "motion-basics",
+      "to": "motion-sweep",
       "render": true,
       "when": "auditing a whole codebase for motion problems",
       "note": null,
-      "source": "skills/animate/SKILL.md:3"
+      "source": "skills/motion-basics/SKILL.md:3"
     },
     {
       "kind": "alternative",
-      "from": "animate",
-      "to": "find-animation-opportunities",
+      "from": "motion-basics",
+      "to": "motion-finder",
       "render": true,
-      "when": "hunting for places that could animate",
+      "when": "hunting for places that could motion-basics",
       "note": null,
-      "source": "skills/animate/SKILL.md:8"
+      "source": "skills/motion-basics/SKILL.md:8"
     },
     {
       "kind": "alternative",
-      "from": "prototype",
-      "to": "review-animations",
+      "from": "variant-explorer",
+      "to": "motion-review",
       "render": true,
       "when": "reviewing existing UI rather than diverging on new UI",
       "note": null,
-      "source": "skills/prototype/SKILL.md:9"
+      "source": "skills/variant-explorer/SKILL.md:9"
     },
     {
       "kind": "alternative",
-      "from": "prototype",
-      "to": "improve-animations",
+      "from": "variant-explorer",
+      "to": "motion-sweep",
       "render": true,
       "when": "planning fixes for existing UI",
       "note": null,
-      "source": "skills/prototype/SKILL.md:9"
+      "source": "skills/variant-explorer/SKILL.md:9"
     },
     {
       "kind": "alternative",
-      "from": "prototype",
-      "to": "pick-ui-library",
+      "from": "variant-explorer",
+      "to": "library-choice",
       "render": true,
       "when": "choosing a dependency rather than building variants",
       "note": null,
-      "source": "skills/prototype/SKILL.md:9"
+      "source": "skills/variant-explorer/SKILL.md:9"
     },
     {
       "kind": "operative",
       "from": "skill-adopt",
       "to": "skill-audit",
       "render": true,
-      "when": "stage 00 \u2014 the mechanical scan, before anything is read",
+      "when": "stage 00 — the mechanical scan, before anything is read",
       "note": null,
-      "source": "skills/skill-adopt/SKILL.md:00 \u00b7 Scan"
+      "source": "skills/skill-adopt/SKILL.md:00 · Scan"
     },
     {
       "kind": "referential",
@@ -556,14 +524,14 @@
       "render": true,
       "when": "the artefact is quarantined and recorded, and judgment begins",
       "note": "Referential and not operative by necessity: both are manual-only, so neither can reach the other. That is what keeps the fetch and the reading in separate contexts.",
-      "source": "skills/skill-intake/SKILL.md:03 \u00b7 Seal"
+      "source": "skills/skill-intake/SKILL.md:03 · Seal"
     },
     {
       "kind": "referential",
       "from": "skill-adopt",
       "to": "skill-intake",
       "render": true,
-      "when": "nothing is in the inbox yet \u2014 there is no other input to this skill",
+      "when": "nothing is in the inbox yet — there is no other input to this skill",
       "note": null,
       "source": "skills/skill-adopt/SKILL.md:when-this-does-not-apply"
     },
@@ -572,9 +540,9 @@
       "from": "skill-new",
       "to": "skill-adopt",
       "render": true,
-      "when": "the skill is written, tested, and filed in catalog.json \u2014 promotion itself runs promote.mjs directly, never through the Skill tool",
-      "note": "Referential and not operative, same reasoning as skill-intake \u2192 skill-adopt: skill-adopt is manual-only, so no automated flow can reach it.",
-      "source": "skills/skill-new/SKILL.md:03 \u00b7 Promote"
+      "when": "the skill is written, tested, and filed in catalog.json — promotion itself runs promote.mjs directly, never through the Skill tool",
+      "note": "Referential and not operative, same reasoning as skill-intake → skill-adopt: skill-adopt is manual-only, so no automated flow can reach it.",
+      "source": "skills/skill-new/SKILL.md:03 · Promote"
     },
     {
       "kind": "alternative",
@@ -590,32 +558,32 @@
       "from": "skill-new",
       "to": "skill-intake",
       "render": true,
-      "when": "the bytes came from anywhere else \u2014 a URL, a gist, a repo you don't control \u2014 so there is provenance to record that an authored skill never has",
+      "when": "the bytes came from anywhere else — a URL, a gist, a repo you don't control — so there is provenance to record that an authored skill never has",
       "note": null,
       "source": "skills/skill-new/SKILL.md:when-this-does-not-apply"
     },
     {
       "kind": "operative",
-      "from": "wayfinder",
-      "to": "grilling",
+      "from": "route-planner",
+      "to": "decision-review",
       "render": true,
       "when": "naming the destination, mapping the frontier, or resolving a Grilling-type ticket",
       "note": null,
-      "source": "skills/wayfinder/SKILL.md:79"
+      "source": "skills/route-planner/SKILL.md:79"
     },
     {
       "kind": "referential",
       "from": "design-direction",
-      "to": "implement-design-system",
+      "to": "downstream-builder",
       "render": true,
       "when": "the direction is settled and something has to build from it",
-      "note": "No such skill is held. new-system lives in imprint_lab because it only means anything inside that monorepo. Declared so the handoff is visible rather than dangling.",
+      "note": "No such skill is held. The downstream consumer lives outside this library. Declared so the handoff is visible rather than dangling.",
       "source": "skills/design-direction/SKILL.md:12"
     },
     {
       "kind": "contains",
-      "from": "animate",
-      "to": "animate/RECIPES.md",
+      "from": "motion-basics",
+      "to": "motion-basics/RECIPES.md",
       "render": true,
       "when": null,
       "note": null,
@@ -695,8 +663,8 @@
     },
     {
       "kind": "contains",
-      "from": "grilling",
-      "to": "grilling/openai.yaml",
+      "from": "decision-review",
+      "to": "decision-review/openai.yaml",
       "render": true,
       "when": null,
       "note": null,
@@ -704,8 +672,8 @@
     },
     {
       "kind": "contains",
-      "from": "pick-ui-library",
-      "to": "pick-ui-library/libraries.md",
+      "from": "library-choice",
+      "to": "library-choice/libraries.md",
       "render": true,
       "when": null,
       "note": null,
@@ -713,8 +681,8 @@
     },
     {
       "kind": "contains",
-      "from": "prototype",
-      "to": "prototype/PICKER.md",
+      "from": "variant-explorer",
+      "to": "variant-explorer/PICKER.md",
       "render": true,
       "when": null,
       "note": null,
@@ -722,8 +690,8 @@
     },
     {
       "kind": "contains",
-      "from": "review-animations",
-      "to": "review-animations/STANDARDS.md",
+      "from": "motion-review",
+      "to": "motion-review/STANDARDS.md",
       "render": true,
       "when": null,
       "note": null,
@@ -794,8 +762,8 @@
     },
     {
       "kind": "contains",
-      "from": "wayfinder",
-      "to": "wayfinder/openai.yaml",
+      "from": "route-planner",
+      "to": "route-planner/openai.yaml",
       "render": true,
       "when": null,
       "note": null,
@@ -803,8 +771,8 @@
     },
     {
       "kind": "adopted",
-      "from": "emilkowalski/skills",
-      "to": "animate",
+      "from": "example-org/skills",
+      "to": "motion-basics",
       "render": true,
       "when": null,
       "note": null,
@@ -812,8 +780,8 @@
     },
     {
       "kind": "adopted",
-      "from": "emilkowalski/skills",
-      "to": "apple-design",
+      "from": "example-org/skills",
+      "to": "platform-idiom",
       "render": true,
       "when": null,
       "note": null,
@@ -821,8 +789,8 @@
     },
     {
       "kind": "adopted",
-      "from": "emilkowalski/skills",
-      "to": "pick-ui-library",
+      "from": "example-org/skills",
+      "to": "library-choice",
       "render": true,
       "when": null,
       "note": null,
@@ -830,8 +798,8 @@
     },
     {
       "kind": "adopted",
-      "from": "emilkowalski/skills",
-      "to": "prototype",
+      "from": "example-org/skills",
+      "to": "variant-explorer",
       "render": true,
       "when": null,
       "note": null,
@@ -839,8 +807,8 @@
     },
     {
       "kind": "adopted",
-      "from": "emilkowalski/skills",
-      "to": "review-animations",
+      "from": "example-org/skills",
+      "to": "motion-review",
       "render": true,
       "when": null,
       "note": null,
@@ -848,8 +816,8 @@
     },
     {
       "kind": "adopted",
-      "from": "mattpocock/skills",
-      "to": "grilling",
+      "from": "example-dev/skills",
+      "to": "decision-review",
       "render": true,
       "when": null,
       "note": null,
@@ -857,8 +825,8 @@
     },
     {
       "kind": "adopted",
-      "from": "mattpocock/skills",
-      "to": "wayfinder",
+      "from": "example-dev/skills",
+      "to": "route-planner",
       "render": true,
       "when": null,
       "note": null,
@@ -866,8 +834,8 @@
     },
     {
       "kind": "considered",
-      "from": "emilkowalski/skills",
-      "to": "animation-vocabulary",
+      "from": "example-org/skills",
+      "to": "motion-glossary",
       "render": true,
       "when": null,
       "note": null,
@@ -875,8 +843,8 @@
     },
     {
       "kind": "considered",
-      "from": "emilkowalski/skills",
-      "to": "emil-design-eng",
+      "from": "example-org/skills",
+      "to": "design-engineering",
       "render": true,
       "when": null,
       "note": null,
@@ -884,8 +852,8 @@
     },
     {
       "kind": "considered",
-      "from": "emilkowalski/skills",
-      "to": "find-animation-opportunities",
+      "from": "example-org/skills",
+      "to": "motion-finder",
       "render": true,
       "when": null,
       "note": null,
@@ -893,8 +861,8 @@
     },
     {
       "kind": "considered",
-      "from": "emilkowalski/skills",
-      "to": "improve-animations",
+      "from": "example-org/skills",
+      "to": "motion-sweep",
       "render": true,
       "when": null,
       "note": null,
@@ -903,7 +871,7 @@
     {
       "kind": "category-clusters-skill",
       "from": "motion",
-      "to": "animate",
+      "to": "motion-basics",
       "render": true,
       "when": null,
       "note": null,
@@ -912,7 +880,7 @@
     {
       "kind": "category-clusters-skill",
       "from": "direction",
-      "to": "apple-design",
+      "to": "platform-idiom",
       "render": true,
       "when": null,
       "note": null,
@@ -930,7 +898,7 @@
     {
       "kind": "category-clusters-skill",
       "from": "deciding",
-      "to": "grilling",
+      "to": "decision-review",
       "render": true,
       "when": null,
       "note": null,
@@ -939,7 +907,7 @@
     {
       "kind": "category-clusters-skill",
       "from": "building",
-      "to": "pick-ui-library",
+      "to": "library-choice",
       "render": true,
       "when": null,
       "note": null,
@@ -948,7 +916,7 @@
     {
       "kind": "category-clusters-skill",
       "from": "building",
-      "to": "prototype",
+      "to": "variant-explorer",
       "render": true,
       "when": null,
       "note": null,
@@ -957,7 +925,7 @@
     {
       "kind": "category-clusters-skill",
       "from": "motion",
-      "to": "review-animations",
+      "to": "motion-review",
       "render": true,
       "when": null,
       "note": null,
@@ -1002,7 +970,7 @@
     {
       "kind": "category-clusters-skill",
       "from": "planning",
-      "to": "wayfinder",
+      "to": "route-planner",
       "render": true,
       "when": null,
       "note": null,
