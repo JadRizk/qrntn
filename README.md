@@ -65,9 +65,9 @@ list look complete is precisely the move this tool exists to refuse.
 ```
 npx qrntn init                 # once, to make a folder of skills into a library
 npx qrntn intake https://github.com/someone/skills/tree/main/foo
-npx qrntn audit foo
-                                     # read the report; write the decision into
-                                     # AUDIT.md, or a REJECTED.md row, by hand
+npx qrntn audit inbox/foo      # audit takes the path it landed at, not the name
+                               # read the report; write the decision into
+                               # AUDIT.md, or a REJECTED.md row, by hand
 npx qrntn promote foo
 npx qrntn refresh
 npx qrntn check                # is every skill filed and every record still true
