@@ -87,7 +87,31 @@ const gates = [
 
 function node(file) {
 	const r = spawnSync(process.execPath, [file], { encoding: 'utf8' })
-	return { status: r.status, out: (r.stdout ?? '') + (r.stderr ?? '') }
+	// `signal` and `error` are carried, not dropped. spawnSync reports a null
+	// status for two entirely different events — the child was killed, or it
+	// never started — and keeping only `status` throws away which.
+	return { status: r.status, signal: r.signal, error: r.error, out: (r.stdout ?? '') + (r.stderr ?? '') }
+}
+
+/**
+ * Why a gate did not pass, in words.
+ *
+ * `exit null` was the previous answer to three different situations, and the
+ * distinction is not cosmetic: an exit code is the GATE'S OWN ANSWER about the
+ * code under test, a signal is the MACHINE interrupting it, and a spawn failure
+ * is neither. Only the first is a finding. Reading `exit null` and going to
+ * look for a bug in the suite is wasted work — which is exactly what happened:
+ * audit-skill.self-test.mjs, an 8m47s gate, was reported this way after being
+ * killed under memory pressure, and passed cleanly on its own.
+ *
+ * Gates that build their own result object may carry neither field; undefined
+ * falls through to the exit-code branch, which is what they always used.
+ */
+function whyFailed({ status, signal, error }) {
+	if (error) return `could not run — ${error.code ?? error.message}`
+	if (signal) return `killed by ${signal} — the process was terminated, so this is not a gate failure; re-run it alone`
+	if (status === null) return 'ended without an exit code'
+	return `exit ${status}`
 }
 
 if (LIST) {
@@ -116,7 +140,7 @@ for (const g of gates) {
 		console.log(`  ok   ${g.name}  — ${tail.trim()}`)
 		passed++
 	} else {
-		console.log(`  FAIL ${g.name}  — exit ${r.status}`)
+		console.log(`  FAIL ${g.name}  — ${whyFailed(r)}`)
 		failures.push({ name: g.name, out: r.out })
 	}
 }
