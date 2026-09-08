@@ -88,7 +88,7 @@ export const contrast = {
     phosphor: 16.61, acid: 14.53, lime: 15.2, data: 12.19, sodium: 8.32,
     violet: 6.27, alarm: 5.44,
     "grey-100": 1.6, "grey-200": 3.02, "grey-300": 4.51,
-    "grey-400": 5.5, "grey-500": 7.0, "grey-600": 10.0,
+    "grey-400": 5.47, "grey-500": 6.99, "grey-600": 10.0,
   },
   "pratiq-hud": {
     phosphor: 16.61, acid: 14.53, lime: 15.2, data: 12.19, sodium: 8.32,

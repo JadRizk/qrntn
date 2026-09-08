@@ -18,6 +18,7 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { contrast, themeMeetsAA, WCAG } from './index.ts'
 
 const read = (rel: string) => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8')
 
@@ -171,5 +172,120 @@ describe('the viewer head', () => {
     // The viewer is served on localhost. og:/twitter: tags would be a preview
     // for a link nobody can follow — decoration that looks like configuration.
     expect(INDEX_HTML).not.toMatch(/property="og:|name="twitter:/)
+  })
+})
+
+// ── the numbers, re-derived rather than trusted ─────────────────────────────
+//
+// THE ROOT CAUSE THIS EXISTS FOR. Every contrast ratio in this system was
+// published in four places — pratiq.css comments, PALETTE.md's tables,
+// index.ts's `contrast` map, and BRAND.md's prose — and derived in none. Each
+// was typed by hand from a tool's stdout, and that tool had a bug: solve-ramp
+// measured the colour it had SOLVED for (a float) and printed the hex it had
+// ROUNDED to, so four published figures described a colour that was not the
+// one shipped.
+//
+// It survived because the only check was "re-run the command printed beside
+// the table", and the printed command was the buggy one. Self-referential
+// verification reproduces a wrong number perfectly.
+//
+// Worse, index.ts's map is what themeMeetsAA() reads — a predicate exported so
+// "a consuming app can assert its own colour choices in a test rather than
+// discovering the problem in an audit". A hand-typed number underneath a
+// safety assertion is the assertion lying with a straight face.
+//
+// So: parse the hexes out of the stylesheet and recompute. This cannot share
+// solve-ramp's bug because it never sees a float — the hex IS the input.
+
+const srgb = (c: number) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)
+const luminance = (hex: string) => {
+  const n = parseInt(hex.slice(1), 16)
+  return 0.2126 * srgb(((n >> 16) & 255) / 255) + 0.7152 * srgb(((n >> 8) & 255) / 255) + 0.0722 * srgb((n & 255) / 255)
+}
+const ratio = (a: string, b: string) => {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x)
+  return (hi + 0.05) / (lo + 0.05)
+}
+
+/** The ground every ratio in this system is measured against. Read, not assumed. */
+const GROUND = (/--nx-panel:\s*(#[0-9A-Fa-f]{6})/.exec(CSS)?.[1] ?? '').toUpperCase()
+
+const WCAG_FLOORS = [4.5, 3, 7]
+
+const stripComments = (css: string) => css.replace(/\/\*[\s\S]*?\*\//g, '')
+const blockFor = (theme: string) =>
+  [...stripComments(CSS).matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+    .filter(([, sel]) => sel.includes(`"${theme}"`))
+    .map(([, , body]) => body)
+    .join('\n')
+const hexFor = (theme: string, key: string) =>
+  new RegExp(`--nx-${key}:\\s*(#[0-9A-Fa-f]{6})`).exec(blockFor(theme))?.[1]
+
+describe('every published ratio equals the ratio of the hex beside it', () => {
+  it('reads the ground out of the stylesheet', () => {
+    expect(GROUND).toBe('#0A0C0B')
+  })
+
+  it('pratiq.css: each annotated colour matches its own comment', () => {
+    const rows = [...CSS.matchAll(/--[\w-]+:\s*(#[0-9A-Fa-f]{6});\s*\/\*\s*([\d.]+):1/g)]
+    expect(rows.length, 'no annotated colours found — the regex has gone stale').toBeGreaterThan(6)
+    for (const [, hex, claimed] of rows) {
+      expect(ratio(hex, GROUND), `${hex} is annotated ${claimed}:1`).toBeCloseTo(Number(claimed), 2)
+    }
+  })
+
+  it('PALETTE.md: each table row matches its own colour', () => {
+    // The LAST number before ":1" is the measured column; the one before it is
+    // the target, which is deliberately different and must not be compared.
+    const rows = [...PALETTE.matchAll(/`(#[0-9A-Fa-f]{6})`[^|\n]*\|[^|\n]*\|\s*([\d.]+):1/g)]
+    expect(rows.length, 'no measured rows found — the table shape has changed').toBeGreaterThan(6)
+    for (const [, hex, claimed] of rows) {
+      expect(ratio(hex, GROUND), `PALETTE.md publishes ${claimed}:1 for ${hex}`).toBeCloseTo(Number(claimed), 2)
+    }
+  })
+})
+
+describe('the contrast map underneath themeMeetsAA', () => {
+  for (const theme of ['pratiq', 'pratiq-hud'] as const) {
+    it(`${theme}: every entry equals the ratio of its declared colour`, () => {
+      const entries = contrast[theme] as unknown as Record<string, number>
+      let checked = 0
+      for (const [key, claimed] of Object.entries(entries)) {
+        const hex = hexFor(theme, key)
+        if (!hex) continue
+        checked++
+        expect(ratio(hex, GROUND), `${theme}.${key} claims ${claimed} for ${hex}`).toBeCloseTo(claimed, 2)
+      }
+      expect(checked, 'nothing was actually checked').toBeGreaterThan(5)
+    })
+
+    it(`${theme}: the map never claims a pass the colour does not have`, () => {
+      // The property that matters more than the digits: a published number and
+      // its real value must fall on the SAME SIDE of every WCAG floor. Two
+      // tokens clear a floor by less than solve-ramp's worst-case quantisation
+      // error (0.0655) — #7F7966 by 0.012, #625E4F by 0.021 — so an error of
+      // the size that actually shipped could have inverted either.
+      const entries = contrast[theme] as unknown as Record<string, number>
+      for (const [key, claimed] of Object.entries(entries)) {
+        const hex = hexFor(theme, key)
+        if (!hex) continue
+        const actual = ratio(hex, GROUND)
+        for (const floor of WCAG_FLOORS) {
+          expect(
+            actual >= floor,
+            `${theme}.${key} (${hex}): map says ${claimed}, actual ${actual.toFixed(4)}, floor ${floor}`
+          ).toBe(claimed >= floor)
+        }
+      }
+    })
+  }
+
+  it('themeMeetsAA agrees with the stylesheet, not merely with the map', () => {
+    for (const theme of ['pratiq', 'pratiq-hud'] as const) {
+      const truth =
+        ratio(hexFor(theme, 'grey-300')!, GROUND) >= WCAG.AA_TEXT &&
+        ratio(hexFor(theme, 'grey-200')!, GROUND) >= WCAG.AA_NON_TEXT
+      expect(themeMeetsAA(theme), `${theme}: predicate vs recomputed`).toBe(truth)
+    }
   })
 })

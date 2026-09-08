@@ -118,8 +118,8 @@
 	--nx-grey-100: #38352D;   /*  1.60:1  decorative hairline only */
 	--nx-grey-200: #625E4F;   /*  3.02:1  UI boundary — 1.4.11 */
 	--nx-grey-300: #7F7966;   /*  4.51:1  disabled text — 1.4.3 */
-	--nx-grey-400: #8E8772;   /*  5.50:1 */
-	--nx-grey-500: #A09A89;   /*  7.00:1 */
+	--nx-grey-400: #8E8772;   /*  5.47:1 */
+	--nx-grey-500: #A09A89;   /*  6.99:1 — does NOT clear AAA (7.0) */
 	--nx-grey-600: #BDB9AD;   /* 10.00:1 */
 }
 
