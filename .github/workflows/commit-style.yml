@@ -1,0 +1,114 @@
+# The subject line convention, enforced where it is actually decided.
+#
+# This repository squash-merges, so the PR title becomes the commit subject and
+# is the only string that ends up in `git log --oneline`. Checking it here is
+# checking the thing that ships; a commit-msg hook would check a local draft
+# that squashing then discards, and would only run for people who installed it.
+#
+# The grammar is gitmoji in front of a conventional-commits type:
+#
+#   <emoji> <type>(<scope>): <subject>
+#   🐛 fix(argv): refuse unknown flags with exit 2
+#
+# The emoji is not decoration. It is the second copy of the type — the same
+# rule the CLI's colour follows, where the ink repeats a word already present
+# and stripping it loses nothing. So the two have to agree, and a 📝 in front of
+# `feat:` is a failure rather than a preference.
+#
+# Fifty characters, counting the emoji as one. That is git's own convention and
+# it is a constraint on scope, not on prose: a subject that will not fit is
+# usually two commits. Everything the subject cannot hold goes in the body,
+# which this check does not read and does not limit.
+
+name: commit style
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  subject:
+    name: the PR title is a well-formed subject
+    runs-on: ubuntu-latest
+    steps:
+      - name: check
+        env:
+          # Through the environment, never interpolated into the script body:
+          # a title is attacker-controlled text and `${{ }}` inside a run block
+          # is substituted before the shell ever sees it.
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          node <<'EOF'
+          const title = process.env.TITLE ?? ''
+
+          // Which emoji may introduce which type. A type may have more than one
+          // — a security fix and an ordinary bug fix are both `fix:` and read
+          // very differently in a log — but an emoji may not mean two types.
+          const ALLOWED = {
+            '✨': ['feat'],
+            '🐛': ['fix'],
+            '🔒': ['fix'],      // a security or privacy fix
+            '🔥': ['fix', 'refactor', 'chore'], // removing code or files
+            '📝': ['docs'],
+            '♻': ['refactor'],
+            '✅': ['test'],
+            '🔧': ['chore'],
+            '🚀': ['chore'],    // a release
+            '👷': ['ci'],
+            '⚡': ['perf'],
+            '🎨': ['style'],
+            '⏪': ['revert'],
+          }
+
+          // U+FE0F is the variation selector. `🔒` and `🔒️` are the same emoji
+          // and different strings, and which one arrives depends on the editor
+          // the title was typed in — not on anything the author decided.
+          const bare = (s) => s.replace(/️/g, '')
+
+          const fail = (why, hint) => {
+            console.error(`✗ ${why}`)
+            console.error(`  title: ${JSON.stringify(title)}`)
+            if (hint) console.error(`  ${hint}`)
+            console.error('')
+            console.error('  <emoji> <type>(<scope>): <subject>')
+            console.error('  🐛 fix(argv): refuse unknown flags with exit 2')
+            console.error('')
+            console.error(`  types:  ${[...new Set(Object.values(ALLOWED).flat())].sort().join(', ')}`)
+            console.error(`  emoji:  ${Object.entries(ALLOWED).map(([e, t]) => `${e} ${t.join('/')}`).join('  ')}`)
+            process.exit(1)
+          }
+
+          const m = /^(\S+)\s+([a-z]+)(?:\(([^)]+)\))?: (.+)$/u.exec(bare(title))
+          if (!m) fail('not `<emoji> <type>(<scope>): <subject>`')
+
+          const [, emoji, type, scope, subject] = m
+
+          if (!ALLOWED[emoji]) fail(`${emoji} is not one of the allowed emoji`)
+          if (!ALLOWED[emoji].includes(type)) {
+            fail(`${emoji} does not introduce \`${type}\``, `${emoji} means ${ALLOWED[emoji].join(' or ')}`)
+          }
+          if (scope !== undefined && !/^[a-z0-9][a-z0-9./-]*$/.test(scope)) {
+            fail(`scope \`${scope}\` is not lowercase`, 'a scope names a file, command or directory')
+          }
+
+          // Counted in code points. `[...s].length` and `s.length` disagree by
+          // one on every emoji here, and the budget is about what a reader sees.
+          const width = [...bare(title)].length
+          if (width > 50) fail(`${width} characters, and the cap is 50`, 'a subject that will not fit is usually two commits')
+
+          if (/[.]$/.test(subject)) fail('the subject ends in a full stop')
+          if (/^[A-Z][a-z]/.test(subject)) fail('the subject starts with a capital', 'lowercase, and imperative: `refuse`, not `Refused`')
+
+          // Past tense is the commonest way to miss the imperative, and the
+          // cheapest to catch. It does not catch every case and is not meant to.
+          const first = subject.split(/\s+/)[0]
+          if (/(?:ed|ing)$/.test(first) && !/^(?:add|read|need|feed|seed|speed|bring|string)$/.test(first)) {
+            fail(`\`${first}\` is not imperative`, 'say what the commit does: `refuse`, not `refused` or `refusing`')
+          }
+
+          console.log(`✓ ${title}`)
+          console.log(`  ${width}/50 characters · ${type}${scope ? `(${scope})` : ''}`)
+          EOF
