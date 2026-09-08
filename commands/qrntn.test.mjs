@@ -175,7 +175,11 @@ const VERBS = [...readFileSync(BIN, 'utf8').matchAll(/^\t\['([a-z-]+)', '([\w.-]
 		refresh: ['--help'],
 		usage: ['--help'],
 		overlap: ['--help'],
-		ledger: ['--badflag'],
+		// Was `--badflag`, because ledger had no --help and an unrecognised flag
+		// fell through to its synopsis. That was a workaround for a defect, not
+		// a way of driving the verb: it now answers --help like the other eight,
+		// and a bad flag is refused by name instead of answered with usage.
+		ledger: ['--help'],
 		check: ['--help']
 	}
 

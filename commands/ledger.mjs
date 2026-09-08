@@ -607,7 +607,22 @@ function invokedAsScript() {
 	}
 }
 
+// One synopsis, two callers: `--help` asks for it and gets 0, and reaching the
+// end of main() without naming a mode is a usage error and gets 2. They print
+// the same words because they are the same words — a second copy is how the two
+// start disagreeing about what this verb takes.
+const synopsis = () =>
+	`usage: ${invokedAs()} --check [--install [--install-root <dir>]] | --backfill [--force] | --write-structural <name> [--skill-dir <dir>] [--date <iso>] [--library <dir>] [--json]`
+
 function main(argv) {
+	// Answered before anything else, and answered with 0. This verb had no
+	// `--help` at all: the flag was unrecognised, fell through to the synopsis
+	// below, and exited 2 — telling a caller who asked a question that they had
+	// made a mistake. Every other verb answers it with 0.
+	if (argv.includes('--help') || argv.includes('-h')) {
+		console.log(synopsis())
+		return 0
+	}
 	const CHECK = argv.includes('--check')
 	const BACKFILL = argv.includes('--backfill')
 	const FORCE = argv.includes('--force')
@@ -687,9 +702,7 @@ function main(argv) {
 		return errors.length ? 1 : 0
 	}
 
-	console.error(
-		`usage: ${invokedAs()} --check [--install [--install-root <dir>]] | --backfill [--force] | --write-structural <name> [--skill-dir <dir>] [--date <iso>] [--library <dir>] [--json]`
-	)
+	console.error(synopsis())
 	return 2
 }
 
