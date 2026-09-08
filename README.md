@@ -63,7 +63,11 @@ npx pratiq audit foo
                                 # AUDIT.md, or a REJECTED.md row, by hand
 npx pratiq promote foo
 npx pratiq refresh
+npx pratiq check                # is every skill filed and every record still true
 ```
+
+Nine verbs: `init`, `intake`, `audit`, `promote`, `refresh`, `usage`, `overlap`,
+`ledger`, `check`. Run `pratiq` with no arguments for what each one does.
 
 ## The principles it is built on
 
