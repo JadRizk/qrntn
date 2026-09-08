@@ -1,4 +1,4 @@
-# Shipping `pratiq`
+# Shipping `qrntn`
 
 > **Written after the split, and expected to change.** Unlike
 > [`PORTABILITY.md`](PORTABILITY.md) and [`SURFACE.md`](SURFACE.md), this is not
@@ -44,7 +44,7 @@ rather than suppression on a non-terminal stream, for the reason recorded there.
 **Ordering.** `0.1.0` is published to npm on the `latest` tag. Then the skills
 library migrates onto the published package (`SURFACE.md`'s drift mechanism, and
 the other half of the split). Then `1.0.0`. The migration cannot come first —
-`npx pratiq intake …` in a skill's spine needs the package to exist — and
+`npx qrntn intake …` in a skill's spine needs the package to exist — and
 validating it against `npm link` would exercise a resolution path nobody else
 uses. `0.x` carries the "surface may move" signal in semver; no `next` or `beta`
 tag, because a dist-tag nobody is told about mostly hides the release from the
@@ -59,9 +59,12 @@ at `0.1.0` would mean answering "so the human decision is a text editor?" in the
 comments rather than in the release. Recorded in
 [`POSITIONING.md`](POSITIONING.md).
 
-**The name is available.** `https://registry.npmjs.org/pratiq` returns 404.
-Bare, not scoped: availability is the perishable part, and every `npx`
-invocation in the README stays short.
+**The name is available.** `https://registry.npmjs.org/qrntn` returns 404, as
+do `github.com/qrntn` and `qrntn.dev`. Bare, not scoped: availability is the
+perishable part, and every `npx` invocation in the README stays short. The
+package carried the `@oxx` scope for as long as the first name could not be
+published; the rename on 2026-09-08 removed the reason for it, so the scope went
+with it.
 
 ## Where it actually stands
 
@@ -86,7 +89,7 @@ promote         exit 1   refuses correctly (nothing in inbox)
 
 Nothing was written into the folder — the read-only commands stayed read-only.
 But `check`, composed of the first two, fails twice on every first run, for
-reasons about the library not being pratiq-shaped rather than about it being
+reasons about the library not being qrntn-shaped rather than about it being
 inconsistent. That is the "reason about itself" failure `foreign-library.test.mjs`
 exists to prevent, one level above the code that suite tests. §3 is the answer.
 
@@ -94,8 +97,8 @@ exists to prevent, one level above the code that suite tests. §3 is the answer.
 
 ### 1 · The package and the front door
 
-Root `package.json`: `pratiq`, `"type": "module"`, Apache-2.0, **zero
-dependencies**, `bin: { "pratiq": "./bin/pratiq.mjs" }`, `engines: ">=20"`.
+Root `package.json`: `qrntn`, `"type": "module"`, Apache-2.0, **zero
+dependencies**, `bin: { "qrntn": "./bin/qrntn.mjs" }`, `engines: ">=20"`.
 
 Node 20 is what this was built on and went end-of-life in April 2026; the floor
 is what the code needs, and the tested matrix is what is actually supported.
@@ -109,7 +112,7 @@ them** — `promote.mjs:346` and `ledger.mjs:213` look for `*.test.mjs` inside t
 tidy. And `check.mjs`, the thing that runs them, is explicitly not shipping
 either: a tarball with tests and no runner is half a gesture.
 
-**`bin/pratiq.mjs` spawns, and does not import.** The reason is not that the
+**`bin/qrntn.mjs` spawns, and does not import.** The reason is not that the
 commands have top-level side effects — six of the eight already carry an
 `invokedAsScript()` guard and export their internals; only `intake.mjs` and
 `promote.mjs` do not, and making them match would be a small change. The reason
@@ -126,13 +129,13 @@ dump, never a stack trace.
 
 **Size:** small. **Blocks:** everything below.
 
-**Landed.** `bin/pratiq.mjs` and the root `package.json` were written first and
+**Landed.** `bin/qrntn.mjs` and the root `package.json` were written first and
 sat uncommitted while §§2–6 were built around them; they are committed now with
 `init` and `check` added to the `VERBS` table and to the `files` allowlist, and
 one stale comment corrected — the table used to say `check` "will run a script
 that does not exist yet", which stopped being true when §2 landed.
 
-`commands/pratiq.test.mjs` is new, and lives in `commands/` rather than beside
+`commands/qrntn.test.mjs` is new, and lives in `commands/` rather than beside
 the file it tests because `check.mjs` discovers suites from that one directory:
 a suite in `bin/` would never run, and a test nobody executes is worse than none
 because it reads as coverage.
@@ -154,7 +157,7 @@ which is §4's flip working, and would not have been true before it. That is mos
 of §7's smoke test performed by hand; §7 still owes the automation and the CI
 matrix.
 
-### 2 · `pratiq check`
+### 2 · `qrntn check`
 
 `SURFACE.md`: *every held skill is filed, every declared edge resolves, every
 ledger entry matches the bytes on disk.* All three exist — `check-catalog.mjs`
@@ -162,7 +165,7 @@ answers the first two, `ledger.mjs --check` the third. This is composition and a
 report, not new logic, and it is explicitly **not** `check.mjs`, which is this
 repository's own CI runner and stays here.
 
-On a library that has never been `init`'d it **refuses and names `pratiq init`**,
+On a library that has never been `init`'d it **refuses and names `qrntn init`**,
 rather than reporting a library-shaped problem it does not have.
 
 **Exit codes carry the distinction:** `2` for *not set up*, `1` for *set up and
@@ -184,7 +187,7 @@ summarised into a count that would send the reader to run the other command
 anyway.
 
 Three exit codes, and a third absence the section did not distinguish: a folder
-with no `skills/` is **not** sent to `pratiq init`, because init cannot make one
+with no `skills/` is **not** sent to `qrntn init`, because init cannot make one
 either and pointing at it would be advice that does not work. Only a library
 that has `skills/` and no `catalog.json` is the init case.
 
@@ -197,11 +200,11 @@ the two that matter most, since this command's worst failure is not a refusal
 but the word *clean*: reporting a library it only half looked at, and reporting
 one it could not look at because half the tool was missing.
 
-**Not wired up**, for the same reason as `init`: absent from `bin/pratiq.mjs`'s
+**Not wired up**, for the same reason as `init`: absent from `bin/qrntn.mjs`'s
 `VERBS` table and `package.json`'s `files` allowlist, both §1's uncommitted
 work. It runs today as `node commands/check-library.mjs --library <dir>`.
 
-### 3 · `pratiq init`
+### 3 · `qrntn init`
 
 The ninth verb, added because the measurement above says day one is a refusal.
 It is smaller than it looks:
@@ -253,15 +256,15 @@ smoke test: the fixture starts at `check-catalog` exit 2 and ends at exit 0.
 43 assertions; the self-test's seven mutations are all caught and the inert
 control survives.
 
-**Not wired up.** `init` is absent from `bin/pratiq.mjs`'s `VERBS` table and
+**Not wired up.** `init` is absent from `bin/qrntn.mjs`'s `VERBS` table and
 from `package.json`'s `files` allowlist, both of which are §1's uncommitted
 work. The verb runs today as `node commands/init.mjs --library <dir>`; it
-becomes `pratiq init` when §1 lands and adds the row.
+becomes `qrntn init` when §1 lands and adds the row.
 
 ### 4 · The `~/.claude` flip
 
 `SURFACE.md` excludes `manifest` from the surface because *"it produces a
-Claude-specific artifact"* and pratiq is cross-harness. Three shipping commands
+Claude-specific artifact"* and qrntn is cross-harness. Three shipping commands
 reach into `~/.claude` anyway:
 
 | Where | What | Disposition |
@@ -319,13 +322,13 @@ with an instruction that cannot be followed.
 
 For `0.1.0` the wording becomes harness-generic: name the step ("symlink or copy
 it where your agent loads skills from") without naming one product's directory.
-A `pratiq install` verb is a real thing worth having and belongs with the same
+A `qrntn install` verb is a real thing worth having and belongs with the same
 decision as §4 — deferred, not forgotten.
 
 **Size:** trivial. Listed separately because it is user-facing and easy to miss.
 
 **Landed.** Both branches now read *"… then symlink or copy it where your agent
-loads skills from."* `catalog.json` and edges stay — they are pratiq's own, and
+loads skills from."* `catalog.json` and edges stay — they are qrntn's own, and
 only the harness-specific step was the problem. `promote.test.mjs` asserts the
 human output names the step and contains no `install.sh`, because a wording
 nothing checks is a wording that comes back.
@@ -344,7 +347,7 @@ precisely the move this tool exists to refuse.
 **The viewer claim is qualified, not deleted.** *"It ships with a browser-based
 graph viewer"* is false in `0.1.0`, but the viewer is not vapour — `nexus/`
 builds and runs from a checkout. The only false word is "ships". Say it runs
-from a checkout and that `pratiq view` lands in `0.2`.
+from a checkout and that `qrntn view` lands in `0.2`.
 
 **The frozen contracts are stated, not left to inference.** See below.
 
@@ -400,7 +403,7 @@ Two details worth recording because they were not obvious:
   gate. A verb added later is covered without anyone remembering to add it —
   which matters most for exactly the person who would forget.
 - **`HOME` must be empty, not empty-apart-from.** npm's cache and update
-  notifier write `~/.npm` during the install step, before pratiq has run once.
+  notifier write `~/.npm` during the install step, before qrntn has run once.
   They are pointed at the sandbox instead, so the final assertion stays absolute.
   An assertion with a list of things it has decided not to count is not one.
 
@@ -415,8 +418,8 @@ contents without running anything.
 
 **What this defers, stated rather than left as an omission: npm provenance.**
 `npm publish --provenance` produces a sigstore-backed attestation binding the
-tarball to the commit and workflow that built it — which is the claim pratiq
-makes about skills, made about pratiq, and is the single most on-thesis thing
+tarball to the commit and workflow that built it — which is the claim qrntn
+makes about skills, made about qrntn, and is the single most on-thesis thing
 missing from this plan. It requires publishing FROM a workflow with OIDC, so it
 cannot coexist with this section's decision that `0.1.0` publishes by hand. That
 decision is right — a publish pipeline debugged during the first publish is two
@@ -428,7 +431,7 @@ problems at once — so provenance lands with the `v*`-tag automation, and
 **The library migration.** `SURFACE.md`'s drift mechanism, and the sentence in
 the extraction commit: *"the split is not finished until the library consumes
 this rather than contains it."* `skill-intake`, `skill-audit` and `skill-adopt`
-stop shipping scripts and cite `npx pratiq …`. Outside this repository, but it
+stop shipping scripts and cite `npx qrntn …`. Outside this repository, but it
 is what SK-97 being done means, and `1.0.0` waits behind it.
 
 **`adopt`** — the lifecycle's central verb, and much less open than
@@ -473,7 +476,7 @@ how they drift.
 |---|---|
 | `--library` | §8's migration writes it into three skills' spines |
 | `SKILL_LIBRARY` | same, and it is what SK-97 was fought over |
-| `SKILL_INSTALL_ROOT`, `--install-root` | named to match `SKILL_LIBRARY`, not `PRATIQ_*` — two naming conventions in one surface, decided at different times for no recoverable reason, is its own defect |
+| `SKILL_INSTALL_ROOT`, `--install-root` | named to match `SKILL_LIBRARY`, not `QRNTN_*` — two naming conventions in one surface, decided at different times for no recoverable reason, is its own defect |
 | exit `0` / `1` / `2` | see below |
 
 **The exit convention already exists and is already consistent** across all
@@ -500,7 +503,7 @@ too. Seven of the eight commands emit JSON, and `promote`'s shape gained
 their prefaces explain why. Where later work contradicts them, the correction
 lives here.
 
-- **`SURFACE.md`, on `manifest`:** the claim that pratiq is cross-harness, used
+- **`SURFACE.md`, on `manifest`:** the claim that qrntn is cross-harness, used
   to justify excluding `manifest`, was not true of what was shipping.
   `ledger.mjs:348` read `~/.claude/skills` by default. §4 makes the claim true;
   until §4 lands it is aspirational.

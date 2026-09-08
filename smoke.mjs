@@ -43,7 +43,7 @@ const HERE = dirname(fileURLToPath(import.meta.url))
 // install path, the bin link and the zero-dependency check, and all three were
 // spelled out by hand until the package gained a scope — at which point the
 // path grew a segment and the dependency check started looking at a directory
-// called `@pratiq` instead of at a package.
+// called `@qrntn` instead of at a package.
 const MANIFEST = JSON.parse(readFileSync(join(HERE, 'package.json'), 'utf8'))
 const PKG_NAME = MANIFEST.name
 // `@scope/name` installs to node_modules/@scope/name; a bare name to one
@@ -71,7 +71,7 @@ function need(bin, args) {
 need('npm', ['--version'])
 need('git', ['--version'])
 
-const SANDBOX = mkdtempSync(join(tmpdir(), 'pratiq-smoke-'))
+const SANDBOX = mkdtempSync(join(tmpdir(), 'qrntn-smoke-'))
 const HOME = join(SANDBOX, 'home')
 const INSTALL = join(SANDBOX, 'install')
 const LIB = join(SANDBOX, 'library')
@@ -109,7 +109,7 @@ if (!tarball || !existsSync(join(SANDBOX, tarball))) {
 
 writeFileSync(join(INSTALL, 'package.json'), JSON.stringify({ name: 'host', private: true, version: '1.0.0' }, null, 2) + '\n')
 // npm's cache and update-notifier live under HOME by default, and would put
-// `.npm/` there before pratiq had run once. Pointed elsewhere so the last
+// `.npm/` there before qrntn had run once. Pointed elsewhere so the last
 // assertion can stay absolute: HOME must be EMPTY, not "empty apart from".
 const NPM_CACHE = join(SANDBOX, 'npm-cache')
 const installed = spawnSync('npm', ['install', join(SANDBOX, tarball), '--no-audit', '--no-fund', '--cache', NPM_CACHE], {
@@ -119,13 +119,13 @@ const installed = spawnSync('npm', ['install', join(SANDBOX, tarball), '--no-aud
 })
 check('the tarball installs into a directory that has never seen this project', installed.status === 0, (installed.stderr ?? '').slice(-400))
 
-const PRATIQ = join(INSTALL, 'node_modules', '.bin', BIN_NAME)
-check('the bin link exists', existsSync(PRATIQ), PRATIQ)
+const QRNTN = join(INSTALL, 'node_modules', '.bin', BIN_NAME)
+check('the bin link exists', existsSync(QRNTN), QRNTN)
 
 // Zero dependencies is a claim the README makes; a tarball that quietly pulled
 // something in would falsify it here rather than in someone else's lockfile.
 // A scope directory is not a package. Listing one level deep would find a
-// single entry called `@pratiq` and report exactly one installed package —
+// single entry called `@qrntn` and report exactly one installed package —
 // true of a tarball with no dependencies and equally true of one with twenty
 // scoped siblings beside it. So scopes are descended into, and what is counted
 // is package names.
@@ -148,14 +148,14 @@ check(
 	JSON.stringify(installedPackages)
 )
 
-if (!existsSync(PRATIQ)) {
+if (!existsSync(QRNTN)) {
 	console.error('\nsmoke: nothing to run — the remaining questions are unaskable')
 	process.exit(1)
 }
 
 // Every invocation from here runs the INSTALLED tool with an empty HOME.
 const run = (args, cwd = SANDBOX) => {
-	const r = spawnSync(PRATIQ, args, { cwd, encoding: 'utf8', env: { ...process.env, HOME } })
+	const r = spawnSync(QRNTN, args, { cwd, encoding: 'utf8', env: { ...process.env, HOME } })
 	return { code: r.status, raw: (r.stdout ?? '') + (r.stderr ?? '') }
 }
 
@@ -163,7 +163,7 @@ const run = (args, cwd = SANDBOX) => {
 //
 // The verbs are read out of the installed dispatcher rather than listed here,
 // so a verb added later is covered without anyone remembering to add it.
-const VERBS = [...readFileSync(join(INSTALL, 'node_modules', ...PKG_PATH, 'bin', 'pratiq.mjs'), 'utf8')
+const VERBS = [...readFileSync(join(INSTALL, 'node_modules', ...PKG_PATH, 'bin', 'qrntn.mjs'), 'utf8')
 	.matchAll(/^\t\['([a-z-]+)', '([\w.-]+)'/gm)].map((m) => m[1])
 
 check('the installed dispatcher offers verbs', VERBS.length >= 9, `found ${VERBS.length}`)
@@ -196,7 +196,7 @@ mkdirSync(join(LIB, 'skills', 'tidy-notes'), { recursive: true })
 writeFileSync(join(LIB, 'skills', 'tidy-notes', 'SKILL.md'), SKILL_MD)
 
 check('check refuses a library that was never set up', run(['check', '--library', LIB]).code === 2, run(['check', '--library', LIB]).raw.slice(0, 200))
-check('and names init as the thing to do about it', /pratiq init/.test(run(['check', '--library', LIB]).raw), run(['check', '--library', LIB]).raw.slice(0, 200))
+check('and names init as the thing to do about it', /qrntn init/.test(run(['check', '--library', LIB]).raw), run(['check', '--library', LIB]).raw.slice(0, 200))
 
 const inited = run(['init', '--library', LIB])
 check('init exits 0', inited.code === 0, inited.raw.slice(0, 300))

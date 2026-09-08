@@ -1,4 +1,4 @@
-<h1><img src="brand/assets/readme-header.png" alt="pratiq" width="100%"></h1>
+<h1><img src="brand/assets/readme-header.png" alt="qrntn" width="100%"></h1>
 
 ![signal](https://img.shields.io/badge/signal-Q-FEDD00?style=flat-square&labelColor=0A0C0B)
 ![version](https://img.shields.io/badge/version-0.1.0-F2ECD9?style=flat-square&labelColor=0A0C0B)
@@ -6,7 +6,7 @@
 ![license](https://img.shields.io/badge/license-Apache--2.0-7F7966?style=flat-square&labelColor=0A0C0B)
 ![node](https://img.shields.io/badge/node-%E2%89%A5%2020-7F7966?style=flat-square&labelColor=0A0C0B)
 
-**`pratiq` records and gates a human decision about a skill before it is allowed
+**`qrntn` records and gates a human decision about a skill before it is allowed
 to load.**
 
 An agent skill is a folder with a `SKILL.md` in it — instructions that Claude
@@ -14,17 +14,17 @@ Code, Codex, Cursor, Copilot, Gemini CLI and around forty other products read
 straight into an agent's context. Installing one is closer to hiring than to
 adding a dependency: the text becomes instructions before any code runs.
 
-`pratiq` is a local, dependency-free command-line tool for taking those in,
+`qrntn` is a local, dependency-free command-line tool for taking those in,
 auditing them, deciding about them, and keeping the decision. A browser-based
 graph viewer that shows the whole library at once — every skill, where it came
 from, what the audit found, whether it has ever fired, whether its upstream has
-moved — runs from a checkout today; `pratiq view` ships in `0.2`.
+moved — runs from a checkout today; `qrntn view` ships in `0.2`.
 
 ## It is not a scanner
 
 Scanners exist. Cisco, NVIDIA, Socket, Snyk and VirusTotal all ship one, along
 with eight open-source projects, and every scanner anyone has publicly tested
-has been bypassed on record. `pratiq` has a scanner inside it, and that is not
+has been bypassed on record. `qrntn` has a scanner inside it, and that is not
 the claim.
 
 The claim is that **a human decision is recorded against specific bytes, and a
@@ -34,14 +34,14 @@ ecosystem is Mozilla's `cargo-vet` for Rust crates: in-tree audit records, named
 criteria, a tool that certifies and never edits.
 
 Put plainly: before a skill you downloaded from a stranger runs inside your
-agent, someone has to have actually read it. `pratiq` turns that reading into a
+agent, someone has to have actually read it. `qrntn` turns that reading into a
 permanent record tied to specific bytes, and refuses to install anything that
 does not have one.
 
 [`docs/COMPARISON.md`](docs/COMPARISON.md) sets out the four categories this is
 routinely mistaken for — scanner, registry signing, evaluation, sandbox — what
 each one establishes that the others do not, and how to cite the numbers people
-quote about this space. [`docs/THREATS.md`](docs/THREATS.md) is what `pratiq`
+quote about this space. [`docs/THREATS.md`](docs/THREATS.md) is what `qrntn`
 does not defend against, which is the more useful half.
 
 ## The lifecycle
@@ -53,28 +53,28 @@ list look complete is precisely the move this tool exists to refuse.
 
 | Stage | What happens | Command |
 |---|---|---|
-| **intake** | fetch from a link at a pinned commit, *without reading it*, into quarantine | `pratiq intake` |
-| **audit** | scan every file as data; a human adjudicates every finding; report only, never edit | `pratiq audit` |
-| **adopt / decline / refuse** | the human decides. A declined or refused skill keeps a permanent row, so it is never re-audited from nothing | by hand, into `AUDIT.md` and `REJECTED.md`; `pratiq adopt` in `0.2` |
-| **promote** | a script re-scans and moves it into the library — or refuses | `pratiq promote` |
-| **ledger** | one machine-written record per held skill: origin, hashes, audit verdict, contract, install, usage | `pratiq ledger` |
-| **refresh** | re-diff the pinned commit against upstream; report drift, never move the pin | `pratiq refresh` |
-| **usage** | count what actually fired, from local transcripts, reading no message text | `pratiq usage` |
-| **view** | the graph, served locally against any skill library | from a checkout; `pratiq view` in `0.2` |
+| **intake** | fetch from a link at a pinned commit, *without reading it*, into quarantine | `qrntn intake` |
+| **audit** | scan every file as data; a human adjudicates every finding; report only, never edit | `qrntn audit` |
+| **adopt / decline / refuse** | the human decides. A declined or refused skill keeps a permanent row, so it is never re-audited from nothing | by hand, into `AUDIT.md` and `REJECTED.md`; `qrntn adopt` in `0.2` |
+| **promote** | a script re-scans and moves it into the library — or refuses | `qrntn promote` |
+| **ledger** | one machine-written record per held skill: origin, hashes, audit verdict, contract, install, usage | `qrntn ledger` |
+| **refresh** | re-diff the pinned commit against upstream; report drift, never move the pin | `qrntn refresh` |
+| **usage** | count what actually fired, from local transcripts, reading no message text | `qrntn usage` |
+| **view** | the graph, served locally against any skill library | from a checkout; `qrntn view` in `0.2` |
 
 ```
-npx @oxx/pratiq init                 # once, to make a folder of skills into a library
-npx @oxx/pratiq intake https://github.com/someone/skills/tree/main/foo
-npx @oxx/pratiq audit foo
+npx qrntn init                 # once, to make a folder of skills into a library
+npx qrntn intake https://github.com/someone/skills/tree/main/foo
+npx qrntn audit foo
                                      # read the report; write the decision into
                                      # AUDIT.md, or a REJECTED.md row, by hand
-npx @oxx/pratiq promote foo
-npx @oxx/pratiq refresh
-npx @oxx/pratiq check                # is every skill filed and every record still true
+npx qrntn promote foo
+npx qrntn refresh
+npx qrntn check                # is every skill filed and every record still true
 ```
 
 Nine verbs: `init`, `intake`, `audit`, `promote`, `refresh`, `usage`, `overlap`,
-`ledger`, `check`. Run `pratiq` with no arguments for what each one does.
+`ledger`, `check`. Run `qrntn` with no arguments for what each one does.
 
 ## The principles it is built on
 
@@ -92,7 +92,7 @@ Nine verbs: `init`, `intake`, `audit`, `promote`, `refresh`, `usage`, `overlap`,
 
 ## The contracts that do not move
 
-`pratiq` is `0.x`, and the surface may move. Four things will not, because a
+`qrntn` is `0.x`, and the surface may move. Four things will not, because a
 publish freezes them whether or not anyone wrote them down.
 
 **Where the library is.** Every verb takes `--library <dir>`, then
@@ -101,9 +101,9 @@ standing, never inferred from where the tool happens to be installed.
 
 **Where installed skills are.** `--install-root <dir>`, then
 `SKILL_INSTALL_ROOT`, then `~/.claude/skills`. Looking at them at all is opt-in,
-behind `--install`: by default `pratiq` asserts nothing about one vendor's
+behind `--install`: by default `qrntn` asserts nothing about one vendor's
 directory layout on behalf of a user who may load skills from somewhere else. The names
-match `SKILL_LIBRARY` rather than a `PRATIQ_*` of their own — two naming
+match `SKILL_LIBRARY` rather than a `QRNTN_*` of their own — two naming
 conventions in one surface, decided at different times for no recoverable
 reason, is its own defect.
 
@@ -127,7 +127,7 @@ meaning and the ink is a second copy of them, so **stripping the escapes
 reproduces the output byte for byte** — a test asserts exactly that. Colour is
 off unless the stream is a terminal, `NO_COLOR` is honoured on its presence
 rather than its value, and `FORCE_COLOR` overrides the terminal check. A script
-reading this output never has to know, and `pratiq audit > report.txt` writes a
+reading this output never has to know, and `qrntn audit > report.txt` writes a
 clean file while still colouring the refusal it prints to stderr.
 
 **Explicitly not frozen:** the `--json` shapes. Most commands emit JSON and
@@ -162,7 +162,8 @@ tool happens to be installed.
 
 **Nothing is published.** There is no npm package and no release, so none of
 the `npx` lines above run yet — that block is the `0.1.0` surface, not an
-installation instruction. The name was chosen on 2026-09-07 and is recorded in
+installation instruction. The name was chosen on 2026-09-07, changed to `qrntn`
+on 2026-09-08 when the first one could not be published, and is recorded in
 SK-90.
 
 What does work, from a checkout: every command takes `--library`, so the
@@ -174,9 +175,12 @@ marks what has landed against what has not.
 
 ## The name
 
-*Free pratique* is the clearance a ship is granted after inspection — entered in
-its papers, without which nobody boards and nobody disembarks. A vessel
-requesting it flies signal flag Q, a plain yellow rectangle with nothing on it.
+`qrntn` is *quarantine* with the vowels struck out, and it is pronounced
+**quarantine**. You type the consonants and you say the word, the way `qty` and
+`mgmt` and `bldg` always have. Yes, you have to be told that once.
 
-It is a recorded permission against a specific arrival, which is the whole tool
-in one word. It is pronounced *prah-teek*, and yes, you have to be told that.
+A vessel that has arrived and has not yet been inspected flies signal flag Q, a
+plain yellow rectangle with nothing printed on it. Held is what this tool does.
+*Free pratique* — the clearance entered in a ship's papers, without which nobody
+boards and nobody disembarks — is what **you** do, and it was not the tool's to
+put in its own name.

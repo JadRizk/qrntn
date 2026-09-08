@@ -7,10 +7,10 @@ The direction, decided before any of it is implemented.
 | [`BRAND.md`](BRAND.md) | Thesis, voice, typography, non-negotiables. The document a human reads. |
 | [`PALETTE.md`](PALETTE.md) | Every colour, with the measured ratio and the command that produced it. The document an implementation reads. |
 | [`references/research.md`](references/research.md) | What was cited, and what was refused. |
-| [`../nexus/packages/tokens/src/pratiq.css`](../nexus/packages/tokens/src/pratiq.css) | The brand as two nexus themes. Lives in the tokens package, not here — one source of truth, and the viewer imports it. |
+| [`../nexus/packages/tokens/src/qrntn.css`](../nexus/packages/tokens/src/qrntn.css) | The brand as two nexus themes. Lives in the tokens package, not here — one source of truth, and the viewer imports it. |
 | [`../commands/tint.mjs`](../commands/tint.mjs) | The CLI's four inks, behind a guarded import so a copy-deployed script degrades to plain text. |
 | [`scripts/solve-ramp.mjs`](scripts/solve-ramp.mjs) | Regenerates the neutral ramp. Run it rather than trusting the table. |
-| [`assets/logo/`](assets/logo/) | Five candidate marks, the wordmark, the favicon. **`mark-flag.svg` is the one that ships.** |
+| [`assets/logo/`](assets/logo/) | Five candidate marks, two wordmarks, the favicon. **`mark-flag.svg` is the one that ships.** |
 | [`assets/readme-header.svg`](assets/readme-header.svg) | The README banner. `.png` beside it is the rendered copy GitHub actually serves. |
 | [`assets/social/social-card.svg`](assets/social/social-card.svg) | 1280x640 og:image. GitHub's social-preview upload takes raster only, so the `.png` is the deliverable. |
 | [`../site/index.html`](../site/index.html) | The landing page, built from these tokens. |
@@ -59,6 +59,14 @@ out 737 bytes of 1-bit greyscale. Measured, not assumed.
 **Which mark ships.** Five are drawn. `mark-flag.svg` — the bare flag — is the
 recommendation; the other four exist so it can be refused on sight. The wordmark
 is a separate decision and survives whichever mark wins.
+
+**Which wordmark ships.** Two are drawn, and they differ only in whether the
+struck vowels are visible. `wordmark.svg` sets the name as typed — flag Q, then
+`rntn`. `wordmark-ghost.svg` sets the whole word with `ua`, `a`, `i` and `e`
+held at 0.18, so it reads *quarantine* close up and `qrntn` at a glance.
+The ghost carries the flag's inversion into the type and costs legibility at
+small sizes; the plain one is the recommendation for the favicon and the viewer
+whichever way this goes. Neither has been rendered to raster yet.
 
 **Whether anything else earns an ink.** All nine verbs colour `refused:` and
 `audit-skill` colours its severity column, counts and verdict. Nothing else

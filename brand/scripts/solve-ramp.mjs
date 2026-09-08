@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// solve-ramp.mjs — reproduce pratiq's neutral ramp.
+// solve-ramp.mjs — reproduce qrntn's neutral ramp.
 //
 // Nexus's hud-aa ramp is documented as "solved against exact contrast targets,
-// hue 100deg sat 13%" — a green tint, chosen when the accent was acid. pratiq's
+// hue 100deg sat 13%" — a green tint, chosen when the accent was acid. qrntn's
 // accent is the signal flag, so the tint is re-solved warm at the SAME contrast
 // targets: every ratio the AA theme cleared, this one clears identically, and
 // nothing downstream of a grey moves.
@@ -12,7 +12,7 @@
 
 const GROUND = '#0A0C0B'
 
-// Nexus ships two ramps and pratiq needs both, for the reason nexus needed
+// Nexus ships two ramps and qrntn needs both, for the reason nexus needed
 // both: the AA ramp is the default, and the immersive one is what the viewer
 // actually runs on — its edge register gains were measured off the rendered
 // scene against those exact greys, so re-tinting the brand without re-solving
@@ -95,8 +95,8 @@ function emit(label, targets) {
 }
 
 if (which === 'both') {
-	emit('pratiq (AA)', RAMPS.aa)
-	emit('pratiq-hud (immersive)', RAMPS.immersive)
+	emit('qrntn (AA)', RAMPS.aa)
+	emit('qrntn-hud (immersive)', RAMPS.immersive)
 } else {
-	emit(which === 'immersive' ? 'pratiq-hud (immersive)' : 'pratiq (AA)', RAMPS[which])
+	emit(which === 'immersive' ? 'qrntn-hud (immersive)' : 'qrntn (AA)', RAMPS[which])
 }

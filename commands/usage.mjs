@@ -94,7 +94,7 @@ try {
 // this one either.
 //
 // The fallback is not a degraded mode. A script deployed alone was not reached
-// through bin/pratiq.mjs, so PRATIQ_VERB is unset and the module would return
+// through bin/qrntn.mjs, so QRNTN_VERB is unset and the module would return
 // this exact string anyway.
 let invokedAs = () => `node ${basename(fileURLToPath(import.meta.url))}`
 try {

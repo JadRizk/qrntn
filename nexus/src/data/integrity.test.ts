@@ -243,15 +243,15 @@ describe('chooseLibrary', () => {
 
 describe('originTitle', () => {
   it('prefers a catalog that names itself', () => {
-    expect(originTitle('Cortex', 'pq-lib')).toBe('Cortex')
-    expect(originTitle('  Cortex  ', 'pq-lib')).toBe('Cortex')
+    expect(originTitle('Cortex', 'qrn-lib')).toBe('Cortex')
+    expect(originTitle('  Cortex  ', 'qrn-lib')).toBe('Cortex')
   })
 
   it('falls back to the library directory', () => {
-    expect(originTitle(undefined, 'pq-lib')).toBe('pq-lib')
-    expect(originTitle('', 'pq-lib')).toBe('pq-lib')
-    expect(originTitle('   ', 'pq-lib')).toBe('pq-lib')
-    expect(originTitle(42, 'pq-lib')).toBe('pq-lib')
+    expect(originTitle(undefined, 'qrn-lib')).toBe('qrn-lib')
+    expect(originTitle('', 'qrn-lib')).toBe('qrn-lib')
+    expect(originTitle('   ', 'qrn-lib')).toBe('qrn-lib')
+    expect(originTitle(42, 'qrn-lib')).toBe('qrn-lib')
   })
 
   it('never names this tool', () => {
@@ -263,6 +263,6 @@ describe('originTitle', () => {
       originTitle('Their Library', 'whatever'),
       originTitle(undefined, ''),
     ]
-    for (const a of answers) expect(a.toLowerCase()).not.toMatch(/nexus|pratiq/)
+    for (const a of answers) expect(a.toLowerCase()).not.toMatch(/nexus|qrntn/)
   })
 })

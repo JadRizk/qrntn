@@ -73,14 +73,14 @@ const catalogOf = (lib) => JSON.parse(readFileSync(join(lib, 'catalog.json'), 'u
 // ── the distinction the exit codes carry ────────────────────────────────────
 //
 // SHIPPING.md §2: "On a library that has never been init'd it refuses and names
-// pratiq init, rather than reporting a library-shaped problem it does not
+// qrntn init, rather than reporting a library-shaped problem it does not
 // have." A 1 here would be this command reasoning about itself.
 {
 	const lib = mkLibrary('never-inited')
 	const r = runJson(lib)
 	check('never init-ed: exit 2, not 1', r.code === 2, `exit ${r.code} ${r.raw.slice(0, 200)}`)
 	check('never init-ed: reported as not set up', r.json?.setUp === false, JSON.stringify(r.json))
-	check('never init-ed: the refusal names init', /pratiq init/.test(run(lib).raw), run(lib).raw.slice(0, 300))
+	check('never init-ed: the refusal names init', /qrntn init/.test(run(lib).raw), run(lib).raw.slice(0, 300))
 	check('never init-ed: says nothing about mismatches', !/mismatch/.test(run(lib).raw), run(lib).raw.slice(0, 300))
 	check('never init-ed: no stack trace', !/at \w+ \(/.test(run(lib).raw), run(lib).raw.slice(0, 300))
 }
@@ -92,7 +92,7 @@ const catalogOf = (lib) => JSON.parse(readFileSync(join(lib, 'catalog.json'), 'u
 	const r = run(lib)
 	check('no skills/: exit 2', r.code === 2, `exit ${r.code}`)
 	check('no skills/: names skills/ as what is missing', /no skills\//.test(r.raw), r.raw.slice(0, 300))
-	check('no skills/: does not send you to init, which cannot help', !/pratiq init/.test(r.raw), r.raw.slice(0, 300))
+	check('no skills/: does not send you to init, which cannot help', !/qrntn init/.test(r.raw), r.raw.slice(0, 300))
 }
 
 // ── a library init made is a library check passes ───────────────────────────

@@ -2,7 +2,7 @@
 // Tests for init.mjs. Run: node init.test.mjs
 //
 // Black box against the CLI, same reasoning as the rest of this suite: the CLI
-// is what `pratiq init` invokes, and a test that reached past it would be
+// is what `qrntn init` invokes, and a test that reached past it would be
 // testing a different program from the one that ships.
 //
 // The fixture every case starts from is what SK-97 §3 measured against and what

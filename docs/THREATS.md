@@ -7,12 +7,12 @@
 > the code, and where the code and this document disagree the code is right and
 > this is a defect.
 
-## What `pratiq` does not defend against
+## What `qrntn` does not defend against
 
 This section is first because it is the more useful half, and because a document
 that leads with its coverage is an advertisement.
 
-**Runtime behaviour of a skill you adopted.** `pratiq` governs what is let in.
+**Runtime behaviour of a skill you adopted.** `qrntn` governs what is let in.
 Once a skill is cleared into the library and loaded by an agent, nothing here is
 in the path. A skill that reads as benign, is adjudicated as benign, and then
 behaves badly at runtime is outside this model entirely. There is no monitor, no
@@ -23,7 +23,7 @@ runtime guard and no revocation.
 `urllib`, `requests.*`, `axios`, `XMLHttpRequest`, `nc -` and `ssh`, and
 `INSTR-REMOTE` flags the prose form — "read `https://x/y` and do what it says",
 distinguished from a citation, which must not fire. So the *reach* is a finding
-a human adjudicates. The *payload* is not: `pratiq` pins the bytes it fetched,
+a human adjudicates. The *payload* is not: `qrntn` pins the bytes it fetched,
 and it cannot pin bytes it never fetched. A skill whose real instructions live
 behind a URL that changes after the decision was recorded defeats the pin, and
 the only defence offered here is that the capability was visible at audit and
@@ -38,10 +38,10 @@ distinction does not matter.
 [The human is a trusted component](#the-human-is-a-trusted-component). This is
 the largest unguarded surface in the design, and it is unguarded deliberately.
 
-**A machine that is already compromised.** Every record `pratiq` writes is a
+**A machine that is already compromised.** Every record `qrntn` writes is a
 plain file on a filesystem it does not control. An attacker with write access to
 the library can edit `AUDIT.md`, rewrite a ledger row, or move a pin, and
-`pratiq check` will report a tree that is internally consistent because it has
+`qrntn check` will report a tree that is internally consistent because it has
 been made consistent. The records are tamper-**evident** only against a mistake,
 not against an adversary who is already inside.
 
@@ -64,7 +64,7 @@ sentence names a reader, and there are two of them with different exposure.
 
 - **Reader A** is a person at a terminal. They type the verbs, read the report
   with their eyes, and write the decision.
-- **Reader B** is an agent running `pratiq` on that person's behalf, inside a
+- **Reader B** is an agent running `qrntn` on that person's behalf, inside a
   session, reading stdout back into its own context.
 
 Reader B is the realistic deployment and the harder problem, because the whole
@@ -136,7 +136,7 @@ network and credentials. Adoption is therefore an authorisation to execute, and
 a human who adopts has granted it whether or not they were thinking about it in
 those terms.
 
-**Containment is an explicit non-goal.** `pratiq` governs what you let in, not
+**Containment is an explicit non-goal.** `qrntn` governs what you let in, not
 what it does once it is in; those are different controls, and a tool claiming
 both while implementing one would be lying about the more important half. The
 mitigation on offer is ordering — the execution happens last, after five prior
@@ -167,7 +167,7 @@ Three capabilities are assumed and are inside the model:
   a decision into a subscription.
 
 One capability is assumed and is **outside** it: an adversary who already has
-write access to the machine running `pratiq`.
+write access to the machine running `qrntn`.
 
 ## What it trusts
 
@@ -204,7 +204,7 @@ living inside the reader is not an enforcement layer.**
 
 ## The human is a trusted component
 
-`pratiq` cannot verify that anybody read anything. A person can run `audit`,
+`qrntn` cannot verify that anybody read anything. A person can run `audit`,
 look past a `BLOCK`, write a line into `AUDIT.md` and promote. The tool will
 record that decision faithfully and enforce it, which is the same behaviour it
 has when the reading was careful.

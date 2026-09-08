@@ -1,4 +1,4 @@
-# pratiq — brand direction
+# qrntn — brand direction
 
 Signal Quebec. Near-black ground, one yellow signal taken from the maritime code
 of signals, hard edges, monospaced body. A port inspection rendered as a
@@ -7,8 +7,8 @@ terminal.
 ## Thesis
 
 **The mark is not designed, it is cited.** A vessel requesting inspection flies
-signal flag Q — a plain yellow rectangle with nothing on it — and `pratiq` is
-named for the clearance that flag asks for. So the identity does not invent a
+signal flag Q — a plain yellow rectangle with nothing on it — and `qrntn` is
+named for the state that flag admits to. So the identity does not invent a
 symbol for "a recorded permission against a specific arrival." One already
 exists, it is in a published international standard, and the correct move is to
 take it unmodified rather than to improve it.
@@ -23,12 +23,37 @@ bytes under the same flag, and only a recorded human decision separates them.
 
 What this rejects is the visual language of the category it will be shelved
 beside. Scanners signal with shields, padlocks, keyholes and green ticks —
-iconography that asserts *a machine has determined this is safe*. `pratiq`
+iconography that asserts *a machine has determined this is safe*. `qrntn`
 refuses that claim in its README and must refuse it in its logo: it is not a
 scanner, it makes no safety determination, and a shield would be the interface
 lying about what the tool does. A yellow flag says something a shield cannot —
 **this is the thing that has not been decided yet, and you are the one who
 decides it.**
+
+## The name
+
+`qrntn` is *quarantine* with the vowels struck out. It is pronounced
+**quarantine** — you type the consonants and you say the word, the way `qty`
+and `mgmt` and `bldg` have always worked. That is the one thing about the name
+that has to be said out loud in the documentation, and this is where it is said.
+
+Naming the hold rather than the clearance is the correction, not an accident of
+what was available. An earlier name took *free pratique*, the clearance side of
+the flag, and it named the wrong half: clearance is what a **human** grants, and
+a tool that puts it in its own name is claiming the act it exists to refuse to
+perform. The hold is what the tool actually does. Everything past the hold is
+somebody's signature.
+
+The vowel-strike repeats the flag's inversion in type. Set with the struck
+vowels ghosted behind it — `Q(ua)R(a)NT(i)N(e)` — the wordmark reads
+*quarantine* close up and `qrntn` at a glance: one mark, two readings, and
+which one you get depends entirely on how hard you looked. That is the sentence
+above about the flag, rendered instead of argued.
+
+Two written forms, and no third. `qrntn` lowercase is the command, as typed.
+`QRNTN` in wide tracking is the chrome label, and it belongs to the set that
+already holds `HELD`, `CLEARED` and `REFUSED`. Title Case is not available to
+the wordmark for the same reason it is not available to anything else here.
 
 ## Voice
 
@@ -38,7 +63,7 @@ speaks this way; this records it so the docs, the viewer and the site do too.
 - **Label casing** — `lowercase` for verbs and identifiers, exactly as typed:
   `intake`, `audit`, `promote`, `refresh`. `UPPERCASE` with wide tracking for
   chrome labels only: `HELD`, `CLEARED`, `REFUSED`. Never Title Case.
-- **Separators** — `·` between peer facts (`pratiq · 0.1.0 · apache-2.0`); `—`
+- **Separators** — `·` between peer facts (`qrntn · 0.1.0 · apache-2.0`); `—`
   to introduce a consequence (`refused — network call in a script`). Never `|`.
 - **Status vocabulary** — drawn from the port, and already load-bearing in the
   code: **held**, **cleared**, **refused**, **declined**, **quarantine**,
@@ -61,7 +86,7 @@ reference; the instrument vocabulary belongs to labels and chrome only.
 
 **IBM Plex Mono carries the body**, which is the inversion worth naming: mono is
 usually reserved for code samples, and here it sets the running text as well.
-The justification is that `pratiq` is a command before it is a product — the
+The justification is that `qrntn` is a command before it is a product — the
 wordmark is the string you type — and a proportional body face would put the
 brand in a different register from the only surface most users ever see. IBM
 Plex specifically, over the usual mono choices, because it was drawn as a
@@ -73,10 +98,10 @@ only. Industrial grotesque, signage register — the lettering on a bulkhead
 rather than a masthead. It never appears in the viewer or the CLI.
 
 The scale is **closed** and enumerated in `PALETTE.md`. The system names no font
-in component code; both faces resolve through `--pq-font-mono` and
-`--pq-font-display`, so a consumer can substitute without touching a component.
-Both are declared in `nexus/packages/tokens/src/pratiq.css` and asserted by
-`pratiq.contract.test.ts` — this document named them for a while before either
+in component code; both faces resolve through `--qrn-font-mono` and
+`--qrn-font-display`, so a consumer can substitute without touching a component.
+Both are declared in `nexus/packages/tokens/src/qrntn.css` and asserted by
+`qrntn.contract.test.ts` — this document named them for a while before either
 existed, which is the failure that gate was added for.
 The terminal ships no face at all — whatever the user has set is correct there,
 and overriding it would be the tool asserting something about a surface it does
@@ -115,8 +140,8 @@ not own.
   the contrast.
 
   **With one exception, and it is currently load-bearing rather than
-  hypothetical.** `pratiq` (the AA theme) holds this floor at every step. The
-  viewer ships `pratiq-hud`, whose ramp is inherited verbatim from nexus's own
+  hypothetical.** `qrntn` (the AA theme) holds this floor at every step. The
+  viewer ships `qrntn-hud`, whose ramp is inherited verbatim from nexus's own
   immersive variant and puts three text roles below it — `ink-subtle` at
   3.80:1, `fg-tertiary` at 2.72:1, `ink-disabled` at 2.15:1. That was inherited
   along with the ramp so the brand swap moved hue and nothing else, and it is
@@ -127,9 +152,9 @@ not own.
   be made out loud.** It has been made out loud exactly once, in
   `nexus/src/main.tsx`. `PALETTE.md` tables both ramps with the failing steps
   marked. This is a stated exception, not an unnoticed violation — and it stays
-  open: either the viewer moves to `pratiq` and the gains are re-measured, or
+  open: either the viewer moves to `qrntn` and the gains are re-measured, or
   the exception is made permanent on the record.
-- **Decoration and text are different tokens.** `--pq-ambient` is for hairlines,
+- **Decoration and text are different tokens.** `--qrn-ambient` is for hairlines,
   grid overlays and idle brackets. Never text.
 
 ## References
@@ -147,7 +172,7 @@ not own.
   Quebec at ΔE 1.8 — see `PALETTE.md`) and the phosphor-green ink.
 - **Snyk, Socket, Sigstore** — refused wholesale. Shield-and-lock marks in
   green and blue, asserting machine-determined safety. Named here because the
-  npm listing puts `pratiq` next to them, and being the only yellow rectangle
+  npm listing puts `qrntn` next to them, and being the only yellow rectangle
   in that row is a positioning decision before it is an aesthetic one.
 - **`cargo-vet`** — taken: the posture. In-tree audit records, named criteria, a
   tool that certifies and never edits. It has almost no visual identity, which
@@ -190,6 +215,6 @@ not own.
   refuse in words, and the source of every command is checked for a static
   import.
 
-  `bin/pratiq.mjs` stays plain permanently. Its refusals are packaging faults —
+  `bin/qrntn.mjs` stays plain permanently. Its refusals are packaging faults —
   "commands/ is missing" — and a module that reports that cannot live in
   `commands/`.

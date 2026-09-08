@@ -1,9 +1,9 @@
 /* ============================================================================
-   @nexus/tokens — pratiq.css
-   The pratiq brand, expressed as two nexus themes. Load AFTER tokens.css.
+   @nexus/tokens — qrntn.css
+   The qrntn brand, expressed as two nexus themes. Load AFTER tokens.css.
 
-     <div data-nx-theme="pratiq">        default, WCAG AA
-     <div data-nx-theme="pratiq-hud">    immersive; the viewer runs on this
+     <div data-nx-theme="qrntn">        default, WCAG AA
+     <div data-nx-theme="qrntn-hud">    immersive; the viewer runs on this
 
    Two, not one, for the reason nexus itself ships two: the immersive ramp is
    what the graph's edge register gains were measured against (adapt/
@@ -20,8 +20,8 @@
    Numbers: brand/PALETTE.md. Reproduce them, do not trust them.
    ========================================================================== */
 
-[data-nx-theme="pratiq"],
-[data-nx-theme="pratiq-hud"] {
+[data-nx-theme="qrntn"],
+[data-nx-theme="qrntn-hud"] {
 	/* ------------------------------------------------------- primitives -- */
 	/* Inherited from nexus unchanged. */
 	--nx-void:   #08090A;
@@ -34,18 +34,18 @@
 	   REPLACES acid rather than joining it: the two measure ΔE 1.8 apart under
 	   deuteranopia, so they cannot both be load-bearing signals. */
 	--nx-acid:   #FEDD00;
-	--pq-quebec: #FEDD00;
+	--qrn-quebec: #FEDD00;
 
 	/* Ink. Warm, because the record is a document rather than a phosphor. */
 	--nx-phosphor: #F2ECD9;   /* 16.61:1 */
-	--pq-paper:    #F2ECD9;
+	--qrn-paper:    #F2ECD9;
 
 	/* Warning, dimmed from nexus's sodium #FF8A1E (8.32:1). Not taste: sodium
 	   was 1.53x LOUDER than the critical colour it outranks, and on a
 	   near-black ground contrast IS loudness. 4.71:1 still clears the text
 	   floor and restores the ordering. Sodium survives as a graph content hue,
 	   which is a different job from a status role. */
-	--pq-rust: #BF6408;
+	--qrn-rust: #BF6408;
 
 	/* Graph content hues, inherited untouched — data/taxonomy.ts is their
 	   source of truth and the accent change does not reach them. */
@@ -56,7 +56,7 @@
 
 	/* Text on the accent. Black at 15.56:1 is the ONLY thing that may sit on
 	   the flag — paper ink measures 1.14:1 on it. */
-	--pq-accent-ink: #000000;
+	--qrn-accent-ink: #000000;
 
 
 	/* ------------------------------------------------------------- type -- */
@@ -81,9 +81,9 @@
 	--nx-fg-tertiary: var(--nx-grey-400);
 	--nx-fg-disabled: var(--nx-grey-300);
 
-	--nx-fg-accent:   var(--pq-quebec);
+	--nx-fg-accent:   var(--qrn-quebec);
 	--nx-fg-info:     var(--nx-data);
-	--nx-fg-warning:  var(--pq-rust);     /* NOT sodium — see above */
+	--nx-fg-warning:  var(--qrn-rust);     /* NOT sodium — see above */
 	--nx-fg-critical: var(--nx-alarm);
 
 	--nx-border-default: var(--nx-grey-100);
@@ -111,9 +111,9 @@
 
      node brand/scripts/solve-ramp.mjs 45 0.11 "#0A0C0B" --both
    ========================================================================== */
-[data-nx-theme="pratiq"] {
+[data-nx-theme="qrntn"] {
 	--nx-font-scale: 1.15;
-	--pq-font-scale: 1.15;
+	--qrn-font-scale: 1.15;
 
 	--nx-grey-100: #38352D;   /*  1.60:1  decorative hairline only */
 	--nx-grey-200: #625E4F;   /*  3.02:1  UI boundary — 1.4.11 */
@@ -123,9 +123,9 @@
 	--nx-grey-600: #BDB9AD;   /* 10.00:1 */
 }
 
-[data-nx-theme="pratiq-hud"] {
+[data-nx-theme="qrntn-hud"] {
 	--nx-font-scale: 1;
-	--pq-font-scale: 1;
+	--qrn-font-scale: 1;
 
 	--nx-grey-100: #22201B;   /* 1.21:1 */
 	--nx-grey-200: #36342C;   /* 1.57:1 */
@@ -138,60 +138,60 @@
 /* ============================================================================
    THE BRAND'S OWN VOCABULARY
 
-   Everything above re-points nexus. Everything below is pratiq's own contract,
+   Everything above re-points nexus. Everything below is qrntn's own contract,
    and it is what brand/PALETTE.md documents — so it has to exist, or that
-   document is instructions for writing `var(--pq-ink)` and getting nothing.
+   document is instructions for writing `var(--qrn-ink)` and getting nothing.
 
    WHY BOTH NAMES. `--nx-*` is a vendored design system's internal vocabulary;
    a copy of it lives in this repository and its names are that upstream's to
-   change. `--pq-*` is the brand's, and it is what a pratiq surface that is not
+   change. `--qrn-*` is the brand's, and it is what a qrntn surface that is not
    the viewer — the site, a future component, a consumer's own build — is meant
    to reach for. The alias is the seam between the two, and it costs one
-   indirection to avoid every pratiq surface depending on nexus's spelling.
+   indirection to avoid every qrntn surface depending on nexus's spelling.
 
-   This is a one-way alias on purpose: --pq-* reads --nx-*, never the reverse.
+   This is a one-way alias on purpose: --qrn-* reads --nx-*, never the reverse.
    ========================================================================== */
-[data-nx-theme="pratiq"],
-[data-nx-theme="pratiq-hud"] {
+[data-nx-theme="qrntn"],
+[data-nx-theme="qrntn-hud"] {
 	/* ------------------------------------------------------- primitives -- */
-	--pq-void:   var(--nx-void);
-	--pq-panel:  var(--nx-panel);
-	--pq-raised: var(--nx-raised);
-	--pq-alarm:  var(--nx-alarm);      /* RESTRICTED — reach it through --pq-critical */
+	--qrn-void:   var(--nx-void);
+	--qrn-panel:  var(--nx-panel);
+	--qrn-raised: var(--nx-raised);
+	--qrn-alarm:  var(--nx-alarm);      /* RESTRICTED — reach it through --qrn-critical */
 
-	--pq-grey-100: var(--nx-grey-100);
-	--pq-grey-200: var(--nx-grey-200);
-	--pq-grey-300: var(--nx-grey-300);
-	--pq-grey-400: var(--nx-grey-400);
-	--pq-grey-500: var(--nx-grey-500);
-	--pq-grey-600: var(--nx-grey-600);
+	--qrn-grey-100: var(--nx-grey-100);
+	--qrn-grey-200: var(--nx-grey-200);
+	--qrn-grey-300: var(--nx-grey-300);
+	--qrn-grey-400: var(--nx-grey-400);
+	--qrn-grey-500: var(--nx-grey-500);
+	--qrn-grey-600: var(--nx-grey-600);
 
 	/* ------------------------------------------------------------ roles -- */
-	--pq-canvas:  var(--nx-bg-canvas);
-	--pq-surface: var(--nx-bg-surface);
+	--qrn-canvas:  var(--nx-bg-canvas);
+	--qrn-surface: var(--nx-bg-surface);
 
 	/* The boundary ladder. Three COLOURS, four tiers: `line-strong` is
-	   --pq-line drawn at --pq-line-strong-width, because it outranks its
+	   --qrn-line drawn at --qrn-line-strong-width, because it outranks its
 	   neighbours by weight rather than by hue. A fourth grey would be a second
 	   name for one idea, which is the thing PALETTE.md's own rules forbid. */
-	--pq-ambient: var(--nx-border-default);   /* grey-100 — never text */
-	--pq-line:    var(--nx-border-strong);    /* grey-200 — the default edge */
-	--pq-hairline: var(--nx-hairline);        /* 1px */
-	--pq-line-strong-width: 2px;
+	--qrn-ambient: var(--nx-border-default);   /* grey-100 — never text */
+	--qrn-line:    var(--nx-border-strong);    /* grey-200 — the default edge */
+	--qrn-hairline: var(--nx-hairline);        /* 1px */
+	--qrn-line-strong-width: 2px;
 
-	--pq-ink:          var(--nx-fg-default);
-	--pq-ink-muted:    var(--nx-fg-muted);
-	--pq-ink-subtle:   var(--nx-fg-subtle);
-	--pq-ink-disabled: var(--nx-fg-disabled);
+	--qrn-ink:          var(--nx-fg-default);
+	--qrn-ink-muted:    var(--nx-fg-muted);
+	--qrn-ink-subtle:   var(--nx-fg-subtle);
+	--qrn-ink-disabled: var(--nx-fg-disabled);
 
-	--pq-accent:   var(--nx-fg-accent);
-	--pq-warning:  var(--nx-fg-warning);      /* rust, not sodium — see above */
-	--pq-critical: var(--nx-fg-critical);
+	--qrn-accent:   var(--nx-fg-accent);
+	--qrn-warning:  var(--nx-fg-warning);      /* rust, not sodium — see above */
+	--qrn-critical: var(--nx-fg-critical);
 
 	/* -------------------------------------------------------------- type -- */
-	--pq-font-mono:      var(--nx-font-mono);
-	--pq-font-display:   var(--nx-font-stencil);
-	--pq-tracking-label: var(--nx-track-wide);   /* 0.14em */
+	--qrn-font-mono:      var(--nx-font-mono);
+	--qrn-font-display:   var(--nx-font-stencil);
+	--qrn-tracking-label: var(--nx-track-wide);   /* 0.14em */
 }
 
 /* ============================================================================
@@ -202,8 +202,8 @@
    keyboard user depends on looks like something a mouse user causes by
    accident. The glow separates them at no new colour and no new token.
    ========================================================================== */
-[data-nx-theme="pratiq"] :focus-visible,
-[data-nx-theme="pratiq-hud"] :focus-visible {
+[data-nx-theme="qrntn"] :focus-visible,
+[data-nx-theme="qrntn-hud"] :focus-visible {
 	outline: var(--nx-focus-width) solid var(--nx-focus-ring);
 	outline-offset: var(--nx-focus-offset);
 	box-shadow: 0 0 0 6px rgba(254, 221, 0, 0.35);
@@ -216,7 +216,7 @@
    under deuteranopia, which is true of every red/orange pair ever shipped. The
    word in the chip is load-bearing, not decoration.
    ========================================================================== */
-.pq-state {
+.qrn-state {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--nx-space-3);
@@ -230,16 +230,16 @@
 	border-radius: var(--nx-radius);
 }
 
-.pq-state[data-state="held"] {
-	color: var(--pq-quebec);
+.qrn-state[data-state="held"] {
+	color: var(--qrn-quebec);
 	background: repeating-linear-gradient(45deg, rgba(254, 221, 0, 0.16) 0 3px, transparent 3px 8px);
 }
 
-.pq-state[data-state="cleared"] {
-	color: var(--pq-accent-ink);
-	background: var(--pq-quebec);
-	border-color: var(--pq-quebec);
+.qrn-state[data-state="cleared"] {
+	color: var(--qrn-accent-ink);
+	background: var(--qrn-quebec);
+	border-color: var(--qrn-quebec);
 }
 
-.pq-state[data-state="refused"] { color: var(--nx-fg-critical); }
-.pq-state[data-state="drift"]   { color: var(--pq-rust); }
+.qrn-state[data-state="refused"] { color: var(--nx-fg-critical); }
+.qrn-state[data-state="drift"]   { color: var(--qrn-rust); }

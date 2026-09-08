@@ -1,10 +1,10 @@
-// pratiq.contract.test.ts — brand/PALETTE.md and pratiq.css must agree.
+// qrntn.contract.test.ts — brand/PALETTE.md and qrntn.css must agree.
 //
 // WHY THIS EXISTS, stated plainly because it is a correction rather than a
 // precaution. PALETTE.md's own header calls the role table "the contract" an
-// implementation reads to emit tokens. It shipped naming 23 `--pq-*` tokens of
+// implementation reads to emit tokens. It shipped naming 23 `--qrn-*` tokens of
 // which 4 existed. Every colour in it was measured, reproducible and correct —
-// and an implementation following it would have written `var(--pq-ink)` and got
+// and an implementation following it would have written `var(--qrn-ink)` and got
 // nothing, because the *names* were never checked against anything.
 //
 // The colours had a validator. The vocabulary had nobody. This is the missing
@@ -22,13 +22,13 @@ import { contrast, themeMeetsAA, WCAG } from './index.ts'
 
 const read = (rel: string) => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8')
 
-const CSS = read('./pratiq.css')
+const CSS = read('./qrntn.css')
 const PALETTE = read('../../../../brand/PALETTE.md')
 const INDEX_HTML = read('../../../index.html')
 
-/** Tokens the stylesheet actually DECLARES — `--pq-foo:`, not a mention. */
+/** Tokens the stylesheet actually DECLARES — `--qrn-foo:`, not a mention. */
 const declared = new Set(
-  [...CSS.matchAll(/(--pq-[a-z0-9-]+)\s*:/g)].map((m) => m[1] as string)
+  [...CSS.matchAll(/(--qrn-[a-z0-9-]+)\s*:/g)].map((m) => m[1] as string)
 )
 
 /**
@@ -38,10 +38,10 @@ const declared = new Set(
  * PALETTE.md says "no `line-strong` colour token" rather than naming one.
  */
 const documented = new Set(
-  [...PALETTE.matchAll(/(--pq-[a-z0-9-]+)/g)].map((m) => m[1] as string)
+  [...PALETTE.matchAll(/(--qrn-[a-z0-9-]+)/g)].map((m) => m[1] as string)
 )
 
-describe('the --pq-* contract', () => {
+describe('the --qrn-* contract', () => {
   it('declares something at all — a silent regex is not a passing gate', () => {
     expect(declared.size).toBeGreaterThan(20)
     expect(documented.size).toBeGreaterThan(20)
@@ -57,7 +57,7 @@ describe('the --pq-* contract', () => {
     // token is a broken instruction, an undocumented one is a private API that
     // consumers will find and depend on anyway.
     const undocumented = [...declared].filter((t) => !documented.has(t)).sort()
-    expect(undocumented, `declared in pratiq.css, documented nowhere: ${undocumented.join(', ')}`).toEqual([])
+    expect(undocumented, `declared in qrntn.css, documented nowhere: ${undocumented.join(', ')}`).toEqual([])
   })
 })
 
@@ -66,12 +66,12 @@ describe('the ramps', () => {
   // originally tabled only the AA one — so a reader checking what runs got the
   // wrong numbers with no way to know.
   const ramps = {
-    pratiq: ['#38352D', '#625E4F', '#7F7966', '#8E8772', '#A09A89', '#BDB9AD'],
-    'pratiq-hud': ['#22201B', '#36342C', '#4C483D', '#5C5749', '#736D5C', '#87806C'],
+    qrntn: ['#38352D', '#625E4F', '#7F7966', '#8E8772', '#A09A89', '#BDB9AD'],
+    'qrntn-hud': ['#22201B', '#36342C', '#4C483D', '#5C5749', '#736D5C', '#87806C'],
   } as const
 
   // Locating the block by SELECTOR is not enough: the shared primitives rule is
-  // written across two lines, so `[data-nx-theme="pratiq-hud"] {` occurs there
+  // written across two lines, so `[data-nx-theme="qrntn-hud"] {` occurs there
   // too and a naive indexOf finds that one instead. Identify the ramp block by
   // what it declares — only the ramps carry --nx-grey-100.
   const withoutComments = CSS.replace(/\/\*[\s\S]*?\*\//g, '')
@@ -100,7 +100,7 @@ describe('the brand faces', () => {
   // for IBM Plex Mono at all. Nothing failed, because nothing looked.
   it('names IBM Plex Mono first, ahead of the inherited stack', () => {
     const decl = /--nx-font-mono:\s*([^;]+);/.exec(CSS)?.[1] ?? ''
-    expect(decl, 'pratiq.css must declare --nx-font-mono').not.toEqual('')
+    expect(decl, 'qrntn.css must declare --nx-font-mono').not.toEqual('')
     expect(decl).toMatch(/^"IBM Plex Mono"/)
     // The fallbacks stay, so a machine without the face renders what it did
     // before rather than dropping to a serif.
@@ -115,8 +115,8 @@ describe('the brand faces', () => {
   })
 
   it('exposes both through the brand vocabulary, which BRAND.md promises', () => {
-    expect(declared.has('--pq-font-mono')).toBe(true)
-    expect(declared.has('--pq-font-display')).toBe(true)
+    expect(declared.has('--qrn-font-mono')).toBe(true)
+    expect(declared.has('--qrn-font-display')).toBe(true)
   })
 })
 
@@ -178,7 +178,7 @@ describe('the viewer head', () => {
 // ── the numbers, re-derived rather than trusted ─────────────────────────────
 //
 // THE ROOT CAUSE THIS EXISTS FOR. Every contrast ratio in this system was
-// published in four places — pratiq.css comments, PALETTE.md's tables,
+// published in four places — qrntn.css comments, PALETTE.md's tables,
 // index.ts's `contrast` map, and BRAND.md's prose — and derived in none. Each
 // was typed by hand from a tool's stdout, and that tool had a bug: solve-ramp
 // measured the colour it had SOLVED for (a float) and printed the hex it had
@@ -226,7 +226,7 @@ describe('every published ratio equals the ratio of the hex beside it', () => {
     expect(GROUND).toBe('#0A0C0B')
   })
 
-  it('pratiq.css: each annotated colour matches its own comment', () => {
+  it('qrntn.css: each annotated colour matches its own comment', () => {
     const rows = [...CSS.matchAll(/--[\w-]+:\s*(#[0-9A-Fa-f]{6});\s*\/\*\s*([\d.]+):1/g)]
     expect(rows.length, 'no annotated colours found — the regex has gone stale').toBeGreaterThan(6)
     for (const [, hex, claimed] of rows) {
@@ -246,7 +246,7 @@ describe('every published ratio equals the ratio of the hex beside it', () => {
 })
 
 describe('the contrast map underneath themeMeetsAA', () => {
-  for (const theme of ['pratiq', 'pratiq-hud'] as const) {
+  for (const theme of ['qrntn', 'qrntn-hud'] as const) {
     it(`${theme}: every entry equals the ratio of its declared colour`, () => {
       const entries = contrast[theme] as unknown as Record<string, number>
       let checked = 0
@@ -281,7 +281,7 @@ describe('the contrast map underneath themeMeetsAA', () => {
   }
 
   it('themeMeetsAA agrees with the stylesheet, not merely with the map', () => {
-    for (const theme of ['pratiq', 'pratiq-hud'] as const) {
+    for (const theme of ['qrntn', 'qrntn-hud'] as const) {
       const truth =
         ratio(hexFor(theme, 'grey-300')!, GROUND) >= WCAG.AA_TEXT &&
         ratio(hexFor(theme, 'grey-200')!, GROUND) >= WCAG.AA_NON_TEXT

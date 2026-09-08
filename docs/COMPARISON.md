@@ -1,13 +1,13 @@
-# What `pratiq` is not
+# What `qrntn` is not
 
-`pratiq` sits beside four categories of tool it is routinely mistaken for. Each
-of them establishes something real that `pratiq` does not, and naming the
+`qrntn` sits beside four categories of tool it is routinely mistaken for. Each
+of them establishes something real that `qrntn` does not, and naming the
 difference is more useful than claiming to be better than any of them.
 
 ## Not a scanner
 
-There is a scanner inside `pratiq` and it is not the claim. A scan reports what
-it recognises; `pratiq` records what a person decided. The scanner exists to
+There is a scanner inside `qrntn` and it is not the claim. A scan reports what
+it recognises; `qrntn` records what a person decided. The scanner exists to
 produce evidence for that decision, and [`THREATS.md`](THREATS.md) states what
 it does not catch.
 
@@ -23,7 +23,7 @@ A signature proves a skill came from who it says it came from and arrived
 unmodified. That is worth having and it is a different claim: it does not
 establish that anybody looked at what the skill does.
 
-`pratiq` runs on your machine, against the bytes you actually received, and
+`qrntn` runs on your machine, against the bytes you actually received, and
 requires trusting neither the registry nor the publisher's key.
 
 ## Not an eval
@@ -35,8 +35,8 @@ row, which is a different artefact serving a different purpose.
 ## Not a sandbox
 
 Containment is an explicit non-goal, recorded in [`THREATS.md`](THREATS.md).
-`pratiq` governs what you let in; a sandbox governs what it does once it is in.
-These are complementary controls, and a skill you adopted is outside `pratiq`'s
+`qrntn` governs what you let in; a sandbox governs what it does once it is in.
+These are complementary controls, and a skill you adopted is outside `qrntn`'s
 model entirely from the moment it loads.
 
 ---
@@ -53,7 +53,7 @@ origin · an eval produces a score · a ledger row records that somebody decided
 | Automated evaluation | How a skill performs, expressed as a score | A score is not a decision, and no person is answerable for it |
 | Contributor vouching | Who may contribute | What any given artefact contains |
 | `cargo-vet` (Rust) | A recorded human audit against a specific crate version, enforced by a policy layer | Nothing — it is the pattern this borrows, in a different ecosystem |
-| `pratiq` | That a named person decided about these exact bytes, and that a gate enforces the decision | Everything in [`THREATS.md`](THREATS.md) |
+| `qrntn` | That a named person decided about these exact bytes, and that a gate enforces the decision | Everything in [`THREATS.md`](THREATS.md) |
 
 The rows above describe categories, not verdicts on particular products, and a
 working setup will draw from several of them at once.

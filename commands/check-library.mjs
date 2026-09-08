@@ -15,7 +15,7 @@
 //
 // **Not to be confused with the check.mjs at the repository root.** That one
 // runs this project's own gates — every test and mutation self-test — and is
-// not shipped; a stranger who installs pratiq has no use for it and no copy of
+// not shipped; a stranger who installs qrntn has no use for it and no copy of
 // it. This one runs against a stranger's library and knows nothing about tests.
 // Two different questions that happen to share an English word, kept in two
 // files with different names for that reason.
@@ -30,7 +30,7 @@
 //   0   clean
 //   1   set up, and inconsistent      — an unfiled skill, a broken edge, a
 //                                       ledger entry that no longer matches
-//   2   not set up, or not a library  — and the refusal names `pratiq init`
+//   2   not set up, or not a library  — and the refusal names `qrntn init`
 //
 // A script consuming this has to tell 1 and 2 apart: "your library is wrong"
 // and "you have not made one yet" lead to different next actions, and
@@ -70,7 +70,7 @@ try {
 // this one either.
 //
 // The fallback is not a degraded mode. A script deployed alone was not reached
-// through bin/pratiq.mjs, so PRATIQ_VERB is unset and the module would return
+// through bin/qrntn.mjs, so QRNTN_VERB is unset and the module would return
 // this exact string anyway.
 let invokedAs = () => `node ${basename(fileURLToPath(import.meta.url))}`
 try {
@@ -137,10 +137,10 @@ export function checkLedger(library, passthrough = [], script = join(HERE, 'ledg
 // is one that has never been set up, which init exists for and is named.
 export function readiness(library) {
 	if (!existsSync(join(library, 'skills'))) {
-		return { ready: false, why: `no skills/ in ${library}`, detail: 'pratiq acts on a library whose skills live in skills/ — this does not look like one' }
+		return { ready: false, why: `no skills/ in ${library}`, detail: 'qrntn acts on a library whose skills live in skills/ — this does not look like one' }
 	}
 	if (!existsSync(join(library, 'catalog.json'))) {
-		return { ready: false, why: `${library} has no catalog.json`, detail: 'it has never been set up — run `pratiq init` to file its skills and write its ledger' }
+		return { ready: false, why: `${library} has no catalog.json`, detail: 'it has never been set up — run `qrntn init` to file its skills and write its ledger' }
 	}
 	return { ready: true }
 }

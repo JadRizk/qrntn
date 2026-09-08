@@ -68,7 +68,7 @@ function mkHost(label) {
 // SK-97: intake resolves its library from the working directory now, not from
 // where the script sits, so the host is passed as cwd rather than as a depth to
 // copy the script into. This exercises the default path — the one a stranger
-// takes when they run `npx pratiq intake` inside their own library.
+// takes when they run `npx qrntn intake` inside their own library.
 function intake(host, args) {
 	const r = spawnSync('node', [SRC, ...args], { cwd: host, encoding: 'utf8' })
 	return { code: r.status, out: r.stdout, err: r.stderr, all: r.stdout + r.stderr }

@@ -1,8 +1,8 @@
-<title>Free Pratique</title>
+<title>qrntn</title>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="pratiq records and gates a human decision about an agent skill before it is allowed to load.">
-<meta property="og:title" content="pratiq">
+<meta name="description" content="qrntn records and gates a human decision about an agent skill before it is allowed to load.">
+<meta property="og:title" content="qrntn">
 <meta property="og:description" content="Records and gates a human decision about an agent skill before it is allowed to load.">
 <meta property="og:image" content="../brand/assets/social/social-card.png">
 <link rel="icon" href="../brand/assets/logo/favicon.svg">
@@ -12,7 +12,7 @@
 
 <style>
   /* ══════════════════════════════════════════════════════════════════════
-     pratiq — the site.
+     qrntn — the site.
      Single-theme, deliberately: the system this is built on ships no light
      palette (brand/BRAND.md, "Dark only"), so there is none to design.
      Every colour is painted explicitly. Values: brand/PALETTE.md.
@@ -307,11 +307,11 @@
 
   <!-- ══════════════════════════════════════════════════════════ hero -->
   <header class="hero">
-    <svg viewBox="0 0 470 130" role="img" aria-label="pratiq">
-      <text x="0" y="90" textLength="336" lengthAdjust="spacing"
-            font-size="112" font-weight="600" fill="#F2ECD9">prati</text>
-      <rect x="338" y="32" width="50" height="58" fill="#FEDD00"/>
-      <rect x="388" y="32" width="11" height="84" fill="#FEDD00"/>
+    <svg viewBox="0 0 403 130" role="img" aria-label="qrntn">
+      <rect x="0" y="32" width="50" height="58" fill="#FEDD00"/>
+      <rect x="50" y="32" width="11" height="84" fill="#FEDD00"/>
+      <text x="67" y="90" textLength="269" lengthAdjust="spacing"
+            font-size="112" font-weight="600" fill="#F2ECD9">rntn</text>
     </svg>
 
     <p class="lede">Records and gates <strong>a human decision</strong> about an agent
@@ -330,25 +330,27 @@
   <section>
     <p class="eyebrow">Status</p>
     <h2>Nothing is published yet</h2>
-    <p>There is no npm package and no release, so <code>npx pratiq</code> does not run.
+    <p>There is no npm package and no release, so <code>npx qrntn</code> does not run.
       Everything below is the <strong>0.1.0 surface</strong>, not an installation
       instruction. It works today from a checkout, against a library holding no copy
       of the tool.</p>
     <p>Saying so here rather than after you have tried it is the same rule the tool
       applies to itself: a stage without a verb is listed as a stage without a verb,
       and deleting the row to make the list look complete is precisely the move
-      <code>pratiq</code> exists to refuse.</p>
+      <code>qrntn</code> exists to refuse.</p>
   </section>
 
   <!-- ════════════════════════════════════════════════════ the inversion -->
   <section>
     <p class="eyebrow">The name</p>
     <h2>One yellow flag, two opposite meanings</h2>
-    <p><em>Free pratique</em> is the clearance a ship is granted after inspection —
-      entered in its papers, without which nobody boards and nobody disembarks. A
-      vessel requesting it flies <strong>signal flag Q</strong>: a plain yellow
-      rectangle with nothing on it. It is pronounced <em>prah-teek</em>, and yes, you
-      have to be told that.</p>
+    <p><code>qrntn</code> is <em>quarantine</em> with the vowels struck out, and it is
+      pronounced <strong>quarantine</strong> — you type the consonants and you say the
+      word, the way <code>qty</code> and <code>mgmt</code> always have. A vessel that has
+      arrived and has not yet been inspected flies <strong>signal flag Q</strong>: a plain
+      yellow rectangle with nothing on it. <em>Free pratique</em> is the clearance that
+      comes after, entered in the ship's papers, without which nobody boards and nobody
+      disembarks — and that half is yours, not the tool's.</p>
 
     <div class="inversion">
       <div class="then">
@@ -378,7 +380,7 @@
     <h2>It is not a scanner</h2>
     <p>Scanners exist. Cisco, NVIDIA, Socket, Snyk and VirusTotal all ship one, along
       with eight open-source projects, and <strong>every one of them has been bypassed
-      on record</strong>. <code>pratiq</code> has a scanner inside it, and that is not
+      on record</strong>. <code>qrntn</code> has a scanner inside it, and that is not
       the claim.</p>
     <p>The claim is that a human decision is recorded against specific bytes, and a
       gate enforces that decision without being able to be argued with. Nothing is
@@ -398,12 +400,12 @@
       <div class="stage">
         <span class="stage-name">intake</span>
         <span class="stage-what">fetch from a link at a pinned commit, <em>without reading it</em>, into quarantine</span>
-        <span class="stage-verb">pratiq intake</span>
+        <span class="stage-verb">qrntn intake</span>
       </div>
       <div class="stage">
         <span class="stage-name">audit</span>
         <span class="stage-what">scan every file as data; a human adjudicates every finding; report only, never edit</span>
-        <span class="stage-verb">pratiq audit</span>
+        <span class="stage-verb">qrntn audit</span>
       </div>
       <div class="stage">
         <span class="stage-name">adopt / decline</span>
@@ -413,22 +415,22 @@
       <div class="stage">
         <span class="stage-name">promote</span>
         <span class="stage-what">re-scan and move it into the library — or refuse</span>
-        <span class="stage-verb">pratiq promote</span>
+        <span class="stage-verb">qrntn promote</span>
       </div>
       <div class="stage">
         <span class="stage-name">ledger</span>
         <span class="stage-what">one machine-written record per held skill: origin, hashes, verdict, contract, install, usage</span>
-        <span class="stage-verb">pratiq ledger</span>
+        <span class="stage-verb">qrntn ledger</span>
       </div>
       <div class="stage">
         <span class="stage-name">refresh</span>
         <span class="stage-what">re-diff the pinned commit against upstream; report drift, never move the pin</span>
-        <span class="stage-verb">pratiq refresh</span>
+        <span class="stage-verb">qrntn refresh</span>
       </div>
       <div class="stage">
         <span class="stage-name">usage</span>
         <span class="stage-what">count what actually fired, from local transcripts, reading no message text</span>
-        <span class="stage-verb">pratiq usage</span>
+        <span class="stage-verb">qrntn usage</span>
       </div>
       <div class="stage">
         <span class="stage-name">view</span>
@@ -440,7 +442,7 @@
     <div class="term">
       <div class="term-bar">A held skill, awaiting a decision</div>
       <div class="term-body">
-<pre><span class="t-dim">$</span> <span class="t-ink">pratiq audit tidy-notes</span>
+<pre><span class="t-dim">$</span> <span class="t-ink">qrntn audit tidy-notes</span>
 
 <span class="t-q">Q</span> <span class="t-ink">tidy-notes</span> <span class="t-dim">— held, awaiting a decision</span>
   <span class="t-dim">origin</span>   github.com/someone/skills
@@ -521,10 +523,10 @@
       order and deliberately: co-locating a tool with its only consumer is how you never
       discover what the tool assumes about its host.</p>
     <div class="meta">
-      <span>Free pratique</span>
-      <span>prah-teek</span>
+      <span>qrntn</span>
+      <span>pronounced quarantine</span>
       <span>Apache-2.0</span>
-      <span><a href="https://github.com/JadRizk/pratiQ">github.com/JadRizk/pratiQ</a></span>
+      <span><a href="https://github.com/JadRizk/qrntn">github.com/JadRizk/qrntn</a></span>
     </div>
   </footer>
 

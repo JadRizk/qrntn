@@ -1,7 +1,7 @@
 # What every command assumes about its host
 
 > **Written before the split, and left as written.** This document was produced
-> inside the skill library `pratiq` was built in, and every "this repository" and
+> inside the skill library `qrntn` was built in, and every "this repository" and
 > `plan/…` path below refers to *that* library, not to this one. It is a record
 > of what was measured on a date, not a description of the code as it stands —
 > the findings it lists are the reason the code changed, and editing it to match

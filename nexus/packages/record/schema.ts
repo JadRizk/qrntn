@@ -99,7 +99,7 @@ export const AuditRecordSchema = z.object({
 	// not say what it left unchecked" is itself an entry — the honest one.
 	notChecked: z.array(z.string().min(1)),
 
-	// Present when the skill predates the tool. `pratiq init` writes one for
+	// Present when the skill predates the tool. `qrntn init` writes one for
 	// every skill already held, so a library with fifty un-audited skills can
 	// adopt the tool without a cliff — and so that an un-audited skill is a
 	// recorded fact rather than a silence.

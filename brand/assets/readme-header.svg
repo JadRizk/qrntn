@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 240" width="1200" height="240" role="img" aria-label="pratiq — records and gates a human decision about an agent skill before it loads">
-  <title>pratiq</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 240" width="1200" height="240" role="img" aria-label="qrntn — records and gates a human decision about an agent skill before it loads">
+  <title>qrntn</title>
   <desc>Dark-grounded on purpose: the brand ships no light theme, and a dark
   banner reads correctly on both GitHub themes where a bare mark would not.</desc>
   <defs>
@@ -15,11 +15,11 @@
   <rect width="1200" height="240" fill="#08090A"/>
   <rect x="0" y="0" width="1200" height="7" fill="url(#h2)"/>
 
-  <text x="64" y="132" textLength="276" lengthAdjust="spacing"
+  <rect x="64" y="84" width="45" height="48" fill="#FEDD00"/>
+  <rect x="109" y="84" width="9" height="68" fill="#FEDD00"/>
+  <text x="119" y="132" textLength="221" lengthAdjust="spacing"
         font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
-        font-size="92" font-weight="600" fill="#F2ECD9">prati</text>
-  <rect x="342" y="84" width="45" height="48" fill="#FEDD00"/>
-  <rect x="387" y="84" width="9" height="68" fill="#FEDD00"/>
+        font-size="92" font-weight="600" fill="#F2ECD9">rntn</text>
 
   <text x="64" y="186" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
         font-size="20" fill="#BDB9AD">Records and gates a human decision about an agent skill before it loads.</text>
@@ -29,7 +29,7 @@
         font-size="15" letter-spacing="3" fill="#7F7966">SIGNAL Q</text>
   <text x="1136" y="156" text-anchor="end"
         font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
-        font-size="15" letter-spacing="3" fill="#7F7966">FREE PRATIQUE</text>
+        font-size="15" letter-spacing="3" fill="#7F7966">PRONOUNCED QUARANTINE</text>
 
   <rect width="1200" height="240" fill="url(#s2)"/>
 </svg>

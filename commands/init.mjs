@@ -8,7 +8,7 @@
 // refusal. Against what a stranger actually has — a folder of skills, no
 // catalog.json, no ledger/, not a git repository — `check-catalog` exits 2 and
 // `ledger --check` exits 1, both for reasons about the library not being
-// pratiq-shaped rather than about it being inconsistent. That is the "reason
+// qrntn-shaped rather than about it being inconsistent. That is the "reason
 // about itself" failure `foreign-library.test.mjs` exists to prevent, one level
 // above the code that suite tests.
 //
@@ -74,7 +74,7 @@ try {
 // this one either.
 //
 // The fallback is not a degraded mode. A script deployed alone was not reached
-// through bin/pratiq.mjs, so PRATIQ_VERB is unset and the module would return
+// through bin/qrntn.mjs, so QRNTN_VERB is unset and the module would return
 // this exact string anyway.
 let invokedAs = () => `node ${basename(fileURLToPath(import.meta.url))}`
 try {
@@ -168,7 +168,7 @@ export function init(library) {
 	// the directory would be deciding where someone keeps their skills. Named,
 	// and refused, rather than silently creating a shape.
 	if (!existsSync(skillsDir)) {
-		return { ok: false, code: 2, why: `no skills/ directory in ${library}`, detail: 'there is nothing here to file — pratiq acts on a library whose skills live in skills/' }
+		return { ok: false, code: 2, why: `no skills/ directory in ${library}`, detail: 'there is nothing here to file — qrntn acts on a library whose skills live in skills/' }
 	}
 
 	const skills = heldSkillDirs(library)
@@ -239,7 +239,7 @@ function main(argv) {
 			? `wrote    ${result.written.length} ledger entr${result.written.length === 1 ? 'y' : 'ies'}${result.skipped.length ? `, kept ${result.skipped.length}` : ''}`
 			: `kept     ${result.skipped.length} ledger entr${result.skipped.length === 1 ? 'y' : 'ies'} — nothing missing`
 	)
-	console.log(`\n${lib.root} is set up. \`pratiq check\` will now report on the library rather than on its absence.\n`)
+	console.log(`\n${lib.root} is set up. \`qrntn check\` will now report on the library rather than on its absence.\n`)
 	return 0
 }
 

@@ -68,7 +68,7 @@ const schema = {
 		'GENERATED from nexus/packages/record/schema.ts. Do not edit. ' +
 		'Run `npx tsx nexus/scripts/build-record-schema.mjs` and commit the result.',
 	$schema: 'https://json-schema.org/draft/2020-12/schema',
-	title: 'pratiq audit record',
+	title: 'qrntn audit record',
 	...convert(AuditRecordSchema),
 }
 

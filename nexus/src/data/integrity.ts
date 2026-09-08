@@ -228,7 +228,7 @@ export function referencedNames(edges: ReadonlyArray<Pick<EdgeRecord, 'to'>>): s
 // file, so it could only ever export the tree it lived in — the exact defect
 // SK-97 found in six of seven commands and fixed there ("named, or the place
 // you are standing, never inferred from where the tool happens to be
-// installed"). This script never got that fix, which is why `pratiq view`
+// installed"). This script never got that fix, which is why `qrntn view`
 // could not be pointed at anybody else's library.
 //
 // Pure and string-only on purpose: this module is bundled for the browser, so

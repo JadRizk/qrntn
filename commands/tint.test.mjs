@@ -230,7 +230,7 @@ function withEnv(vars, fn) {
 	// made the import static again in one of the seven commands they do not
 	// copy. This asserts the property directly, and for the command with the
 	// cheapest refusal to reach.
-	const alone = mkdtempSync(join(tmpdir(), 'pratiq-tint-alone-'))
+	const alone = mkdtempSync(join(tmpdir(), 'qrntn-tint-alone-'))
 	try {
 		cpSync(join(HERE, CATALOG), join(alone, CATALOG))
 		const orphan = run(join(alone, CATALOG), { FORCE_COLOR: '3' })
@@ -251,7 +251,7 @@ function withEnv(vars, fn) {
 // ── the audit report, which is where findings actually appear ──────────────
 {
 	const AUDIT = join(HERE, 'audit-skill.mjs')
-	const dir = mkdtempSync(join(tmpdir(), 'pratiq-tint-audit-'))
+	const dir = mkdtempSync(join(tmpdir(), 'qrntn-tint-audit-'))
 	const runAudit = (target, env) =>
 		spawnSync(process.execPath, [AUDIT, target], { encoding: 'utf8', env: { ...process.env, ...env } })
 	// eslint-disable-next-line no-control-regex
@@ -385,7 +385,7 @@ function withEnv(vars, fn) {
 {
 	// All nine commands import this module, so a tarball without it is nine
 	// verbs that print `refused:` in plain text forever and nobody notices —
-	// which is a quieter failure than the missing-verb one pratiq.test.mjs
+	// which is a quieter failure than the missing-verb one qrntn.test.mjs
 	// guards, and worth its own line. That suite reads the VERB table and cannot
 	// see this file, because it is not a verb.
 	const files = JSON.parse(readFileSync(join(HERE, '..', 'package.json'), 'utf8')).files ?? []

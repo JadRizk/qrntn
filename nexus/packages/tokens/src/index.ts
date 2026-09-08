@@ -7,7 +7,7 @@
    ========================================================================== */
 
 /**
- * `pratiq` and `pratiq-hud` carry the brand (brand/BRAND.md). They keep this
+ * `qrntn` and `qrntn-hud` carry the brand (brand/BRAND.md). They keep this
  * module's existing primitive KEYS rather than introducing new ones, so every
  * consumer and every assertion below goes on working — but two keys hold a
  * different colour under them, and the names are the seam:
@@ -19,7 +19,7 @@
  * primitives across four themes. Recorded here rather than left to be found in
  * the table below.
  */
-export type NexusTheme = "hud" | "hud-aa" | "pratiq" | "pratiq-hud";
+export type NexusTheme = "hud" | "hud-aa" | "qrntn" | "qrntn-hud";
 
 
 /** Foreground roles. `critical` is the only route to the alarm colour. */
@@ -84,13 +84,13 @@ export const contrast = {
   },
   // Ramps solved, not eyeballed:
   //   node brand/scripts/solve-ramp.mjs 45 0.11 "#0A0C0B" --both
-  pratiq: {
+  qrntn: {
     phosphor: 16.61, acid: 14.53, lime: 15.2, data: 12.19, sodium: 8.32,
     violet: 6.27, alarm: 5.44,
     "grey-100": 1.6, "grey-200": 3.02, "grey-300": 4.51,
     "grey-400": 5.47, "grey-500": 6.99, "grey-600": 10.0,
   },
-  "pratiq-hud": {
+  "qrntn-hud": {
     phosphor: 16.61, acid: 14.53, lime: 15.2, data: 12.19, sodium: 8.32,
     violet: 6.27, alarm: 5.44,
     "grey-100": 1.21, "grey-200": 1.57, "grey-300": 2.15,

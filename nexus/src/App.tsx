@@ -13,7 +13,7 @@ import { TypeLegend } from './ui/TypeLegend.tsx'
 import { StatsPanel } from './ui/StatsPanel.tsx'
 import { DetailsDrawer } from './ui/DetailsDrawer.tsx'
 import { DOCK_WIDTH, LeftDock } from './ui/LeftDock.tsx'
-import { PratiqWordmark } from './ui/PratiqWordmark.tsx'
+import { QrntnWordmark } from './ui/QrntnWordmark.tsx'
 import type { GraphSnapshot } from './data/types.ts'
 import { KIND_LABEL, KIND_ORDER, type NodeKind } from './data/taxonomy.ts'
 import type { FrameGeometry, GraphController, GraphNodeSnapshot, GraphStats, OpticsConfig, PhysicsConfig } from '../packages/graph/src/types.ts'
@@ -264,7 +264,7 @@ export function App() {
             aria-label="Go to home"
             style={{ display: 'flex', background: 'none', border: 0, padding: 0, margin: 0, cursor: 'pointer' }}
           >
-            <PratiqWordmark size="1.5rem" />
+            <QrntnWordmark size="1.5rem" />
           </button>
         </div>
         <HazardRule />

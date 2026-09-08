@@ -56,7 +56,7 @@ try {
 // this one either.
 //
 // The fallback is not a degraded mode. A script deployed alone was not reached
-// through bin/pratiq.mjs, so PRATIQ_VERB is unset and the module would return
+// through bin/qrntn.mjs, so QRNTN_VERB is unset and the module would return
 // this exact string anyway.
 let invokedAs = () => `node ${basename(fileURLToPath(import.meta.url))}`
 try {
@@ -551,9 +551,9 @@ if (args.includes('--json')) {
 	// successful promotion closed with an instruction nobody could follow.
 	//
 	// The replacement names the step without naming one product's directory.
-	// catalog.json and edges are pratiq's own and stay; how a skill gets in front
+	// catalog.json and edges are qrntn's own and stay; how a skill gets in front
 	// of an agent is the harness's business, and there are around forty of them.
-	// `pratiq install` is a real verb worth having and is deferred, not forgotten
+	// `qrntn install` is a real verb worth having and is deferred, not forgotten
 	// — until it exists, saying what to do beats naming a file that is not there.
 	const next = 'symlink or copy it where your agent loads skills from'
 	console.log(origin === 'authored' ? `Declare its edges, then ${next}.\n` : `Add it to catalog.json, declare its edges, then ${next}.\n`)

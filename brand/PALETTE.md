@@ -1,4 +1,4 @@
-# pratiq — palette
+# qrntn — palette
 
 Every number here is reproducible. The command that produced each table is
 printed beside it; re-run it rather than trusting the table.
@@ -9,7 +9,7 @@ Ramp solver: `brand/scripts/solve-ramp.mjs` (in this repository)
 > **This is a delta on nexus, not a fork.** Three primitives move, each forced by
 > a measurement recorded below. Every other value in `nexus/packages/tokens` is
 > inherited unchanged, and the semantic layer is untouched — so a component
-> written against nexus renders under pratiq without an edit.
+> written against nexus renders under qrntn without an edit.
 
 ---
 
@@ -73,16 +73,16 @@ freely, components may not.
 
 | Token | Value | Named for |
 |---|---|---|
-| `--pq-void` | `#08090A` | Inherited from nexus unchanged |
-| `--pq-panel` | `#0A0C0B` | Inherited from nexus unchanged |
-| `--pq-raised` | `#12110E` | Nexus's raised, re-tinted warm |
-| `--pq-quebec` | `#FEDD00` | **New.** Signal flag Q, by its name in the code of signals |
-| `--pq-paper` | `#F2ECD9` | **New.** Ship's papers, not phosphor |
-| `--pq-rust` | `#BF6408` | **New.** Nexus's sodium, dimmed to fix severity ordering |
-| `--pq-alarm` | `#FF2E63` | Inherited from nexus unchanged. **RESTRICTED** — reachable only through `--pq-critical` |
-| `--pq-grey-100 … 600` | see ramp | Re-solved warm at nexus's own targets |
+| `--qrn-void` | `#08090A` | Inherited from nexus unchanged |
+| `--qrn-panel` | `#0A0C0B` | Inherited from nexus unchanged |
+| `--qrn-raised` | `#12110E` | Nexus's raised, re-tinted warm |
+| `--qrn-quebec` | `#FEDD00` | **New.** Signal flag Q, by its name in the code of signals |
+| `--qrn-paper` | `#F2ECD9` | **New.** Ship's papers, not phosphor |
+| `--qrn-rust` | `#BF6408` | **New.** Nexus's sodium, dimmed to fix severity ordering |
+| `--qrn-alarm` | `#FF2E63` | Inherited from nexus unchanged. **RESTRICTED** — reachable only through `--qrn-critical` |
+| `--qrn-grey-100 … 600` | see ramp | Re-solved warm at nexus's own targets |
 
-`--pq-quebec` earns its name: Quebec *is* the flag's designation in the
+`--qrn-quebec` earns its name: Quebec *is* the flag's designation in the
 International Code of Signals, so the primitive is named by appearance and by
 citation at once.
 
@@ -99,12 +99,12 @@ node brand/scripts/solve-ramp.mjs 45 0.11 "#0A0C0B"
 
 | Token | Value | Target | Measured | For |
 |---|---|---|---|---|
-| `--pq-grey-100` | `#38352D` | 1.61 | 1.60:1 | Decorative hairline. **Never text** |
-| `--pq-grey-200` | `#625E4F` | 3.01 | 3.02:1 | UI boundary — WCAG 1.4.11 |
-| `--pq-grey-300` | `#7F7966` | 4.52 | 4.51:1 | Disabled text — WCAG 1.4.3 |
-| `--pq-grey-400` | `#8E8772` | 5.50 | 5.47:1 | |
-| `--pq-grey-500` | `#A09A89` | 7.00 | 6.99:1 | |
-| `--pq-grey-600` | `#BDB9AD` | 10.00 | 10.00:1 | |
+| `--qrn-grey-100` | `#38352D` | 1.61 | 1.60:1 | Decorative hairline. **Never text** |
+| `--qrn-grey-200` | `#625E4F` | 3.01 | 3.02:1 | UI boundary — WCAG 1.4.11 |
+| `--qrn-grey-300` | `#7F7966` | 4.52 | 4.51:1 | Disabled text — WCAG 1.4.3 |
+| `--qrn-grey-400` | `#8E8772` | 5.50 | 5.47:1 | |
+| `--qrn-grey-500` | `#A09A89` | 7.00 | 6.99:1 | |
+| `--qrn-grey-600` | `#BDB9AD` | 10.00 | 10.00:1 | |
 
 **Measured is not target, and the gap is quantisation.** The solver bisects in
 continuous lightness and then rounds to 8-bit, so the hex it emits sits a little
@@ -120,13 +120,13 @@ same way and are exact.
 
 ### The immersive ramp — and it is the one that ships
 
-Nexus carries two ramps and pratiq inherits both, for the reason nexus needed
+Nexus carries two ramps and qrntn inherits both, for the reason nexus needed
 both: `packages/graph`'s edge register gains were **measured off the rendered
 scene** against the immersive greys (`nexus/src/adapt/toGraphCanvas.ts`'s
 `EDGE_HEX`), so a brand that shipped only the AA ramp would silently lighten
 every structural edge in the graph.
 
-`nexus/src/main.tsx` selects **`pratiq-hud`**, so this is what the viewer
+`nexus/src/main.tsx` selects **`qrntn-hud`**, so this is what the viewer
 actually renders — not the table above.
 
 ```bash
@@ -135,22 +135,22 @@ node brand/scripts/solve-ramp.mjs 45 0.11 "#0A0C0B" --immersive
 
 | Token | Value | Target | Measured | Clears 4.5:1 |
 |---|---|---|---|---|
-| `--pq-grey-100` | `#22201B` | 1.21 | 1.21:1 | no |
-| `--pq-grey-200` | `#36342C` | 1.57 | 1.57:1 | no |
-| `--pq-grey-300` | `#4C483D` | 2.14 | 2.15:1 | **no** |
-| `--pq-grey-400` | `#5C5749` | 2.72 | 2.72:1 | **no** |
-| `--pq-grey-500` | `#736D5C` | 3.80 | 3.80:1 | **no** |
-| `--pq-grey-600` | `#87806C` | 4.98 | 4.98:1 | yes |
+| `--qrn-grey-100` | `#22201B` | 1.21 | 1.21:1 | no |
+| `--qrn-grey-200` | `#36342C` | 1.57 | 1.57:1 | no |
+| `--qrn-grey-300` | `#4C483D` | 2.14 | 2.15:1 | **no** |
+| `--qrn-grey-400` | `#5C5749` | 2.72 | 2.72:1 | **no** |
+| `--qrn-grey-500` | `#736D5C` | 3.80 | 3.80:1 | **no** |
+| `--qrn-grey-600` | `#87806C` | 4.98 | 4.98:1 | yes |
 
 **Four of these back text roles and three of them fail the floor**, which is
-stated here rather than left to be discovered: `grey-300` is `--pq-ink-disabled`,
-`grey-400` is nexus's `fg-tertiary`, `grey-500` is `--pq-ink-subtle`. The
+stated here rather than left to be discovered: `grey-300` is `--qrn-ink-disabled`,
+`grey-400` is nexus's `fg-tertiary`, `grey-500` is `--qrn-ink-subtle`. The
 targets are nexus's own `hud` numbers, inherited unchanged so that the swap
 moved hue and nothing else — but inheriting them means inheriting the failure,
 and `BRAND.md`'s contrast non-negotiable carries the matching exception.
 
 This is the open decision, not a settled one. Either the viewer moves to
-`pratiq` (AA) and the edge gains are re-measured against the lighter ramp, or
+`qrntn` (AA) and the edge gains are re-measured against the lighter ramp, or
 the immersive variant stays and is documented as an opt-in surface the way
 nexus documents its own.
 
@@ -167,18 +167,18 @@ node ~/.claude/skills/design-direction/scripts/validate-palette.mjs \
 
 | Role | Maps to | Ratio | Job |
 |---|---|---|---|
-| `--pq-canvas` | `--pq-void` | — | Page ground |
-| `--pq-surface` | `--pq-panel` | — | Panels, insets, table headers |
-| `--pq-ambient` | `--pq-grey-100` | — | Subdivision inside a panel. **Never text** |
-| `--pq-line` | `--pq-grey-200` | — | The edge of a thing. The default boundary |
-| `--pq-ink` | `--pq-paper` | 16.61:1 | Headings, emphasis |
-| `--pq-ink-muted` | `--pq-grey-600` | 10.00:1 | Body copy |
-| `--pq-ink-subtle` | `--pq-grey-500` | 6.99:1 | Labels, metadata, eyebrows |
-| `--pq-ink-disabled` | `--pq-grey-300` | 4.51:1 | Disabled text |
-| `--pq-accent` | `--pq-quebec` | 14.53:1 | The signal |
-| `--pq-accent-ink` | `#000000` | 15.56:1 | Text on the accent |
-| `--pq-warning` | `--pq-rust` | 4.71:1 | Degraded — drift found, pin moved |
-| `--pq-critical` | `--pq-alarm` | 5.44:1 | Refused, destructive |
+| `--qrn-canvas` | `--qrn-void` | — | Page ground |
+| `--qrn-surface` | `--qrn-panel` | — | Panels, insets, table headers |
+| `--qrn-ambient` | `--qrn-grey-100` | — | Subdivision inside a panel. **Never text** |
+| `--qrn-line` | `--qrn-grey-200` | — | The edge of a thing. The default boundary |
+| `--qrn-ink` | `--qrn-paper` | 16.61:1 | Headings, emphasis |
+| `--qrn-ink-muted` | `--qrn-grey-600` | 10.00:1 | Body copy |
+| `--qrn-ink-subtle` | `--qrn-grey-500` | 6.99:1 | Labels, metadata, eyebrows |
+| `--qrn-ink-disabled` | `--qrn-grey-300` | 4.51:1 | Disabled text |
+| `--qrn-accent` | `--qrn-quebec` | 14.53:1 | The signal |
+| `--qrn-accent-ink` | `#000000` | 15.56:1 | Text on the accent |
+| `--qrn-warning` | `--qrn-rust` | 4.71:1 | Degraded — drift found, pin moved |
+| `--qrn-critical` | `--qrn-alarm` | 5.44:1 | Refused, destructive |
 
 **The primary form device is line.** There is no elevation and no surface step
 worth the name, so the boundary ladder carries all structure. One hairline is
@@ -187,16 +187,16 @@ boundary, and a page of them has no hierarchy at squint distance.
 
 | Tier | Colour | Weight | Means |
 |---|---|---|---|
-| ambient | `--pq-ambient` | `--pq-hairline` | Subdivision inside a panel. Not meant to be noticed |
-| line | `--pq-line` | `--pq-hairline` | The edge of a thing. The default — when in doubt, this |
-| line-strong | `--pq-line` | `--pq-line-strong-width` | A boundary that outranks its neighbours |
-| accent | `--pq-accent` | `--pq-line-strong-width` | Live state. Focus, the held row, the finding |
+| ambient | `--qrn-ambient` | `--qrn-hairline` | Subdivision inside a panel. Not meant to be noticed |
+| line | `--qrn-line` | `--qrn-hairline` | The edge of a thing. The default — when in doubt, this |
+| line-strong | `--qrn-line` | `--qrn-line-strong-width` | A boundary that outranks its neighbours |
+| accent | `--qrn-accent` | `--qrn-line-strong-width` | Live state. Focus, the held row, the finding |
 
-**Four tiers, three colours.** `line-strong` is `--pq-line` drawn at 2px: it
+**Four tiers, three colours.** `line-strong` is `--qrn-line` drawn at 2px: it
 outranks its neighbours by weight, not by hue. There is deliberately no
 `line-strong` **colour** token, because a fourth grey between `grey-200` and
 the accent would be a second name for one idea — the thing this document's own
-rules forbid. The weight is a token (`--pq-line-strong-width`) so the tier is
+rules forbid. The weight is a token (`--qrn-line-strong-width`) so the tier is
 still nameable in code.
 
 **Focus.** 2px Quebec outline at 2px offset, **plus a 6px outer glow at 35%**.
@@ -290,7 +290,7 @@ in fixed order, never cycled.
 ## Type scale
 
 Closed. These are the only sizes that exist. Interface steps are nexus's,
-inherited at `--pq-font-scale: 1.15`; display steps are new, and exist only on
+inherited at `--qrn-font-scale: 1.15`; display steps are new, and exist only on
 marketing surfaces.
 
 | Step | Size | Line height | For |
@@ -307,10 +307,10 @@ marketing surfaces.
 
 | Token | Value | For |
 |---|---|---|
-| `--pq-font-mono` | IBM Plex Mono, then nexus's original stack | Logotype, interface, body |
-| `--pq-font-display` | Archivo, then a grotesque fallback | Headings on marketing surfaces only |
-| `--pq-font-scale` | 1.15 (`pratiq`) · 1 (`pratiq-hud`) | Multiplier on every interface step above |
-| `--pq-tracking-label` | 0.14em | Uppercase chrome labels |
+| `--qrn-font-mono` | IBM Plex Mono, then nexus's original stack | Logotype, interface, body |
+| `--qrn-font-display` | Archivo, then a grotesque fallback | Headings on marketing surfaces only |
+| `--qrn-font-scale` | 1.15 (`qrntn`) · 1 (`qrntn-hud`) | Multiplier on every interface step above |
+| `--qrn-tracking-label` | 0.14em | Uppercase chrome labels |
 
 Body tracking `0.01em`; display tracking `-0.02em`. Neither is a token — one
 consumer each, and a role with one consumer is not a role yet.

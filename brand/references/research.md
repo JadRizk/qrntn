@@ -11,7 +11,7 @@ chosen for recognisability at sea, and is maintained by the IMO.
 - *Taken:* the whole thing — proportion, colour, and the rule that nothing is
   printed on it. The blankness is the specification, not a simplification.
 - *Refused:* the rest of the alphabet. A system that used more than one flag
-  would be spelling something, and `pratiq` is a name, not a hoist.
+  would be spelling something, and `qrntn` is a name, not a hoist.
 - <https://en.wikipedia.org/wiki/International_maritime_signal_flags>
 - <https://www.crwflags.com/fotw/flags/xf~ics.html>
 
@@ -23,7 +23,7 @@ health clearance." Same rectangle, opposite meanings, separated only by whether
 an inspection has happened.
 
 - *Taken:* the inversion, entire. It is the product.
-- *Refused:* the plague imagery. `pratiq` holds things in quarantine; it does
+- *Refused:* the plague imagery. `qrntn` holds things in quarantine; it does
   not call them diseased, and a skill awaiting a decision is not an infection.
 - <https://en.wikipedia.org/wiki/Yellow_Jack_(flag)>
 - <https://www.crwflags.com/fotw/flags/xf~q.html>
@@ -43,7 +43,7 @@ green, with a lowercase sans wordmark.
 green-and-blue, "we verified this for you."
 
 - *Refused wholesale.* Every one of these marks asserts a machine-determined
-  safety verdict. `pratiq`'s README opens by refusing exactly that claim — it
+  safety verdict. `qrntn`'s README opens by refusing exactly that claim — it
   has a scanner inside it and says that is not the claim — so a shield would be
   the logo contradicting the first paragraph of the documentation.
 - *Taken:* the positioning lesson only. On an npm page beside these, a yellow
@@ -52,7 +52,7 @@ green-and-blue, "we verified this for you."
 - <https://brandfetch.com/snyk.io> · <https://brandfetch.com/socket.dev> ·
   <https://brandfetch.com/sigstore.dev>
 
-**`cargo-vet` (Mozilla).** The closest thing in any ecosystem to what `pratiq`
+**`cargo-vet` (Mozilla).** The closest thing in any ecosystem to what `qrntn`
 does: in-tree audit records, named criteria, a tool that certifies and never
 edits.
 

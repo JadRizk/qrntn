@@ -1,7 +1,7 @@
 # The command surface, and what the CLI owes each script
 
 > **Written before the split, and left as written.** This document was produced
-> inside the skill library `pratiq` was built in, and every "this repository" and
+> inside the skill library `qrntn` was built in, and every "this repository" and
 > `plan/…` path below refers to *that* library, not to this one. It is a record
 > of what was measured on a date, not a description of the code as it stands —
 > the findings it lists are the reason the code changed, and editing it to match
@@ -47,22 +47,22 @@ here so the list is complete rather than convenient.
 | `promote <name>` | re-scan and move it into the library, or refuse | **wrap, blocked on** the `../../../scripts/ledger.mjs` import | This is the gate. Two implementations of the gate is precisely the failure the "cannot drift" clause exists to prevent, so reimplementation is not available. But today it reaches three levels up for a sibling and dies with `ERR_MODULE_NOT_FOUND` before its own checks run (`PORTABILITY.md` finding 1). The coupling is cut in SK-97, then this is a wrap |
 | `refresh [name]` | re-diff the pin against upstream; report drift, never move the pin | **wrap, blocked on** an explicit root | Same import problem, plus the worse one: run from any working directory it refreshes the tree it *lives in* and says nothing about which tree that was — it did exactly that during SK-86's own experiment and wrote ten ledger entries by accident (finding 4). Wrapping a command that silently acts on the wrong library ships the bug with a nicer name on it |
 | `usage` | count what actually fired, from local transcripts | **wrap, blocked on** the `./ledger.mjs` import | Reads `~/.claude` transcripts, so the *interesting* half is already host-relative and portable. Only the ledger write needs a root. 774 lines whose whole point is what they decline to read; re-typing that is how the privacy property gets lost |
-| `check` | is this library internally consistent | **reimplement** | `scripts/check.mjs` is **this repository's CI runner**, not a library check — it spawns `plan/next.mjs`, the `nexus/` workspace, the diagrams gate and the plugin-manifest gate, and in a foreign library it scores 4/8 with raw `MODULE_NOT_FOUND` traces inside gate output. `pratiq check` has to mean something a stranger can want: every held skill is filed, every declared edge resolves, every ledger entry matches the bytes on disk. Same word, different command. The repo keeps its own `check.mjs` |
+| `check` | is this library internally consistent | **reimplement** | `scripts/check.mjs` is **this repository's CI runner**, not a library check — it spawns `plan/next.mjs`, the `nexus/` workspace, the diagrams gate and the plugin-manifest gate, and in a foreign library it scores 4/8 with raw `MODULE_NOT_FOUND` traces inside gate output. `qrntn check` has to mean something a stranger can want: every held skill is filed, every declared edge resolves, every ledger entry matches the bytes on disk. Same word, different command. The repo keeps its own `check.mjs` |
 | `view` | the graph, served locally | **package, not wrap** | `nexus/` is a Vite + React + three.js application. The CLI is zero-dependency plain Node and stays that way, so `view` ships a **prebuilt static bundle** and a small plain-Node static server. The user installs no build toolchain and no dependency tree; the viewer is a build artifact of the release, not something resolved on their machine |
 | `overlap` | which descriptions compete for the same request | **wrap** `skill-adopt/scripts/overlap.mjs` | Self-contained, degrades correctly on an absent `edges.json`, needs only a root. It is a real command and it earns its own name — it stops being mislabelled as `adopt` |
 | `ledger --check` | regenerate the derivable fields and diff them | **wrap** `scripts/ledger.mjs` | It is the schema and the only writer contract three other commands depend on. Exposed in its own right because `check` calls it and a reader who fails that gate needs to run the narrower thing |
-| `manifest` | generate `.claude-plugin/plugin.json` | **does not ship** | It produces a Claude-specific artifact. `pratiq` is cross-harness — that is the argument for a CLI over a plugin in the first place — so a command that emits one harness's packaging format does not belong on its surface. It stays in this repository, which is a thing that publishes a Claude plugin. If other harnesses ever want the same treatment it returns as `pratiq export <format>`, not before |
+| `manifest` | generate `.claude-plugin/plugin.json` | **does not ship** | It produces a Claude-specific artifact. `qrntn` is cross-harness — that is the argument for a CLI over a plugin in the first place — so a command that emits one harness's packaging format does not belong on its surface. It stays in this repository, which is a thing that publishes a Claude plugin. If other harnesses ever want the same treatment it returns as `qrntn export <format>`, not before |
 
 ## The drift mechanism, stated
 
 Six rows say *wrap*, and the promise is only worth something if it is mechanical.
 After SK-97 there is exactly one implementation of each command, and it lives in
-`pratiq`. The three skills that ship scripts today — `skill-intake`,
+`qrntn`. The three skills that ship scripts today — `skill-intake`,
 `skill-audit`, `skill-adopt` — stop shipping them and cite the command instead:
-their spines say `npx pratiq intake …` where they currently say
+their spines say `npx qrntn intake …` where they currently say
 `node scripts/intake.mjs …`.
 
-That inverts a dependency on purpose. A skill that calls `npx pratiq promote`
+That inverts a dependency on purpose. A skill that calls `npx qrntn promote`
 needs the tool present; a skill that carries `promote.mjs` and reaches
 `../../../scripts/ledger.mjs` needs *this whole repository* present, which is
 finding 1 of `PORTABILITY.md` and the reason `skill-adopt` is published but not

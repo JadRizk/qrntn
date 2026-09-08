@@ -1,5 +1,5 @@
 {
-  "name": "@oxx/pratiq",
+  "name": "qrntn",
   "version": "0.1.0",
   "description": "Record and gate a human decision about an agent skill before it is allowed to load.",
   "keywords": [
@@ -14,15 +14,15 @@
   "author": "Jad Rizk",
   "type": "module",
   "bin": {
-    "pratiq": "./bin/pratiq.mjs"
+    "qrntn": "./bin/qrntn.mjs"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/JadRizk/pratiQ.git"
+    "url": "git+https://github.com/JadRizk/qrntn.git"
   },
-  "homepage": "https://github.com/JadRizk/pratiQ#readme",
+  "homepage": "https://github.com/JadRizk/qrntn#readme",
   "bugs": {
-    "url": "https://github.com/JadRizk/pratiQ/issues"
+    "url": "https://github.com/JadRizk/qrntn/issues"
   },
   "publishConfig": {
     "access": "public"
@@ -31,7 +31,7 @@
     "node": ">=20"
   },
   "files": [
-    "bin/pratiq.mjs",
+    "bin/qrntn.mjs",
     "commands/audit-skill.mjs",
     "commands/check-catalog.mjs",
     "commands/check-library.mjs",

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// Self-test: does pratiq.test.mjs actually catch anything?
+// Self-test: does qrntn.test.mjs actually catch anything?
 //
 // A suite that has only ever passed has not been tested. This mutates
-// bin/pratiq.mjs in specific ways, runs the suite against each mutant, and
+// bin/qrntn.mjs in specific ways, runs the suite against each mutant, and
 // asserts the suite FAILS every time.
 //
 // The sandbox is larger here than for the other self-tests, and has to be: the
@@ -12,7 +12,7 @@
 // miniature tree — bin/, commands/, package.json — and the mutant is the only
 // thing in it that differs from what ships.
 //
-//   node pratiq.self-test.mjs
+//   node qrntn.self-test.mjs
 
 import { spawnSync } from 'node:child_process'
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
@@ -22,8 +22,8 @@ import { fileURLToPath } from 'node:url'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const REPO = join(HERE, '..')
-const SRC = join(REPO, 'bin', 'pratiq.mjs')
-const TEST = join(HERE, 'pratiq.test.mjs')
+const SRC = join(REPO, 'bin', 'qrntn.mjs')
+const TEST = join(HERE, 'qrntn.test.mjs')
 
 const MUTATIONS = [
 	{
@@ -58,8 +58,8 @@ const MUTATIONS = [
 		// Drift between the two copies of the name. Nothing throws: the command
 		// reads a variable the dispatcher never set, and quietly names its file.
 		name: 'the env var name drifts from the one commands/ reads',
-		find: "const VERB_ENV = 'PRATIQ_VERB'",
-		replace: "const VERB_ENV = 'PRATIQ_COMMAND'"
+		find: "const VERB_ENV = 'QRNTN_VERB'",
+		replace: "const VERB_ENV = 'QRNTN_COMMAND'"
 	},
 	{
 		name: 'getting it wrong and asking directly answer the same way',
@@ -91,16 +91,16 @@ const MUTATIONS = [
 
 const original = readFileSync(SRC, 'utf8')
 
-const dir = mkdtempSync(join(tmpdir(), 'pratiq-bin-self-'))
+const dir = mkdtempSync(join(tmpdir(), 'qrntn-bin-self-'))
 mkdirSync(join(dir, 'bin'), { recursive: true })
 mkdirSync(join(dir, 'commands'), { recursive: true })
 cpSync(join(REPO, 'package.json'), join(dir, 'package.json'))
 for (const f of readdirSync(join(REPO, 'commands'))) {
 	if (f.endsWith('.mjs') || f.endsWith('.md') || f.endsWith('.json')) cpSync(join(REPO, 'commands', f), join(dir, 'commands', f))
 }
-cpSync(TEST, join(dir, 'commands', 'pratiq.test.mjs'))
-const sandboxSrc = join(dir, 'bin', 'pratiq.mjs')
-const sandboxTest = join(dir, 'commands', 'pratiq.test.mjs')
+cpSync(TEST, join(dir, 'commands', 'qrntn.test.mjs'))
+const sandboxSrc = join(dir, 'bin', 'qrntn.mjs')
+const sandboxTest = join(dir, 'commands', 'qrntn.test.mjs')
 
 let asExpected = 0
 let unexpected = 0

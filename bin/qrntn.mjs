@@ -31,7 +31,7 @@
 // faults — "commands/ is missing" — and a module that reports commands/ is
 // missing cannot itself be imported from commands/. Not hypothetical: importing
 // tint.mjs here turned the friendly "this is a packaging fault, please report
-// it" message into an ERR_MODULE_NOT_FOUND stack trace, and pratiq.test.mjs
+// it" message into an ERR_MODULE_NOT_FOUND stack trace, and qrntn.test.mjs
 // caught it. The front door stays plain so that it still works when nothing
 // else does.
 
@@ -47,18 +47,18 @@ const COMMANDS = join(HERE, '..', 'commands')
 // name, and duplicated ON PURPOSE for the reason in the header: this file
 // cannot import from commands/, because its whole job when commands/ is missing
 // is to say so. Importing the constant would reintroduce the exact fault that
-// header describes, to save one line. commands/pratiq.test.mjs asserts the two
+// header describes, to save one line. commands/qrntn.test.mjs asserts the two
 // agree, so the copy cannot drift silently.
-const VERB_ENV = 'PRATIQ_VERB'
+const VERB_ENV = 'QRNTN_VERB'
 
 // The verb is the contract; the filename behind it is not. `audit` runs
 // audit-skill.mjs and `check` runs check-library.mjs — the latter deliberately
 // not named check.mjs, which is this repository's own gate runner and does not
 // ship. Keeping the mapping explicit is what lets a filename change without the
 // surface moving. Ordered as the lifecycle runs, not alphabetically, because
-// this table is also what `pratiq` with no arguments prints.
+// this table is also what `qrntn` with no arguments prints.
 //
-// Two things must stay true of every row, and commands/pratiq.test.mjs asserts
+// Two things must stay true of every row, and commands/qrntn.test.mjs asserts
 // both: the script exists, and it is listed in package.json's `files` allowlist.
 // The second is the one that cannot be caught by running this from a checkout —
 // a verb missing from the allowlist works here and is broken in the tarball.
@@ -90,9 +90,9 @@ function refuse(message, detail) {
 // running. npm puts package.json in every tarball whatever `files` says, so
 // there is no allowlist entry to forget.
 //
-// Printed bare, with no name and no `v`. `pratiq --version` is something a
+// Printed bare, with no name and no `v`. `qrntn --version` is something a
 // script reads far more often than a person does, and a bare version needs no
-// parsing; `pratiq` with no arguments already says what this is.
+// parsing; `qrntn` with no arguments already says what this is.
 function version() {
 	const manifest = join(HERE, '..', 'package.json')
 	// The same packaging fault as a missing command, and said the same way. A
@@ -116,8 +116,8 @@ function version() {
 
 function usage() {
 	const width = Math.max(...VERBS.map(([v]) => v.length))
-	console.log('\npratiq — record and gate a human decision about a skill before it loads\n')
-	console.log('  pratiq <verb> [options]\n')
+	console.log('\nqrntn — record and gate a human decision about a skill before it loads\n')
+	console.log('  qrntn <verb> [options]\n')
 	for (const [verb, , blurb] of VERBS) console.log(`  ${verb.padEnd(width)}  ${blurb}`)
 	console.log('\n  Every verb takes --library <dir>, falling back to SKILL_LIBRARY and then')
 	console.log('  the working directory. Run a verb with no arguments for its own usage.\n')
@@ -128,7 +128,7 @@ const [verb, ...rest] = process.argv.slice(2)
 if (!verb || verb === '--help' || verb === '-h') {
 	usage()
 	// Asking what this does is not an error when it is asked directly, and is
-	// when it is the result of getting it wrong. `pratiq` bare answers 0.
+	// when it is the result of getting it wrong. `qrntn` bare answers 0.
 	process.exit(verb ? 0 : 2)
 }
 
@@ -144,7 +144,7 @@ const file = script(verb)
 if (!file) {
 	refuse(
 		`no such verb: "${verb}"`,
-		`  pratiq has ${VERBS.length}: ${VERBS.map(([v]) => v).join(', ')}.\n  Run \`pratiq\` for what each one does.`
+		`  qrntn has ${VERBS.length}: ${VERBS.map(([v]) => v).join(', ')}.\n  Run \`qrntn\` for what each one does.`
 	)
 }
 
@@ -161,7 +161,7 @@ if (!existsSync(path)) {
 
 // Arguments are still passed through untouched — this is not an argument. The
 // command needs to know which verb reached it so its own usage line can say
-// `pratiq promote` instead of `promote.mjs`, and the environment is where that
+// `qrntn promote` instead of `promote.mjs`, and the environment is where that
 // belongs: a flag would be a flag every command had to parse and every caller
 // could set, and the whole point is that this is not something a caller says.
 // commands/invoked-as.mjs is the only reader, and it validates rather than

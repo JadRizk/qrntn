@@ -81,7 +81,7 @@
 // ~/.claude/skills, which made every default run of --check assert something
 // about one vendor's directory layout on behalf of a user who may load skills
 // from somewhere else entirely, or from nowhere. SURFACE.md excludes the
-// `manifest` verb from the surface because pratiq is cross-harness; that
+// `manifest` verb from the surface because qrntn is cross-harness; that
 // argument did not survive contact with a default that was not.
 //
 // A gate that only passes on one machine is not a gate — which was the
@@ -134,7 +134,7 @@ try {
 // this one either.
 //
 // The fallback is not a degraded mode. A script deployed alone was not reached
-// through bin/pratiq.mjs, so PRATIQ_VERB is unset and the module would return
+// through bin/qrntn.mjs, so QRNTN_VERB is unset and the module would return
 // this exact string anyway.
 let invokedAs = () => `node ${basename(fileURLToPath(import.meta.url))}`
 try {
@@ -417,7 +417,7 @@ export function computeInstall(name, root) {
 
 // The location, resolved in the order the README freezes: an explicit flag,
 // then the environment, then Claude's. Named SKILL_INSTALL_ROOT to match
-// SKILL_LIBRARY rather than a PRATIQ_* of its own — two naming conventions in
+// SKILL_LIBRARY rather than a QRNTN_* of its own — two naming conventions in
 // one surface, decided at different times for no recoverable reason, is its
 // own defect.
 export const DEFAULT_INSTALL_ROOT = join(homedir(), '.claude', 'skills')

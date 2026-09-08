@@ -57,7 +57,7 @@ const OUT_PATH = join(dirname(fileURLToPath(import.meta.url)), '..', 'public', '
 // has no reason to recognise — the same two things `init` refuses on.
 if (!existsSync(join(LIBRARY, 'skills'))) {
   refuse(
-    `no skills/ directory in ${LIBRARY} — pratiq acts on a library whose skills live in skills/\n` +
+    `no skills/ directory in ${LIBRARY} — qrntn acts on a library whose skills live in skills/\n` +
       `  name one with --library <dir>, or SKILL_LIBRARY; otherwise this is the directory you are standing in`
   )
 }
@@ -132,7 +132,7 @@ const PROVENANCE_FILES = new Set(['SKILL.md', 'AUDIT.md', 'ORIGIN.md'])
 
 const catalog = readJSON(join(LIBRARY, 'catalog.json'))
 // `blurb` defaults rather than being required. A catalog written by
-// `pratiq init` has none — buildCatalog() emits {id, title, skills} — so
+// `qrntn init` has none — buildCatalog() emits {id, title, skills} — so
 // requiring it here made a library this project's own tool creates
 // unexportable, which nothing noticed while the input root was hardcoded to
 // a tree that happened to have them. The schema still guarantees a string in

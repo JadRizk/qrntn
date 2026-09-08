@@ -1,6 +1,6 @@
 // tint.mjs — the only place this tool is allowed to emit colour.
 //
-// The decision this module encodes is RESTRAINT, not decoration. `pratiq`
+// The decision this module encodes is RESTRAINT, not decoration. `qrntn`
 // printed no colour at all until now, and the argument for keeping it that way
 // was good: a gate that shouts is easier to misread in a pipe, and every escape
 // sequence is another surface to get wrong. What overrode it is that two things
@@ -41,7 +41,7 @@ import { env, stdout, stderr } from 'node:process'
 // boolean is the usual way to get it wrong (`NO_COLOR=0` still means no
 // colour).
 //
-// The TTY check is per-stream on purpose: `pratiq audit > report.txt` should
+// The TTY check is per-stream on purpose: `qrntn audit > report.txt` should
 // write a clean file while still colouring the refusal it prints to stderr.
 
 function level(stream) {
