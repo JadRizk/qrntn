@@ -273,6 +273,18 @@ from a checkout and that `pratiq view` lands in `0.2`.
 
 **The frozen contracts are stated, not left to inference.** See below.
 
+**Landed.** All three changes, plus two the section did not call for and that
+fall out of the work since: `commands/` now names `init` in the code map, and
+the `Status` section separates "nothing is published" from "here is what runs
+from a checkout" — the old wording said the pipeline "runs here, on this
+library", which stopped being true when `--library` landed and would have read
+as the tool still being host-coupled.
+
+The exit-code table is the load-bearing part. It was verified against the source
+before being written down rather than transcribed from this document: every one
+of the nine commands has at least one path returning `2`, and none of them use
+it for a refusal.
+
 ### 7 · Release mechanics, and the gate that catches the packaging bug
 
 - `prepublishOnly: node check.mjs`. A publish that skips the gates is how the
