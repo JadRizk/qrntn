@@ -1,0 +1,10 @@
+{
+  "name": "@nexus/tokens",
+  "private": true,
+  "type": "module",
+  "$vendored": {
+    "from": "../nexus/packages/tokens (private nexus-ds repo)",
+    "note": "One-time copy, no live dependency back to ../nexus. Owned from here.",
+    "copiedAt": "2026-08-25"
+  }
+}

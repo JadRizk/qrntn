@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 739 130" width="739" height="130" role="img" aria-label="qrntn, set as quarantine with the struck vowels ghosted">
+  <title>qrntn — ghosted-vowel lockup</title>
+  <desc>The candidate against the plain wordmark. The full word is set; the
+  vowels the name strikes out are held at 0.18, so the mark reads "quarantine"
+  close up and "qrntn" at a glance. Same characters, two readings, and which one
+  you get depends on how hard you looked — which is the flag's own inversion in
+  type. No textLength here: tspans and lengthAdjust do not compose, so this
+  relies on the mono advance rather than pinning it. OUTLINE THE TEXT before
+  using this anywhere the font is not guaranteed to load.</desc>
+  <rect x="0" y="32" width="50" height="58" fill="#FEDD00"/>
+  <rect x="50" y="32" width="11" height="84" fill="#FEDD00"/>
+  <text x="67" y="90" font-family="IBM Plex Mono, ui-monospace, monospace"
+        font-size="112" font-weight="600" letter-spacing="-1" fill="#F2ECD9"><tspan opacity="0.18">ua</tspan>r<tspan opacity="0.18">a</tspan>nt<tspan opacity="0.18">i</tspan>n<tspan opacity="0.18">e</tspan></text>
+</svg>

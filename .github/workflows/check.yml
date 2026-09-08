@@ -1,0 +1,75 @@
+# SK-97 §7. Every gate this project has, on every Node it claims to support.
+#
+# The argument for CI here is stronger than the usual one, and this repository
+# produced it. `promote.test.mjs` once passed two consecutive full runs on
+# BORROWED STATE — a real `~/.claude/skills/skill-audit` that happened to be
+# installed on the machine running it — and only failed when that install
+# disappeared mid-session. It had been asserting nothing for two runs and said
+# so nowhere.
+#
+# A clean runner has no `~/.claude`, no skill library, and no copy of this tool
+# anywhere but the checkout. That is exactly the environment that catches the
+# class, and it is the class this whole project exists to worry about. A
+# local-only gate cannot ask the question.
+#
+# `nexus/` is deliberately NOT installed. check.mjs skips its two gates when
+# `nexus/node_modules` is absent and says so rather than passing quietly — and
+# `view` is not in 0.1.0, so the viewer's toolchain must not be able to block
+# the pipeline's release. When `view` ships, add a job; do not add it here.
+#
+# Publishing is not automated. §7: a publish pipeline debugged during the first
+# publish is two problems at once. See docs/SHIPPING.md §7 for what that defers.
+
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gates:
+    name: node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    strategy:
+      # Every version reports. A matrix that stops at the first failure hides
+      # whether the fault is version-specific, which is the only reason to run
+      # more than one.
+      fail-fast: false
+      matrix:
+        # The floor is what package.json declares; the ceiling is current. Node
+        # 20 went end-of-life in April 2026 and is still supported here because
+        # `engines` says so — the floor and the tested matrix are allowed to
+        # differ, but not silently.
+        node: ['20', '22', '24']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      # No `npm ci`. There are no dependencies, and installing none of them
+      # would still create a node_modules this project does not otherwise have.
+      - name: every gate
+        run: node check.mjs
+
+  # The smoke gate runs inside check.mjs above, on every Node in the matrix.
+  # This job asserts the thing a matrix cannot: that the tarball's own contents
+  # are what the manifest says, printed where a human reviewing a release can
+  # read them without running anything.
+  tarball:
+    name: what the tarball contains
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: npm pack --dry-run
+        run: npm pack --dry-run

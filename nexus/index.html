@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>qrntn — the library</title>
+    <meta
+      name="description"
+      content="The skill library as a graph: every skill, where it came from, what the audit found, whether it has ever fired, and whether its upstream has moved."
+    />
+
+    <!-- Dark only, and DECLARED rather than implied. Without this the browser
+         paints native scrollbars, form controls and the pre-paint canvas light:
+         a white flash on load and light scrollbars over a #08090A page, on a
+         surface that has no light theme to switch to (brand/BRAND.md, "Dark
+         only"). theme-color matches the canvas so browser chrome that tints
+         itself agrees with the page rather than framing it. -->
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#08090A" />
+
+    <!-- Signal flag Q, served as a FILE rather than inlined as a data: URI.
+         Two reasons, and the second is the one that matters: Safari does not
+         reliably render an SVG favicon from a data URI, and the percent-encoded
+         copy was a third place the mark's geometry lived — after
+         brand/assets/logo/{favicon,mark-flag}.svg — with nothing checking the
+         three agreed. public/favicon.svg is a copy of the brand original and
+         qrntn.contract.test.ts fails if they drift. -->
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+
+    <!-- DELIBERATELY ABSENT: og:*, twitter:*, apple-touch-icon, robots.
+         The viewer is served on localhost and nothing leaves the machine, so a
+         link preview is for a link nobody can follow. They would be decoration
+         that looks like configuration. -->
+    <style>
+      /* Both, and not belt-and-braces: the <meta> above sets the document's
+         USED colour scheme, but it leaves the CSS property at `normal`, so
+         anything reading the computed value — and some engines' form-control
+         and scrollbar rendering — never learns the page is dark. Measured:
+         with only the meta, getComputedStyle(documentElement).colorScheme
+         returned "normal". */
+      html { color-scheme: dark; }
+      html, body, #root { margin: 0; padding: 0; width: 100%; height: 100%; background: #08090A; }
+      /* a11y/domOverlay.ts's focusable entity buttons: invisible until
+         focused, a visible ring only then — the WebGL canvas already draws
+         the glyph these sit over. */
+      .nx-entity { border-radius: 50%; }
+      .nx-entity:focus-visible {
+        outline: 2px solid #FEDD00;
+        outline-offset: 2px;
+        /* Matches qrntn.css's focus rule — the glow is what stops the one
+           indicator a keyboard user depends on from looking identical to an
+           accent hover a mouse user causes by accident. */
+        box-shadow: 0 0 0 6px rgba(254, 221, 0, 0.35);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

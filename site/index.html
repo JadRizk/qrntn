@@ -1,0 +1,533 @@
+<title>qrntn</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="qrntn records and gates a human decision about an agent skill before it is allowed to load.">
+<meta property="og:title" content="qrntn">
+<meta property="og:description" content="Records and gates a human decision about an agent skill before it is allowed to load.">
+<meta property="og:image" content="../brand/assets/social/social-card.png">
+<link rel="icon" href="../brand/assets/logo/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+  /* ══════════════════════════════════════════════════════════════════════
+     qrntn — the site.
+     Single-theme, deliberately: the system this is built on ships no light
+     palette (brand/BRAND.md, "Dark only"), so there is none to design.
+     Every colour is painted explicitly. Values: brand/PALETTE.md.
+     ════════════════════════════════════════════════════════════════════ */
+  :root {
+    --void:   #08090A;
+    --panel:  #0A0C0B;
+    --raised: #12110E;
+
+    --quebec: #FEDD00;   /* 14.53:1 */
+    --paper:  #F2ECD9;   /* 16.61:1 */
+    --rust:   #BF6408;   /*  4.71:1 */
+    --alarm:  #FF2E63;   /*  5.44:1 */
+
+    --g100: #38352D;     /*  1.61:1 — hairline, never text */
+    --g200: #625E4F;     /*  3.01:1 */
+    --g300: #7F7966;     /*  4.52:1 */
+    --g500: #A09A89;     /*  7.00:1 */
+    --g600: #BDB9AD;     /* 10.00:1 */
+
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --disp: "Archivo", "Helvetica Neue", Arial, sans-serif;
+
+    --tick: 10px;
+    --gut: clamp(20px, 5vw, 64px);
+    --measure: 66ch;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    margin: 0;
+    background: var(--void);
+    color: var(--paper);
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 1.7;
+    letter-spacing: 0.01em;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* The CRT wash, at the amplitude the tokens specify. Low enough that it is
+     a surface the type sits on, not damage to the type. */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 90;
+    background: repeating-linear-gradient(to bottom, rgba(0,0,0,0.26) 0 1px, transparent 1px 3px);
+  }
+
+  .hazard {
+    height: 7px;
+    background: repeating-linear-gradient(-60deg, var(--quebec) 0 12px, var(--void) 12px 24px);
+  }
+
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 var(--gut); }
+
+  a { color: var(--quebec); text-decoration: none; border-bottom: 1px solid var(--g200); }
+  a:hover { border-bottom-color: var(--quebec); }
+  a:focus-visible {
+    outline: 2px solid var(--quebec);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 6px rgba(254, 221, 0, 0.35);
+  }
+
+  /* ─────────────────────────────────────────────────────────────── hero */
+  .hero { padding: clamp(52px, 9vw, 108px) 0 clamp(40px, 6vw, 72px); }
+  .hero svg { width: min(430px, 82%); height: auto; display: block; }
+  /* The logotype's face comes from a CSS rule, not the SVG presentation
+     attribute: `font-family="var(--mono)"` is not resolved there, and the
+     silent fallback would be the browser's default serif — with the flag still
+     positioned for a 0.6em monospace advance. */
+  .hero svg text { font-family: var(--mono); }
+  .hero p.lede {
+    font-size: clamp(16px, 2.1vw, 21px);
+    line-height: 1.6;
+    color: var(--g600);
+    max-width: 52ch;
+    margin: 30px 0 0;
+  }
+  .hero p.lede strong { color: var(--paper); font-weight: 500; }
+
+  .statusbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-top: 30px;
+  }
+
+  /* The state vocabulary. Colour never carries these alone — warning and
+     critical measure ΔE 7.7 apart under deuteranopia — so the word is the
+     signal and the fill is a second copy of it. */
+  .state {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border: 1px solid currentColor;
+  }
+  .state[data-state="held"] {
+    color: var(--quebec);
+    background: repeating-linear-gradient(45deg, rgba(254,221,0,.16) 0 3px, transparent 3px 8px);
+  }
+  .state[data-state="cleared"] { color: #000; background: var(--quebec); border-color: var(--quebec); }
+  .state[data-state="refused"] { color: var(--alarm); }
+  .state[data-state="drift"]   { color: var(--rust); }
+  .state[data-state="none"]    { color: var(--g300); }
+
+  /* ──────────────────────────────────────────────────────────── sections */
+  section { padding: clamp(48px, 7vw, 88px) 0; border-top: 1px solid var(--g100); }
+
+  .eyebrow {
+    font-family: var(--disp);
+    font-weight: 800;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--quebec);
+    margin: 0 0 12px;
+  }
+  h2 {
+    font-family: var(--disp);
+    font-weight: 800;
+    font-size: clamp(23px, 3.4vw, 36px);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    margin: 0 0 18px;
+    text-wrap: balance;
+    max-width: 22ch;
+  }
+  section > .wrap > p { max-width: var(--measure); color: var(--g600); margin: 0 0 18px; }
+  section > .wrap > p:last-child { margin-bottom: 0; }
+  p strong { color: var(--paper); font-weight: 500; }
+  code {
+    font-family: var(--mono);
+    color: var(--quebec);
+    font-size: 0.94em;
+  }
+
+  /* ──────────────────────────────────────────── the inversion, two panels */
+  .inversion {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(258px, 1fr));
+    gap: 1px;
+    background: var(--g100);
+    border: 1px solid var(--g100);
+    margin-top: 32px;
+  }
+  .inversion > div { background: var(--panel); padding: 26px 24px; }
+  .inversion h3 {
+    font-family: var(--disp);
+    font-weight: 800;
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin: 0 0 12px;
+    color: var(--quebec);
+  }
+  .inversion p { margin: 0; color: var(--g600); font-size: 13px; line-height: 1.7; }
+  .inversion .then h3 { color: var(--g300); }
+
+  /* ────────────────────────────────────────────────────────── lifecycle */
+  .stages { margin-top: 34px; display: grid; gap: 1px; background: var(--g100); border: 1px solid var(--g100); }
+  .stage {
+    background: var(--panel);
+    display: grid;
+    grid-template-columns: 132px 1fr 210px;
+    gap: 20px;
+    padding: 18px 22px;
+    align-items: start;
+  }
+  .stage-name {
+    font-weight: 600;
+    color: var(--paper);
+    letter-spacing: 0.04em;
+  }
+  .stage-what { color: var(--g600); font-size: 13px; }
+  .stage-verb { font-size: 12px; color: var(--quebec); }
+  .stage-verb.byhand { color: var(--g300); }
+  @media (max-width: 720px) {
+    .stage { grid-template-columns: 1fr; gap: 6px; }
+  }
+
+  /* ───────────────────────────────────────────────────────── principles */
+  .principles { margin-top: 32px; display: grid; gap: 20px; }
+  .principle {
+    border-left: 2px solid var(--quebec);
+    background: var(--raised);
+    padding: 18px 22px;
+  }
+  .principle h3 {
+    font-family: var(--disp);
+    font-weight: 800;
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    margin: 0 0 7px;
+    color: var(--paper);
+  }
+  .principle p { margin: 0; color: var(--g600); font-size: 13px; line-height: 1.7; max-width: var(--measure); }
+
+  /* ──────────────────────────────────────────────────────── terminal */
+  .term {
+    margin-top: 32px;
+    background: var(--panel);
+    border: 1px solid var(--g100);
+    position: relative;
+  }
+  .term::before, .term::after {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    pointer-events: none;
+    background-repeat: no-repeat;
+  }
+  .term::before {
+    background-image:
+      linear-gradient(to right, var(--quebec) 0 var(--tick), transparent 0),
+      linear-gradient(to bottom, var(--quebec) 0 var(--tick), transparent 0);
+    background-size: var(--tick) 1px, 1px var(--tick);
+    background-position: top left, top left;
+  }
+  .term::after {
+    background-image:
+      linear-gradient(to left, var(--quebec) 0 var(--tick), transparent 0),
+      linear-gradient(to top, var(--quebec) 0 var(--tick), transparent 0);
+    background-size: var(--tick) 1px, 1px var(--tick);
+    background-position: bottom right, bottom right;
+  }
+  .term-bar {
+    border-bottom: 1px solid var(--g100);
+    padding: 9px 16px;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--g300);
+  }
+  .term-body { padding: 18px 16px 22px; overflow-x: auto; }
+  .term pre { margin: 0; font-size: 12.5px; line-height: 1.8; color: var(--g600); white-space: pre; }
+  .t-dim { color: var(--g300); }
+  .t-ink { color: var(--paper); }
+  .t-q   { color: var(--quebec); }
+  .t-r   { color: var(--rust); }
+  .t-a   { color: var(--alarm); }
+
+  /* ───────────────────────────────────────────────────────────── table */
+  .scroll-x { overflow-x: auto; margin-top: 30px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+  th, td { text-align: left; padding: 11px 16px 11px 0; border-bottom: 1px solid var(--g100); vertical-align: top; }
+  th {
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--g300);
+    font-weight: 500;
+  }
+  td { color: var(--g600); }
+  td:first-child { color: var(--paper); white-space: nowrap; }
+
+  /* ──────────────────────────────────────────────────────────── footer */
+  footer { border-top: 1px solid var(--g100); padding: 44px 0 72px; }
+  footer p { color: var(--g300); font-size: 12.5px; max-width: var(--measure); margin: 0 0 12px; }
+  footer .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--g300);
+    margin-top: 22px;
+  }
+</style>
+
+<div class="hazard"></div>
+
+<div class="wrap">
+
+  <!-- ══════════════════════════════════════════════════════════ hero -->
+  <header class="hero">
+    <svg viewBox="0 0 403 130" role="img" aria-label="qrntn">
+      <rect x="0" y="32" width="50" height="58" fill="#FEDD00"/>
+      <rect x="50" y="32" width="11" height="84" fill="#FEDD00"/>
+      <text x="67" y="90" textLength="269" lengthAdjust="spacing"
+            font-size="112" font-weight="600" fill="#F2ECD9">rntn</text>
+    </svg>
+
+    <p class="lede">Records and gates <strong>a human decision</strong> about an agent
+      skill before it is allowed to load. Local, dependency-free, and it never edits
+      what it inspects.</p>
+
+    <div class="statusbar">
+      <span class="state" data-state="cleared">0.1.0</span>
+      <span class="state" data-state="none">Not published</span>
+      <span class="state" data-state="none">Apache-2.0</span>
+      <span class="state" data-state="none">Node ≥ 20</span>
+    </div>
+  </header>
+
+  <!-- ════════════════════════════════════════════════════ not shipped -->
+  <section>
+    <p class="eyebrow">Status</p>
+    <h2>Nothing is published yet</h2>
+    <p>There is no npm package and no release, so <code>npx qrntn</code> does not run.
+      Everything below is the <strong>0.1.0 surface</strong>, not an installation
+      instruction. It works today from a checkout, against a library holding no copy
+      of the tool.</p>
+    <p>Saying so here rather than after you have tried it is the same rule the tool
+      applies to itself: a stage without a verb is listed as a stage without a verb,
+      and deleting the row to make the list look complete is precisely the move
+      <code>qrntn</code> exists to refuse.</p>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════ the inversion -->
+  <section>
+    <p class="eyebrow">The name</p>
+    <h2>One yellow flag, two opposite meanings</h2>
+    <p><code>qrntn</code> is <em>quarantine</em> with the vowels struck out, and it is
+      pronounced <strong>quarantine</strong> — you type the consonants and you say the
+      word, the way <code>qty</code> and <code>mgmt</code> always have. A vessel that has
+      arrived and has not yet been inspected flies <strong>signal flag Q</strong>: a plain
+      yellow rectangle with nothing on it. <em>Free pratique</em> is the clearance that
+      comes after, entered in the ship's papers, without which nobody boards and nobody
+      disembarks — and that half is yours, not the tool's.</p>
+
+    <div class="inversion">
+      <div class="then">
+        <h3>Then</h3>
+        <p>The yellow jack marked a vessel that <strong>was, or might be, harbouring
+          disease</strong>. Yellow marked infected houses before it ever went to sea.
+          Keep away — this has not been looked at.</p>
+      </div>
+      <div>
+        <h3>Now</h3>
+        <p>Under the modern code, Q flown alone reads <strong>“my vessel is healthy,
+          I request free pratique.”</strong> Come aboard and check. The flag comes down
+          only when a human has granted clearance.</p>
+      </div>
+      <div>
+        <h3>Which is the tool</h3>
+        <p>A skill in quarantine and a skill cleared into the library are the
+          <strong>same bytes under the same flag</strong>. Only a recorded human
+          decision separates them.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════ not a scanner -->
+  <section>
+    <p class="eyebrow">The claim</p>
+    <h2>It is not a scanner</h2>
+    <p>Scanners exist. Cisco, NVIDIA, Socket, Snyk and VirusTotal all ship one, along
+      with eight open-source projects, and <strong>every one of them has been bypassed
+      on record</strong>. <code>qrntn</code> has a scanner inside it, and that is not
+      the claim.</p>
+    <p>The claim is that a human decision is recorded against specific bytes, and a
+      gate enforces that decision without being able to be argued with. Nothing is
+      adopted because an agent concluded it looked fine. Put plainly: <strong>before a
+      skill you downloaded from a stranger runs inside your agent, someone has to have
+      actually read it.</strong></p>
+  </section>
+
+  <!-- ═════════════════════════════════════════════════════ lifecycle -->
+  <section>
+    <p class="eyebrow">The lifecycle</p>
+    <h2>Every stage is real, including the two without a verb</h2>
+    <p>A stage without a command is a thing you do by hand, not a thing that does not
+      exist. Both are marked.</p>
+
+    <div class="stages">
+      <div class="stage">
+        <span class="stage-name">intake</span>
+        <span class="stage-what">fetch from a link at a pinned commit, <em>without reading it</em>, into quarantine</span>
+        <span class="stage-verb">qrntn intake</span>
+      </div>
+      <div class="stage">
+        <span class="stage-name">audit</span>
+        <span class="stage-what">scan every file as data; a human adjudicates every finding; report only, never edit</span>
+        <span class="stage-verb">qrntn audit</span>
+      </div>
+      <div class="stage">
+        <span class="stage-name">adopt / decline</span>
+        <span class="stage-what">the human decides. A declined skill keeps a permanent row, so it is never re-audited from nothing</span>
+        <span class="stage-verb byhand">by hand · adopt in 0.2</span>
+      </div>
+      <div class="stage">
+        <span class="stage-name">promote</span>
+        <span class="stage-what">re-scan and move it into the library — or refuse</span>
+        <span class="stage-verb">qrntn promote</span>
+      </div>
+      <div class="stage">
+        <span class="stage-name">ledger</span>
+        <span class="stage-what">one machine-written record per held skill: origin, hashes, verdict, contract, install, usage</span>
+        <span class="stage-verb">qrntn ledger</span>
+      </div>
+      <div class="stage">
+        <span class="stage-name">refresh</span>
+        <span class="stage-what">re-diff the pinned commit against upstream; report drift, never move the pin</span>
+        <span class="stage-verb">qrntn refresh</span>
+      </div>
+      <div class="stage">
+        <span class="stage-name">usage</span>
+        <span class="stage-what">count what actually fired, from local transcripts, reading no message text</span>
+        <span class="stage-verb">qrntn usage</span>
+      </div>
+      <div class="stage">
+        <span class="stage-name">view</span>
+        <span class="stage-what">the graph, served locally against any skill library</span>
+        <span class="stage-verb byhand">from a checkout · view in 0.2</span>
+      </div>
+    </div>
+
+    <div class="term">
+      <div class="term-bar">A held skill, awaiting a decision</div>
+      <div class="term-body">
+<pre><span class="t-dim">$</span> <span class="t-ink">qrntn audit tidy-notes</span>
+
+<span class="t-q">Q</span> <span class="t-ink">tidy-notes</span> <span class="t-dim">— held, awaiting a decision</span>
+  <span class="t-dim">origin</span>   github.com/someone/skills
+  <span class="t-dim">pinned</span>   a4f19c2
+  <span class="t-dim">bytes</span>    sha256:9b1c…e07a
+
+  <span class="t-r">2 findings</span>  <span class="t-dim">a human adjudicates each</span>
+  <span class="t-a">1 refusal</span>   <span class="t-dim">network call in a script</span>
+
+<span class="t-dim">report only. nothing was written.</span>
+<span class="t-dim">exit</span> <span class="t-ink">1</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════ principles -->
+  <section>
+    <p class="eyebrow">Principles</p>
+    <h2>What it refuses to do</h2>
+
+    <div class="principles">
+      <div class="principle">
+        <h3>Fetch blind</h3>
+        <p>Never read what you fetch. An agent that has read the payload before the
+          payload was scanned has already lost, and no later gate recovers it.</p>
+      </div>
+      <div class="principle">
+        <h3>The record makes the decision checkable</h3>
+        <p>By someone who was not there. That is what a record is for, and it is why
+          the verdict is tied to specific bytes rather than to a name or a version.</p>
+      </div>
+      <div class="principle">
+        <h3>The gate cannot be reasoned with</h3>
+        <p>It is a script, not a sentence in a prompt, because the material being
+          processed is untrusted text written to be read as instructions.</p>
+      </div>
+      <div class="principle">
+        <h3>Declining is a success</h3>
+        <p>A refused skill with a written reason is a finished piece of work, not a
+          failure. It keeps its row.</p>
+      </div>
+      <div class="principle">
+        <h3>Nothing leaves the machine</h3>
+        <p>Two commands reach the network — <code>intake</code> and
+          <code>refresh</code> — and both only to a source you already named. Usage
+          counting reads local transcripts and never message text.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════ exit codes -->
+  <section>
+    <p class="eyebrow">The contracts that do not move</p>
+    <h2>Three exit codes, and the difference between them matters</h2>
+    <p>A script consuming these has to tell <code>1</code> and <code>2</code> apart.
+      Collapsing them is how a CI gate starts lying about which problem it found.</p>
+
+    <div class="scroll-x">
+      <table>
+        <thead>
+          <tr><th>Code</th><th>Means</th><th>For example</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>0</td><td>clean</td><td>every held skill is filed; the pin matches upstream</td></tr>
+          <tr><td>1</td><td>ran, and the answer is no</td><td><code>promote</code> refused; <code>ledger --check</code> found a mismatch</td></tr>
+          <tr><td>2</td><td>could not run</td><td>a usage error; not a skill library; no <code>catalog.json</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p style="margin-top:24px"><strong>Explicitly not frozen:</strong> the
+      <code>--json</code> shapes. Most commands emit JSON and those shapes are still
+      moving in <code>0.x</code>.</p>
+  </section>
+
+  <footer>
+    <p>Built inside the skill library it was written for, and moved out of it, in that
+      order and deliberately: co-locating a tool with its only consumer is how you never
+      discover what the tool assumes about its host.</p>
+    <div class="meta">
+      <span>qrntn</span>
+      <span>pronounced quarantine</span>
+      <span>Apache-2.0</span>
+      <span><a href="https://github.com/JadRizk/qrntn">github.com/JadRizk/qrntn</a></span>
+    </div>
+  </footer>
+
+</div>

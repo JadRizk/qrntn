@@ -1,0 +1,6 @@
+{
+  "name": "@nexus/record",
+  "private": true,
+  "type": "module",
+  "$note": "The audit record's shape, SK-94. Source of truth for AUDIT.json. Lives here because criterion 7 requires nexus to import the TypeScript directly; build.mjs emits commands/record.schema.json from it for the zero-dependency commands, so the shape is written once and neither runtime gains a dependency."
+}

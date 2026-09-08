@@ -1,0 +1,245 @@
+/* ============================================================================
+   @nexus/tokens — qrntn.css
+   The qrntn brand, expressed as two nexus themes. Load AFTER tokens.css.
+
+     <div data-nx-theme="qrntn">        default, WCAG AA
+     <div data-nx-theme="qrntn-hud">    immersive; the viewer runs on this
+
+   Two, not one, for the reason nexus itself ships two: the immersive ramp is
+   what the graph's edge register gains were measured against (adapt/
+   toGraphCanvas.ts's EDGE_HEX), so a brand that shipped only an AA ramp would
+   silently lighten every structural edge in the scene.
+
+   BOTH THE PRIMITIVE AND SEMANTIC LAYERS ARE RESTATED HERE, ON PURPOSE. A
+   custom property's value is computed on the element that declares it, so
+   re-pointing only the primitives would leave tokens.css's :root-level semantic
+   aliases resolving against :root's own primitives — and NexusProvider puts
+   data-nx-theme on the .nx-root div, not on <html>. Restating the semantic
+   layer makes the theme correct wherever the attribute lands.
+
+   Numbers: brand/PALETTE.md. Reproduce them, do not trust them.
+   ========================================================================== */
+
+[data-nx-theme="qrntn"],
+[data-nx-theme="qrntn-hud"] {
+	/* ------------------------------------------------------- primitives -- */
+	/* Inherited from nexus unchanged. */
+	--nx-void:   #08090A;
+	--nx-panel:  #0A0C0B;
+	--nx-alarm:  #FF2E63;   /* 5.44:1 — RESTRICTED, reachable only via fg-critical */
+
+	--nx-raised: #12110E;   /* nexus #11150F, re-tinted warm */
+
+	/* THE FLAG. Signal Q, by its name in the code of signals. 14.53:1.
+	   REPLACES acid rather than joining it: the two measure ΔE 1.8 apart under
+	   deuteranopia, so they cannot both be load-bearing signals. */
+	--nx-acid:   #FEDD00;
+	--qrn-quebec: #FEDD00;
+
+	/* Ink. Warm, because the record is a document rather than a phosphor. */
+	--nx-phosphor: #F2ECD9;   /* 16.61:1 */
+	--qrn-paper:    #F2ECD9;
+
+	/* Warning, dimmed from nexus's sodium #FF8A1E (8.32:1). Not taste: sodium
+	   was 1.53x LOUDER than the critical colour it outranks, and on a
+	   near-black ground contrast IS loudness. 4.71:1 still clears the text
+	   floor and restores the ordering. Sodium survives as a graph content hue,
+	   which is a different job from a status role. */
+	--qrn-rust: #BF6408;
+
+	/* Graph content hues, inherited untouched — data/taxonomy.ts is their
+	   source of truth and the accent change does not reach them. */
+	--nx-sodium: #FF8A1E;
+	--nx-data:   #17E2E5;
+	--nx-lime:   #7CFF4F;
+	--nx-violet: #9D7BFF;
+
+	/* Text on the accent. Black at 15.56:1 is the ONLY thing that may sit on
+	   the flag — paper ink measures 1.14:1 on it. */
+	--qrn-accent-ink: #000000;
+
+
+	/* ------------------------------------------------------------- type -- */
+	/* Declared here and nowhere else. The brand faces are named FIRST and then
+	   fall through nexus's original stack, so a machine without them renders
+	   exactly what it rendered before rather than dropping to a serif. Nothing
+	   is fetched: the product ships no webfont (BRAND.md, "the terminal ships
+	   no face at all"), and the site is the only surface that loads one. */
+	--nx-font-mono:    "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+	--nx-font-stencil: "Archivo", "Helvetica Neue", Arial, sans-serif;
+
+	/* ---------------------------------------------------- semantic layer -- */
+	--nx-bg-canvas:  var(--nx-void);
+	--nx-bg-surface: var(--nx-panel);
+	--nx-bg-raised:  var(--nx-raised);
+	--nx-bg-hover:   rgba(254, 221, 0, 0.10);
+	--nx-bg-active:  rgba(254, 221, 0, 0.16);
+
+	--nx-fg-default:  var(--nx-phosphor);
+	--nx-fg-muted:    var(--nx-grey-600);
+	--nx-fg-subtle:   var(--nx-grey-500);
+	--nx-fg-tertiary: var(--nx-grey-400);
+	--nx-fg-disabled: var(--nx-grey-300);
+
+	--nx-fg-accent:   var(--qrn-quebec);
+	--nx-fg-info:     var(--nx-data);
+	--nx-fg-warning:  var(--qrn-rust);     /* NOT sodium — see above */
+	--nx-fg-critical: var(--nx-alarm);
+
+	--nx-border-default: var(--nx-grey-100);
+	--nx-border-strong:  var(--nx-grey-200);
+	--nx-border-accent:  var(--nx-fg-accent);
+
+	--nx-focus-ring:   var(--nx-fg-accent);
+	--nx-focus-width:  2px;
+	--nx-focus-offset: 2px;
+
+	/* Retinted from acid so the ambient glow is the flag's colour rather than
+	   a leftover green reading as a second accent nobody declared. */
+	--nx-glow-inset:  inset 0 0 40px rgba(254, 221, 0, 0.035);
+	--nx-glow-raised: 0 0 60px rgba(254, 221, 0, 0.10);
+
+	/* The CRT fringe follows the accent's complement pair, unchanged in
+	   amplitude — only alarm/data were ever used here and both survive. */
+	--nx-crt-r: rgba(255, 46, 99, 0.4);
+	--nx-crt-b: rgba(23, 226, 229, 0.4);
+}
+
+/* ============================================================================
+   RAMPS — re-solved warm at nexus's own contrast targets, so every step lands
+   on the number the green ramp already held and nothing downstream moves.
+
+     node brand/scripts/solve-ramp.mjs 45 0.11 "#0A0C0B" --both
+   ========================================================================== */
+[data-nx-theme="qrntn"] {
+	--nx-font-scale: 1.15;
+	--qrn-font-scale: 1.15;
+
+	--nx-grey-100: #38352D;   /*  1.60:1  decorative hairline only */
+	--nx-grey-200: #625E4F;   /*  3.02:1  UI boundary — 1.4.11 */
+	--nx-grey-300: #7F7966;   /*  4.51:1  disabled text — 1.4.3 */
+	--nx-grey-400: #8E8772;   /*  5.47:1 */
+	--nx-grey-500: #A09A89;   /*  6.99:1 — does NOT clear AAA (7.0) */
+	--nx-grey-600: #BDB9AD;   /* 10.00:1 */
+}
+
+[data-nx-theme="qrntn-hud"] {
+	--nx-font-scale: 1;
+	--qrn-font-scale: 1;
+
+	--nx-grey-100: #22201B;   /* 1.21:1 */
+	--nx-grey-200: #36342C;   /* 1.57:1 */
+	--nx-grey-300: #4C483D;   /* 2.15:1 */
+	--nx-grey-400: #5C5749;   /* 2.72:1 */
+	--nx-grey-500: #736D5C;   /* 3.80:1 */
+	--nx-grey-600: #87806C;   /* 4.98:1 */
+}
+
+/* ============================================================================
+   THE BRAND'S OWN VOCABULARY
+
+   Everything above re-points nexus. Everything below is qrntn's own contract,
+   and it is what brand/PALETTE.md documents — so it has to exist, or that
+   document is instructions for writing `var(--qrn-ink)` and getting nothing.
+
+   WHY BOTH NAMES. `--nx-*` is a vendored design system's internal vocabulary;
+   a copy of it lives in this repository and its names are that upstream's to
+   change. `--qrn-*` is the brand's, and it is what a qrntn surface that is not
+   the viewer — the site, a future component, a consumer's own build — is meant
+   to reach for. The alias is the seam between the two, and it costs one
+   indirection to avoid every qrntn surface depending on nexus's spelling.
+
+   This is a one-way alias on purpose: --qrn-* reads --nx-*, never the reverse.
+   ========================================================================== */
+[data-nx-theme="qrntn"],
+[data-nx-theme="qrntn-hud"] {
+	/* ------------------------------------------------------- primitives -- */
+	--qrn-void:   var(--nx-void);
+	--qrn-panel:  var(--nx-panel);
+	--qrn-raised: var(--nx-raised);
+	--qrn-alarm:  var(--nx-alarm);      /* RESTRICTED — reach it through --qrn-critical */
+
+	--qrn-grey-100: var(--nx-grey-100);
+	--qrn-grey-200: var(--nx-grey-200);
+	--qrn-grey-300: var(--nx-grey-300);
+	--qrn-grey-400: var(--nx-grey-400);
+	--qrn-grey-500: var(--nx-grey-500);
+	--qrn-grey-600: var(--nx-grey-600);
+
+	/* ------------------------------------------------------------ roles -- */
+	--qrn-canvas:  var(--nx-bg-canvas);
+	--qrn-surface: var(--nx-bg-surface);
+
+	/* The boundary ladder. Three COLOURS, four tiers: `line-strong` is
+	   --qrn-line drawn at --qrn-line-strong-width, because it outranks its
+	   neighbours by weight rather than by hue. A fourth grey would be a second
+	   name for one idea, which is the thing PALETTE.md's own rules forbid. */
+	--qrn-ambient: var(--nx-border-default);   /* grey-100 — never text */
+	--qrn-line:    var(--nx-border-strong);    /* grey-200 — the default edge */
+	--qrn-hairline: var(--nx-hairline);        /* 1px */
+	--qrn-line-strong-width: 2px;
+
+	--qrn-ink:          var(--nx-fg-default);
+	--qrn-ink-muted:    var(--nx-fg-muted);
+	--qrn-ink-subtle:   var(--nx-fg-subtle);
+	--qrn-ink-disabled: var(--nx-fg-disabled);
+
+	--qrn-accent:   var(--nx-fg-accent);
+	--qrn-warning:  var(--nx-fg-warning);      /* rust, not sodium — see above */
+	--qrn-critical: var(--nx-fg-critical);
+
+	/* -------------------------------------------------------------- type -- */
+	--qrn-font-mono:      var(--nx-font-mono);
+	--qrn-font-display:   var(--nx-font-stencil);
+	--qrn-tracking-label: var(--nx-track-wide);   /* 0.14em */
+}
+
+/* ============================================================================
+   FOCUS — the one addition, not a re-point.
+
+   Nexus expresses focus as a flat accent outline, which is pixel-identical to
+   its own accent hover on buttons, tabs and rows: the single indicator a
+   keyboard user depends on looks like something a mouse user causes by
+   accident. The glow separates them at no new colour and no new token.
+   ========================================================================== */
+[data-nx-theme="qrntn"] :focus-visible,
+[data-nx-theme="qrntn-hud"] :focus-visible {
+	outline: var(--nx-focus-width) solid var(--nx-focus-ring);
+	outline-offset: var(--nx-focus-offset);
+	box-shadow: 0 0 0 6px rgba(254, 221, 0, 0.35);
+}
+
+/* ============================================================================
+   THE STATE VOCABULARY — held / cleared / refused / drift.
+
+   Colour never carries these alone: warning and critical measure ΔE 7.7 apart
+   under deuteranopia, which is true of every red/orange pair ever shipped. The
+   word in the chip is load-bearing, not decoration.
+   ========================================================================== */
+.qrn-state {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--nx-space-3);
+	font-family: var(--nx-font-mono);
+	font-size: var(--nx-text-2xs);
+	font-weight: var(--nx-weight-medium);
+	letter-spacing: var(--nx-track-wide);
+	text-transform: uppercase;
+	padding: var(--nx-space-1) var(--nx-space-4);
+	border: var(--nx-hairline) solid currentColor;
+	border-radius: var(--nx-radius);
+}
+
+.qrn-state[data-state="held"] {
+	color: var(--qrn-quebec);
+	background: repeating-linear-gradient(45deg, rgba(254, 221, 0, 0.16) 0 3px, transparent 3px 8px);
+}
+
+.qrn-state[data-state="cleared"] {
+	color: var(--qrn-accent-ink);
+	background: var(--qrn-quebec);
+	border-color: var(--qrn-quebec);
+}
+
+.qrn-state[data-state="refused"] { color: var(--nx-fg-critical); }
+.qrn-state[data-state="drift"]   { color: var(--qrn-rust); }

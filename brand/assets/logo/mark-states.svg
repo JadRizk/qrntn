@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 128" width="384" height="128" role="img" aria-label="qrntn states: held, cleared, refused">
+  <title>qrntn — held / cleared / refused</title>
+  <desc>One shape, three states. Held is hatched and undecided; cleared is the solid flag; refused keeps its row, struck.</desc>
+  <defs>
+    <pattern id="qrn-hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="8" height="8" fill="#08090A"/>
+      <rect width="3" height="8" fill="#FEDD00"/>
+    </pattern>
+  </defs>
+  <rect width="384" height="128" fill="#08090A"/>
+  <rect x="10"  y="34" width="108" height="60" fill="url(#qrn-hatch)"/>
+  <rect x="10"  y="34" width="108" height="60" fill="none" stroke="#FEDD00" stroke-width="2"/>
+  <rect x="138" y="34" width="108" height="60" fill="#FEDD00"/>
+  <rect x="266" y="34" width="108" height="60" fill="none" stroke="#FF2E63" stroke-width="2"/>
+  <path d="M266 94 L374 34" stroke="#FF2E63" stroke-width="6"/>
+</svg>

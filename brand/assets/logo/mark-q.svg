@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="qrntn">
+  <title>qrntn — Quebec Q</title>
+  <desc>A squared Q whose bowl is flag Q and whose tail leaves the field at the fly: the letter and the signal are one shape.</desc>
+  <rect width="128" height="128" fill="#08090A"/>
+  <g fill="#FEDD00">
+    <rect x="12" y="22" width="94" height="66"/>
+    <path d="M84 66 L86 64 L120 98 L120 106 L112 106 Z"/>
+  </g>
+</svg>

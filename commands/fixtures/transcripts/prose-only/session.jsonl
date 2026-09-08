@@ -1,0 +1,3 @@
+{"type": "assistant", "timestamp": "2026-08-23T10:00:00.000Z", "sessionId": "fixture", "cwd": "/fixture", "message": {"role": "assistant", "content": [{"type": "text", "text": "You could use dataviz for this, or artifact-design."}]}}
+{"type": "assistant", "timestamp": "2026-08-23T10:00:01.000Z", "sessionId": "fixture", "cwd": "/fixture", "message": {"role": "assistant", "content": [{"type": "tool_use", "id": "t3", "name": "Bash", "input": {"command": "echo dataviz", "description": "mentions dataviz but is not a Skill call"}}]}}
+{"type": "assistant", "timestamp": "2026-08-23T10:00:02.000Z", "sessionId": "fixture", "cwd": "/fixture", "message": {"role": "assistant", "content": [{"type": "tool_use", "id": "t4", "name": "Task", "input": {"subagent_type": "dataviz"}}]}}
