@@ -6,7 +6,21 @@
    the name subtly wrong.
    ========================================================================== */
 
-export type NexusTheme = "hud" | "hud-aa";
+/**
+ * `pratiq` and `pratiq-hud` carry the brand (brand/BRAND.md). They keep this
+ * module's existing primitive KEYS rather than introducing new ones, so every
+ * consumer and every assertion below goes on working — but two keys hold a
+ * different colour under them, and the names are the seam:
+ *
+ *   `acid`     is the signal flag, #FEDD00, not #C6F135
+ *   `phosphor` is paper ink,       #F2ECD9, not #DFF5C7
+ *
+ * A key named for an appearance it no longer has is the cost of not renaming
+ * primitives across four themes. Recorded here rather than left to be found in
+ * the table below.
+ */
+export type NexusTheme = "hud" | "hud-aa" | "pratiq" | "pratiq-hud";
+
 
 /** Foreground roles. `critical` is the only route to the alarm colour. */
 export type Tone =
@@ -68,7 +82,22 @@ export const contrast = {
     "grey-100": 1.21, "grey-200": 1.57, "grey-300": 2.14,
     "grey-400": 2.72, "grey-500": 3.8, "grey-600": 4.98,
   },
+  // Ramps solved, not eyeballed:
+  //   node brand/scripts/solve-ramp.mjs 45 0.11 "#0A0C0B" --both
+  pratiq: {
+    phosphor: 16.61, acid: 14.53, lime: 15.2, data: 12.19, sodium: 8.32,
+    violet: 6.27, alarm: 5.44,
+    "grey-100": 1.61, "grey-200": 3.01, "grey-300": 4.52,
+    "grey-400": 5.5, "grey-500": 7.0, "grey-600": 10.0,
+  },
+  "pratiq-hud": {
+    phosphor: 16.61, acid: 14.53, lime: 15.2, data: 12.19, sodium: 8.32,
+    violet: 6.27, alarm: 5.44,
+    "grey-100": 1.21, "grey-200": 1.57, "grey-300": 2.14,
+    "grey-400": 2.72, "grey-500": 3.8, "grey-600": 4.98,
+  },
 } as const;
+
 
 /** WCAG 2.2 thresholds, for assertions in consumer tests. */
 export const WCAG = {

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="pratiq">
+  <title>pratiq — Stamp</title>
+  <desc>Flag Q inside the system's corner ticks: not the signal alone, but the signal entered against a specific arrival.</desc>
+  <rect width="128" height="128" fill="#08090A"/>
+  <g stroke="#7F7966" stroke-width="3" fill="none">
+    <path d="M6 28 L6 6 L28 6"/>
+    <path d="M100 6 L122 6 L122 28"/>
+    <path d="M122 100 L122 122 L100 122"/>
+    <path d="M28 122 L6 122 L6 100"/>
+  </g>
+  <rect x="26" y="42" width="76" height="44" fill="#FEDD00"/>
+</svg>

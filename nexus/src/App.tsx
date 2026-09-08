@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { CommandPalette, HazardRule, Panel, useHotkey, Wordmark } from '@nexus/react'
+import { CommandPalette, HazardRule, Panel, useHotkey } from '@nexus/react'
 import { DEFAULT_OPTICS, DEFAULT_PHYSICS, GraphCanvas } from '../packages/graph/src/index.ts'
 import { loadGraph } from './data/loadGraph.ts'
 import { categoryIdsByKind, toGraphCanvasProps } from './adapt/toGraphCanvas.ts'
@@ -13,6 +13,7 @@ import { TypeLegend } from './ui/TypeLegend.tsx'
 import { StatsPanel } from './ui/StatsPanel.tsx'
 import { DetailsDrawer } from './ui/DetailsDrawer.tsx'
 import { DOCK_WIDTH, LeftDock } from './ui/LeftDock.tsx'
+import { PratiqWordmark } from './ui/PratiqWordmark.tsx'
 import type { GraphSnapshot } from './data/types.ts'
 import { KIND_LABEL, KIND_ORDER, type NodeKind } from './data/taxonomy.ts'
 import type { FrameGeometry, GraphController, GraphNodeSnapshot, GraphStats, OpticsConfig, PhysicsConfig } from '../packages/graph/src/types.ts'
@@ -263,7 +264,7 @@ export function App() {
             aria-label="Go to home"
             style={{ display: 'flex', background: 'none', border: 0, padding: 0, margin: 0, cursor: 'pointer' }}
           >
-            <Wordmark size="1.5rem">NEXUS</Wordmark>
+            <PratiqWordmark size="1.5rem" />
           </button>
         </div>
         <HazardRule />

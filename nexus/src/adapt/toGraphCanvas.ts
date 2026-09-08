@@ -54,17 +54,24 @@ import type { GraphCanvasProps, GraphEdge, GraphNode, LinkCategory, NodeCategory
 // header), never a CSS custom property — but nothing stops it being the
 // *same* hex the token resolves to. Each role now maps to the literal
 // value behind the semantic name a component elsewhere in this app would
-// reach for in the same situation: an active/energetic state reads
-// `--nx-fg-warning`, an informational one `--nx-fg-info`, and NexusProvider
-// (src/main.tsx) sets `theme="hud"`, so these are the 'hud' variant's
-// resolved values specifically, not "hud-aa"'s lighter ones.
+// reach for in the same situation: an energetic state reads the sodium
+// primitive, an informational one `--nx-fg-info`, and NexusProvider
+// (src/main.tsx) sets `theme="pratiq-hud"`, so the three ramp greys below
+// are THAT variant's resolved values specifically — not "pratiq"'s AA ones,
+// which are several steps lighter and would turn the etched substrate into
+// visible lines.
+//
+// `hot` used to be documented as `--nx-fg-warning`. Under pratiq it is not:
+// the warning role moved to rust (#BF6408) to fix a severity inversion, and
+// sodium stayed behind as a graph CONTENT hue. The hex is unchanged and the
+// name it is reached by is not — an edge is content, never status.
 const EDGE_HEX: Record<EdgeColorRole, string> = {
-  hot: '#FF8A1E', // --nx-sodium, i.e. --nx-fg-warning — mid-run invocation reads as "active", not "critical" (--nx-alarm is reserved for refused/ghost)
+  hot: '#FF8A1E', // --nx-sodium, a content hue under pratiq — mid-run invocation reads as "active", not "critical" (--nx-alarm is reserved for refused/ghost)
   cool: '#17E2E5', // --nx-data, i.e. --nx-fg-info — "points a human onward"
   alt: '#9D7BFF', // --nx-violet — no dedicated fg-* alias, but the same primary-palette primitive every accent here is drawn from
-  affirmed: '#6E8768', // --nx-grey-600 ('hud'), i.e. --nx-fg-muted — a verdict that landed: the lighter of the two greys, so `adopted` and `considered` stop being the same colour
-  neutral: '#5E7359', // --nx-grey-500 ('hud'), i.e. --nx-fg-subtle — a verdict that didn't, reading exactly as dim as the UI's own de-emphasized text
-  etch: '#3D4C39', // --nx-grey-300 ('hud'), i.e. --nx-fg-disabled — the etched substrate, which you read as shape rather than as lines
+  affirmed: '#87806C', // --nx-grey-600 ('pratiq-hud'), i.e. --nx-fg-muted — a verdict that landed: the lighter of the two greys, so `adopted` and `considered` stop being the same colour
+  neutral: '#736D5C', // --nx-grey-500 ('pratiq-hud'), i.e. --nx-fg-subtle — a verdict that didn't, reading exactly as dim as the UI's own de-emphasized text
+  etch: '#4C483D', // --nx-grey-300 ('pratiq-hud'), i.e. --nx-fg-disabled — the etched substrate, which you read as shape rather than as lines
 }
 
 function dim(hex: string, factor: number): string {
