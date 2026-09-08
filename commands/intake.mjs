@@ -282,6 +282,13 @@ ${inventory}
 
 // ── main ─────────────────────────────────────────────────────────────────────
 
+// One synopsis, two callers, for the reason ledger.mjs has one: `--help` asks
+// for it and gets 0, and reaching main() with no source is a usage error and
+// gets 2. Same words, because they are the same words.
+const synopsis = () =>
+	`usage: ${invokedAs()} <source> [--name X] [--subpath P] [--ref R] [--library D]\n` +
+	'  <source> may be a repository url, a repository url with /tree/<ref>/<subpath> on it, or a local checkout'
+
 function main(argv) {
 	const args = argv.slice(2)
 	// `--library` is read straight off argv by resolveLibrary() above, but it
@@ -290,9 +297,11 @@ function main(argv) {
 	// below then refuses a perfectly good invocation for having two sources.
 	// Two readers of one argv is the shape that hid this — the root resolver
 	// ran before main() and never told it what it had consumed.
-	// Before the parse below, which treats any unrecognised `--x` as a boolean
-	// flag and silently drops it. FLAGS and TAKES_VALUE describe the same
-	// surface from two angles; the check is what makes the leftovers an error.
+	//
+	// The check runs before the parse below, which treats any unrecognised `--x`
+	// as a boolean flag and silently drops it. FLAGS and TAKES_VALUE describe the
+	// same surface from two angles; the check is what makes the leftovers an
+	// error rather than a shrug.
 	const bad = checkFlags(args, FLAGS)
 	if (bad) {
 		refuse(
@@ -315,12 +324,7 @@ function main(argv) {
 	}
 	const flag = (n) => (typeof flags[n] === 'string' ? flags[n] : null)
 	const src = positional[0]
-	if (!src) {
-		refuse(
-			`usage: ${invokedAs()} <source> [--name X] [--subpath P] [--ref R] [--library D]\n` +
-				'  <source> may be a repository url, a repository url with /tree/<ref>/<subpath> on it, or a local checkout'
-		)
-	}
+	if (!src) refuse(synopsis())
 	if (positional.length > 1) refuse(`one source at a time, got ${positional.length}`)
 
 	// A pasted url may carry a ref and a subpath of its own. A flag that agrees
@@ -393,6 +397,16 @@ function main(argv) {
 	} finally {
 		rmSync(work, { recursive: true, force: true })
 	}
+}
+
+// Answered here rather than inside main(), which returns a landing record the
+// block below unpacks — there is no shape for "asked a question" in that. And
+// answered with 0: asking what a verb takes is not a mistake, which is what
+// exit 2 says. This one refused with `refused: usage: …`, telling someone who
+// had typed nothing wrong that they had.
+if (process.argv.includes('--help') || process.argv.includes('-h')) {
+	console.log(synopsis())
+	process.exit(0)
 }
 
 try {

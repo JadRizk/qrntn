@@ -458,6 +458,17 @@ function runTests(dir, skillMdText = null) {
 // ── main ─────────────────────────────────────────────────────────────────────
 
 const args = process.argv.slice(2)
+
+// One synopsis, two callers: `--help` asks for it and gets 0, and running with
+// no name is a usage error and gets 2. This verb answered --help with 2, which
+// says "you made a mistake" to someone who asked a question.
+const synopsis = () => `usage: ${invokedAs()} <name> [--dry-run] [--library <dir>] [--json]`
+
+if (args.includes('--help') || args.includes('-h')) {
+	console.log(synopsis())
+	process.exit(0)
+}
+
 {
 	const bad = checkFlags(args, FLAGS)
 	if (bad) {
@@ -476,7 +487,7 @@ const name = args.find((a, i) => !a.startsWith('--') && (libraryAt === -1 || i !
 const DRY = args.includes('--dry-run')
 
 if (!name) {
-	console.error(`usage: ${invokedAs()} <name> [--dry-run]`)
+	console.error(synopsis())
 	process.exit(2)
 }
 
