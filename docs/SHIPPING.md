@@ -372,6 +372,40 @@ shipped: `npm pack` → install the tarball into a clean directory → **run it 
 The empty `HOME` is the load-bearing part. It is exactly what would have caught
 the scanner defect, and nothing else in this plan asks that question.
 
+**Landed**, as `smoke.mjs` at the root — beside `check.mjs`, not inside
+`commands/`, because it is a gate on the package rather than a command in it. It
+is registered as a slow gate, so `--quick` skips it and `prepublishOnly` runs
+it, which is the moment it exists for. 47 assertions, all four questions asked.
+
+Two details worth recording because they were not obvious:
+
+- **The verb list is read out of the installed dispatcher**, not restated in the
+  gate. A verb added later is covered without anyone remembering to add it —
+  which matters most for exactly the person who would forget.
+- **`HOME` must be empty, not empty-apart-from.** npm's cache and update
+  notifier write `~/.npm` during the install step, before pratiq has run once.
+  They are pointed at the sandbox instead, so the final assertion stays absolute.
+  An assertion with a list of things it has decided not to count is not one.
+
+`.github/workflows/check.yml` runs `node check.mjs` on Node 20, 22 and 24, with
+`fail-fast: false` so every version reports — a matrix that stops at the first
+failure hides whether the fault is version-specific, which is the only reason to
+run more than one. `nexus/` is deliberately not installed: check.mjs skips its
+two gates and says so, and `view` is not in `0.1.0`, so the viewer's toolchain
+must not be able to block the pipeline's release. A second job prints
+`npm pack --dry-run` so a human reviewing a release can read the tarball's
+contents without running anything.
+
+**What this defers, stated rather than left as an omission: npm provenance.**
+`npm publish --provenance` produces a sigstore-backed attestation binding the
+tarball to the commit and workflow that built it — which is the claim pratiq
+makes about skills, made about pratiq, and is the single most on-thesis thing
+missing from this plan. It requires publishing FROM a workflow with OIDC, so it
+cannot coexist with this section's decision that `0.1.0` publishes by hand. That
+decision is right — a publish pipeline debugged during the first publish is two
+problems at once — so provenance lands with the `v*`-tag automation, and
+`0.1.0` ships without it. It should not ship without it twice.
+
 ### 8 · After `0.1.0`
 
 **The library migration.** `SURFACE.md`'s drift mechanism, and the sentence in

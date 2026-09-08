@@ -38,6 +38,19 @@ const gates = [
 	...tests.map((f) => ({ name: `test · ${f}`, slow: false, run: () => node(join(COMMANDS, f)) })),
 	...selfTests.map((f) => ({ name: `self-test · ${f}`, slow: true, run: () => node(join(COMMANDS, f)) })),
 	{
+		// SK-97 §7. The only gate that reduces the tree to what `npm pack`
+		// produces and runs the tool from there. Everything above it runs out of
+		// the checkout, where every file exists whether or not package.json says
+		// it ships — so a script missing from the `files` allowlist passes every
+		// other gate in this list and is broken for everyone who installs it.
+		//
+		// Slow because it packs and installs; skipped by --quick, and run by
+		// prepublishOnly, which is the moment it exists for.
+		name: 'smoke · the tarball installs and every verb runs from it',
+		slow: true,
+		run: () => node(join(HERE, 'smoke.mjs'))
+	},
+	{
 		// SK-94. record.schema.json is generated from packages/record/schema.ts and
 		// committed, so the zero-dependency commands can validate without a
 		// toolchain. A generated file that is committed and not checked is a file
