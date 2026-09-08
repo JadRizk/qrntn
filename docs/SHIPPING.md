@@ -56,8 +56,10 @@ is the perishable part. The launch is `0.2`, the first version whose verb list
 matches the claim: `adopt` is the verb for the recorded decision the whole pitch
 rests on, and `view` is the only surface that shows a library at once. Launching
 at `0.1.0` would mean answering "so the human decision is a text editor?" in the
-comments rather than in the release. Recorded in
-[`POSITIONING.md`](POSITIONING.md).
+comments rather than in the release. Recorded in the launch positioning, which
+is kept out of this repository deliberately — it is a plan rather than a
+measurement, and this repository is public. The half of it that is not a plan
+ships as [`COMPARISON.md`](COMPARISON.md).
 
 **The name is available.** `https://registry.npmjs.org/qrntn` returns 404, as
 do `github.com/qrntn` and `qrntn.dev`. Bare, not scoped: availability is the
