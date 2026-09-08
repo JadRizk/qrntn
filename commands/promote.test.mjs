@@ -755,6 +755,38 @@ scripts/ ships nothing executable — go.mjs is a config stub read by install.sh
 	}
 }
 
+// ── what a successful promotion tells you to do next (SK-97 §5) ─────────────
+//
+// Both branches used to end with `./install.sh`, a script belonging to the
+// library this tool was extracted from. It does not exist here, so every
+// successful promotion closed by naming a file the reader could not run — and
+// nothing asserted on the human output, which is why it survived the split.
+//
+// These run without --json, because the string being checked only exists on
+// the human path. Staging fails in these fixtures (no git repository) and that
+// is fine: it is reported and does not stop the closing line.
+const humanPromote = (repo) => {
+	const r = spawnSync(process.execPath, [join(repo, 'skills', 'skill-adopt', 'scripts', 'promote.mjs'), 'tidy-notes'], {
+		cwd: repo,
+		encoding: 'utf8'
+	})
+	return r.stdout + r.stderr
+}
+{
+	const out = humanPromote(mkRepo('closing-acquired'))
+	check('closing line, acquired: promoted', /promoted {2}inbox\/tidy-notes/.test(out), out.slice(0, 300))
+	check('closing line, acquired: still names catalog.json and edges', /Add it to catalog\.json, declare its edges/.test(out), out.slice(-300))
+	check('closing line, acquired: names the install step generically', /symlink or copy it where your agent loads skills from/.test(out), out.slice(-300))
+	check('closing line, acquired: names no script this project does not ship', !/install\.sh/.test(out), out.slice(-300))
+}
+{
+	const out = humanPromote(mkAuthoredRepo('closing-authored'))
+	check('closing line, authored: promoted', /promoted {2}inbox\/tidy-notes/.test(out), out.slice(0, 300))
+	check('closing line, authored: does not ask for a catalog entry it already has', !/Add it to catalog\.json/.test(out), out.slice(-300))
+	check('closing line, authored: names the install step generically', /symlink or copy it where your agent loads skills from/.test(out), out.slice(-300))
+	check('closing line, authored: names no script this project does not ship', !/install\.sh/.test(out), out.slice(-300))
+}
+
 console.log(`\n${pass} passed, ${failures.length} failed`)
 for (const f of failures) console.log(`  FAIL  ${f}`)
 process.exit(failures.length ? 1 : 0)

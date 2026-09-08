@@ -778,10 +778,11 @@ function main(argv) {
 	// The one section of ledger/<name>.json this script owns (SK-30). A
 	// section-merging write, never a fresh file — origin/integrity/audit/
 	// contract belong to promote.mjs, and this must never touch them. install
-	// is refreshed here too: it is live filesystem state outside the repo,
-	// and this is the writer that actually runs again after install.sh does,
-	// where promote.mjs's one-time write at promotion time is necessarily
-	// stale (install.sh is a later, separate step).
+	// is refreshed here too, when asked: it is live filesystem state outside the
+	// repo, and this is the writer that actually runs again after a skill is
+	// installed, where promote.mjs's one-time write at promotion time is
+	// necessarily stale — installing is a later, separate step, and since §5 it
+	// is not a script this project ships or names.
 	//
 	// Gated on `out === defaultOut`, the same signal usage.test.mjs already
 	// relies on to keep the aggregate file test-safe. Until SK-97 the sentence

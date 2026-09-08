@@ -509,9 +509,17 @@ if (args.includes('--json')) {
 } else {
 	console.log(`\npromoted  inbox/${name} → skills/${name}${tests.ran ? `  (${tests.ran} test file(s) passed)` : ''}`)
 	if (staged === false) console.log(`not staged — ${stageError || 'git add failed'}`)
-	console.log(
-		origin === 'authored' ? 'Declare its edges, then ./install.sh\n' : 'Add it to catalog.json, declare its edges, then ./install.sh\n'
-	)
+	// SK-97 §5. This used to end with `./install.sh` — a script that belongs to
+	// the library this tool was extracted from and does not exist here, so every
+	// successful promotion closed with an instruction nobody could follow.
+	//
+	// The replacement names the step without naming one product's directory.
+	// catalog.json and edges are pratiq's own and stay; how a skill gets in front
+	// of an agent is the harness's business, and there are around forty of them.
+	// `pratiq install` is a real verb worth having and is deferred, not forgotten
+	// — until it exists, saying what to do beats naming a file that is not there.
+	const next = 'symlink or copy it where your agent loads skills from'
+	console.log(origin === 'authored' ? `Declare its edges, then ${next}.\n` : `Add it to catalog.json, declare its edges, then ${next}.\n`)
 }
 
 process.exit(refusals.length ? 1 : 0)

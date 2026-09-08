@@ -215,6 +215,12 @@ decision as §4 — deferred, not forgotten.
 
 **Size:** trivial. Listed separately because it is user-facing and easy to miss.
 
+**Landed.** Both branches now read *"… then symlink or copy it where your agent
+loads skills from."* `catalog.json` and edges stay — they are pratiq's own, and
+only the harness-specific step was the problem. `promote.test.mjs` asserts the
+human output names the step and contains no `install.sh`, because a wording
+nothing checks is a wording that comes back.
+
 ### 6 · The README
 
 Three changes, and the shape of each was argued rather than assumed.
