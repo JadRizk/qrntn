@@ -97,6 +97,23 @@ try {
 	// Deployed alone. Naming the file is correct, not a failure.
 }
 
+// ── the flags this verb has ─────────────────────────────────────────────────
+//
+// Guarded like the two above. Without the sibling an unrecognised flag goes
+// back to being ignored, which is what every command did before argv.mjs
+// existed; the shipped package always carries it and `files` gates that.
+let checkFlags = () => null
+try {
+	const mod = await import('./argv.mjs')
+	checkFlags = mod.checkFlags
+} catch {
+	// Deployed alone. No validation, which is where this started.
+}
+
+const FLAGS = {
+	boolean: ['--all', '--json', '--help', '-h'],
+	valued: ['--library', '--candidate', '--top']
+}
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 // skills/skill-adopt/scripts -> repo root. Resolved from this file's location
@@ -428,6 +445,12 @@ function main(argv) {
 		console.log(`usage: ${invokedAs()} [--candidate <dir>] [--top <n>] [--all] [--library <dir>] [--json]`)
 		console.log('  with no --candidate, ranks the held skills against each other')
 		return 0
+	}
+	const bad = checkFlags(argv, FLAGS)
+	if (bad) {
+		console.error(refusalLine(`unknown option ${bad.flag}`))
+		console.error(bad.suggestion ? `  did you mean ${bad.suggestion}?` : `  run \`${invokedAs()} --help\` for what this verb takes`)
+		return 2
 	}
 	const at = (flag) => {
 		const i = argv.indexOf(flag)

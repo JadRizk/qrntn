@@ -75,6 +75,24 @@ try {
   // Deployed alone. Naming the file is correct, not a failure.
 }
 
+// ── the flags this verb has ─────────────────────────────────────────────────
+//
+// Guarded like the two above. Without the sibling an unrecognised flag goes
+// back to being ignored, which is what every command did before argv.mjs
+// existed; the shipped package always carries it and `files` gates that.
+let checkFlags = () => null;
+try {
+  const mod = await import('./argv.mjs');
+  checkFlags = mod.checkFlags;
+} catch {
+  // Deployed alone. No validation, which is where this started.
+}
+
+const FLAGS = {
+  boolean: ['--json', '--quiet', '--help', '-h'],
+  valued: ['--exclude']
+};
+
 // ── limits ───────────────────────────────────────────────────────────────────
 // The first four mirror the platform's own validator (skill-creator's
 // quick_validate.py) so that a skill failing here would also fail there. The
@@ -1243,6 +1261,14 @@ function invokedAsScript() {
 
 if (invokedAsScript()) {
   const args = process.argv.slice(2);
+  const bad = checkFlags(args, FLAGS);
+  if (bad) {
+    process.stderr.write(`error: unknown option ${bad.flag}\n`);
+    process.stderr.write(
+      bad.suggestion ? `  did you mean ${bad.suggestion}?\n` : `  run \`${invokedAs()} --help\` for what this verb takes\n`
+    );
+    process.exit(2);
+  }
   const json = args.includes('--json');
   const quiet = args.includes('--quiet');
   const exclude = [];

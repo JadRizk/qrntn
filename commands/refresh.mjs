@@ -81,6 +81,24 @@ try {
 	// Deployed alone. Naming the file is correct, not a failure.
 }
 
+// ── the flags this verb has ─────────────────────────────────────────────────
+//
+// Guarded like the two above. Without the sibling an unrecognised flag goes
+// back to being ignored, which is what every command did before argv.mjs
+// existed; the shipped package always carries it and `files` gates that.
+let checkFlags = () => null
+try {
+	const mod = await import('./argv.mjs')
+	checkFlags = mod.checkFlags
+} catch {
+	// Deployed alone. No validation, which is where this started.
+}
+
+const FLAGS = {
+	boolean: ['--json', '--dry-run', '--help', '-h'],
+	valued: ['--library']
+}
+
 // ── the library ─────────────────────────────────────────────────────────────
 //
 // SK-97. Until the split this was `dirname(...)` of this file's own location,
@@ -359,6 +377,15 @@ function main(argv) {
 		console.log(`usage: ${invokedAs()} [<name>] [--library <dir>] [--json] [--dry-run]`)
 		console.log('  with no <name>, refreshes every acquired skill; reports drift, never moves a pin')
 		return 0
+	}
+	// Before the root is resolved, for the reason PORTABILITY.md finding 4
+	// records: this command acting on a library nobody named is the expensive
+	// mistake, and a misspelt --library is one more way to make it.
+	const bad = checkFlags(argv, FLAGS)
+	if (bad) {
+		console.error(refusalLine(`unknown option ${bad.flag}`))
+		console.error(bad.suggestion ? `  did you mean ${bad.suggestion}?` : `  run \`${invokedAs()} --help\` for what this verb takes`)
+		return 2
 	}
 	const JSON_OUT = argv.includes('--json')
 	const DRY = argv.includes('--dry-run')

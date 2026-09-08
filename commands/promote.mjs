@@ -66,6 +66,23 @@ try {
 	// Deployed alone. Naming the file is correct, not a failure.
 }
 
+// ── the flags this verb has ─────────────────────────────────────────────────
+//
+// Guarded like the two above. Without the sibling an unrecognised flag goes
+// back to being ignored, which is what every command did before argv.mjs
+// existed; the shipped package always carries it and `files` gates that.
+let checkFlags = () => null
+try {
+	const mod = await import('./argv.mjs')
+	checkFlags = mod.checkFlags
+} catch {
+	// Deployed alone. No validation, which is where this started.
+}
+
+const FLAGS = {
+	boolean: ['--dry-run', '--json', '--help', '-h'],
+	valued: ['--library']
+}
 
 // Two roots, and until SK-97 they were one name for both.
 //
@@ -441,6 +458,14 @@ function runTests(dir, skillMdText = null) {
 // ── main ─────────────────────────────────────────────────────────────────────
 
 const args = process.argv.slice(2)
+{
+	const bad = checkFlags(args, FLAGS)
+	if (bad) {
+		console.error(refusalLine(`unknown option ${bad.flag}`))
+		console.error(bad.suggestion ? `  did you mean ${bad.suggestion}?` : `  run \`${invokedAs()} --help\` for what this verb takes`)
+		process.exit(2)
+	}
+}
 // `--library <dir>` puts a bare path in argv; it is not the skill name. Same
 // guard, and the same reasoning, as refresh.mjs: without the explicit -1 check
 // `indexOf` returning -1 makes `libraryAt + 1` equal 0 and silently excludes

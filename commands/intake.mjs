@@ -63,6 +63,24 @@ try {
 	// Deployed alone. Naming the file is correct, not a failure.
 }
 
+// ── the flags this verb has ─────────────────────────────────────────────────
+//
+// Guarded like the two above. Without the sibling an unrecognised flag goes
+// back to being ignored, which is what every command did before argv.mjs
+// existed; the shipped package always carries it and `files` gates that.
+let checkFlags = () => null
+try {
+	const mod = await import('./argv.mjs')
+	checkFlags = mod.checkFlags
+} catch {
+	// Deployed alone. No validation, which is where this started.
+}
+
+const FLAGS = {
+	boolean: ['--json', '--help', '-h'],
+	valued: ['--library', '--name', '--subpath', '--ref']
+}
+
 // ── the library ─────────────────────────────────────────────────────────────
 //
 // SK-97. Until the split this was `dirname(...)` of this file's own location,
@@ -272,6 +290,16 @@ function main(argv) {
 	// below then refuses a perfectly good invocation for having two sources.
 	// Two readers of one argv is the shape that hid this — the root resolver
 	// ran before main() and never told it what it had consumed.
+	// Before the parse below, which treats any unrecognised `--x` as a boolean
+	// flag and silently drops it. FLAGS and TAKES_VALUE describe the same
+	// surface from two angles; the check is what makes the leftovers an error.
+	const bad = checkFlags(args, FLAGS)
+	if (bad) {
+		refuse(
+			`unknown option ${bad.flag}\n` +
+				(bad.suggestion ? `  did you mean ${bad.suggestion}?` : `  run \`${invokedAs()} --help\` for what this verb takes`)
+		)
+	}
 	const TAKES_VALUE = new Set(['--name', '--subpath', '--ref', '--library'])
 	const flags = {}
 	const positional = []
