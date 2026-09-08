@@ -149,6 +149,40 @@ no ledger is a normal state, so a flat refusal on re-run would be hostile.
 
 **Size:** small. **Blocks:** §2's refusal has somewhere to point.
 
+**Landed**, as `commands/init.mjs` with `init.test.mjs` and
+`init.self-test.mjs` beside it. It does what this section scoped and nothing
+more: `catalog.json` only if absent, one category holding every held skill,
+then `ledger.mjs --backfill` — spawned rather than imported, because
+`backfill()` resolves `heldSkills()` from ledger.mjs's module scope and an
+import would act on the tool's own location instead of the library named.
+
+Three decisions this section left open, settled by what the neighbouring code
+already asserts rather than by preference:
+
+- **No `vault` key.** `check-catalog.mjs`'s header says it "deliberately does
+  not need the vault", nothing else reads one, and a path invented to fill a
+  field is a claim the tool did not earn.
+- **Filed by directory name, not frontmatter name.** `check-catalog.mjs:55`
+  says `catalog.json` and `edges.json` both name a skill by its directory.
+  Filing by the frontmatter name produces an "unfiled" and a "missing" for the
+  same skill — one fault reported as two — and the two names differ often
+  enough that there is a fixture for it.
+- **An absent `skills/` is refused; an empty one is not.** A library with no
+  skills yet is a real state and gets the category as a shape to fill. A
+  library with no `skills/` directory is not one this can set up, and creating
+  it would be deciding where someone keeps their skills.
+
+§7's acceptance criterion — *"`init` on a bare folder of skills makes `check`
+pass"* — is asserted in `init.test.mjs` rather than deferred to the packaging
+smoke test: the fixture starts at `check-catalog` exit 2 and ends at exit 0.
+43 assertions; the self-test's seven mutations are all caught and the inert
+control survives.
+
+**Not wired up.** `init` is absent from `bin/pratiq.mjs`'s `VERBS` table and
+from `package.json`'s `files` allowlist, both of which are §1's uncommitted
+work. The verb runs today as `node commands/init.mjs --library <dir>`; it
+becomes `pratiq init` when §1 lands and adds the row.
+
 ### 4 · The `~/.claude` flip
 
 `SURFACE.md` excludes `manifest` from the surface because *"it produces a
