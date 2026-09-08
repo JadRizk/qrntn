@@ -209,10 +209,12 @@ look past a `BLOCK`, write a line into `AUDIT.md` and promote. The tool will
 record that decision faithfully and enforce it, which is the same behaviour it
 has when the reading was careful.
 
-This is the cargo-vet failure mode, and it is documented in that ecosystem: the
-median lag between a release and its audit runs to weeks, and the median weekly
-audit workload is measured in thousands of changed lines. Workload is what turns
-a review into a rubber stamp.
+This is the cargo-vet failure mode, and it is measured rather than supposed.
+Across the public audit registries the median lag between a crates.io release
+and its audit is 29 days, and a project that wants to stay fully vetted faces a
+median of 8.7k changed lines a week — past 50k at the ninetieth percentile
+(*Auditing Rust Crates Effectively*, arXiv 2602.06466, 2026-02). Workload is
+what turns a review into a rubber stamp.
 
 Three things are offered against it, and none of them is vigilance:
 
