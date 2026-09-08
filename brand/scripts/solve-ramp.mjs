@@ -82,8 +82,15 @@ function emit(label, targets) {
 	console.log(`\n${label} — hue ${hue}deg, sat ${(sat * 100).toFixed(0)}%, ground ${groundHex}\n`)
 	console.log('  token       hex        target   measured   for')
 	for (const [name, target, note] of targets) {
-		const rgb = solve(hue, sat, target, ground)
-		console.log(`  ${name.padEnd(10)}  ${toHex(rgb)}  ${target.toFixed(2).padStart(6)}   ${contrast(rgb, ground).toFixed(2).padStart(7)}:1   ${note}`)
+		// Measure the hex we EMIT, not the ideal colour we solved for. solve()
+		// returns floats; toHex() rounds them to 8-bit. Reporting the float's
+		// contrast beside the rounded hex prints a ratio for a colour that is
+		// not the one shipped — #4C483D was published as 2.14:1 when the hex
+		// itself measures 2.15:1. Small, and exactly the kind of gap a tool
+		// whose whole claim is "compute, never eyeball" cannot have.
+		const hex = toHex(solve(hue, sat, target, ground))
+		const got = contrast(hexToRgb(hex), ground)
+		console.log(`  ${name.padEnd(10)}  ${hex}  ${target.toFixed(2).padStart(6)}   ${got.toFixed(2).padStart(7)}:1   ${note}`)
 	}
 }
 

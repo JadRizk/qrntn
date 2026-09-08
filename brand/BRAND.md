@@ -118,7 +118,7 @@ not own.
   hypothetical.** `pratiq` (the AA theme) holds this floor at every step. The
   viewer ships `pratiq-hud`, whose ramp is inherited verbatim from nexus's own
   immersive variant and puts three text roles below it — `ink-subtle` at
-  3.80:1, `fg-tertiary` at 2.72:1, `ink-disabled` at 2.14:1. That was inherited
+  3.80:1, `fg-tertiary` at 2.72:1, `ink-disabled` at 2.15:1. That was inherited
   along with the ramp so the brand swap moved hue and nothing else, and it is
   the reason the viewer's edge-register gains still hold.
 

@@ -115,9 +115,9 @@
 	--nx-font-scale: 1.15;
 	--pq-font-scale: 1.15;
 
-	--nx-grey-100: #38352D;   /*  1.61:1  decorative hairline only */
-	--nx-grey-200: #625E4F;   /*  3.01:1  UI boundary — 1.4.11 */
-	--nx-grey-300: #7F7966;   /*  4.52:1  disabled text — 1.4.3 */
+	--nx-grey-100: #38352D;   /*  1.60:1  decorative hairline only */
+	--nx-grey-200: #625E4F;   /*  3.02:1  UI boundary — 1.4.11 */
+	--nx-grey-300: #7F7966;   /*  4.51:1  disabled text — 1.4.3 */
 	--nx-grey-400: #8E8772;   /*  5.50:1 */
 	--nx-grey-500: #A09A89;   /*  7.00:1 */
 	--nx-grey-600: #BDB9AD;   /* 10.00:1 */
@@ -129,7 +129,7 @@
 
 	--nx-grey-100: #22201B;   /* 1.21:1 */
 	--nx-grey-200: #36342C;   /* 1.57:1 */
-	--nx-grey-300: #4C483D;   /* 2.14:1 */
+	--nx-grey-300: #4C483D;   /* 2.15:1 */
 	--nx-grey-400: #5C5749;   /* 2.72:1 */
 	--nx-grey-500: #736D5C;   /* 3.80:1 */
 	--nx-grey-600: #87806C;   /* 4.98:1 */

@@ -99,15 +99,24 @@ node brand/scripts/solve-ramp.mjs 45 0.11 "#0A0C0B"
 
 | Token | Value | Target | Measured | For |
 |---|---|---|---|---|
-| `--pq-grey-100` | `#38352D` | 1.61 | 1.61:1 | Decorative hairline. **Never text** |
-| `--pq-grey-200` | `#625E4F` | 3.01 | 3.01:1 | UI boundary — WCAG 1.4.11 |
-| `--pq-grey-300` | `#7F7966` | 4.52 | 4.52:1 | Disabled text — WCAG 1.4.3 |
+| `--pq-grey-100` | `#38352D` | 1.61 | 1.60:1 | Decorative hairline. **Never text** |
+| `--pq-grey-200` | `#625E4F` | 3.01 | 3.02:1 | UI boundary — WCAG 1.4.11 |
+| `--pq-grey-300` | `#7F7966` | 4.52 | 4.51:1 | Disabled text — WCAG 1.4.3 |
 | `--pq-grey-400` | `#8E8772` | 5.50 | 5.47:1 | |
 | `--pq-grey-500` | `#A09A89` | 7.00 | 6.99:1 | |
 | `--pq-grey-600` | `#BDB9AD` | 10.00 | 10.00:1 | |
 
-The 5.47 and 6.99 are the solver hitting its target and the validator rounding
-the same colour a hair differently. Both clear their floors; neither is a miss.
+**Measured is not target, and the gap is quantisation.** The solver bisects in
+continuous lightness and then rounds to 8-bit, so the hex it emits sits a little
+either side of the number it aimed at — 4.52 asked for, `#7F7966` delivered,
+4.51 measured. Every step still clears the floor its target was chosen for.
+
+This column was wrong until it was checked against a second tool: `solve-ramp`
+reported the contrast of the colour it had *solved* rather than of the hex it
+*printed*, so four figures here were off by 0.01. Small, and precisely the
+error a document whose claim is "compute, never eyeball" cannot carry. The
+solver now measures what it emits, and nexus's own two ramps were checked the
+same way and are exact.
 
 ### The immersive ramp — and it is the one that ships
 
@@ -128,7 +137,7 @@ node brand/scripts/solve-ramp.mjs 45 0.11 "#0A0C0B" --immersive
 |---|---|---|---|---|
 | `--pq-grey-100` | `#22201B` | 1.21 | 1.21:1 | no |
 | `--pq-grey-200` | `#36342C` | 1.57 | 1.57:1 | no |
-| `--pq-grey-300` | `#4C483D` | 2.14 | 2.14:1 | **no** |
+| `--pq-grey-300` | `#4C483D` | 2.14 | 2.15:1 | **no** |
 | `--pq-grey-400` | `#5C5749` | 2.72 | 2.72:1 | **no** |
 | `--pq-grey-500` | `#736D5C` | 3.80 | 3.80:1 | **no** |
 | `--pq-grey-600` | `#87806C` | 4.98 | 4.98:1 | yes |
@@ -165,7 +174,7 @@ node ~/.claude/skills/design-direction/scripts/validate-palette.mjs \
 | `--pq-ink` | `--pq-paper` | 16.61:1 | Headings, emphasis |
 | `--pq-ink-muted` | `--pq-grey-600` | 10.00:1 | Body copy |
 | `--pq-ink-subtle` | `--pq-grey-500` | 6.99:1 | Labels, metadata, eyebrows |
-| `--pq-ink-disabled` | `--pq-grey-300` | 4.52:1 | Disabled text |
+| `--pq-ink-disabled` | `--pq-grey-300` | 4.51:1 | Disabled text |
 | `--pq-accent` | `--pq-quebec` | 14.53:1 | The signal |
 | `--pq-accent-ink` | `#000000` | 15.56:1 | Text on the accent |
 | `--pq-warning` | `--pq-rust` | 4.71:1 | Degraded — drift found, pin moved |
