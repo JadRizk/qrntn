@@ -179,9 +179,12 @@ const VERBS = [...readFileSync(BIN, 'utf8').matchAll(/^\t\['([a-z-]+)', '([\w.-]
 		check: ['--help']
 	}
 
-	// Two verbs answer no synopsis at all: refresh has no --help handling and
-	// refuses for want of a library, overlap ignores the flag and runs its
-	// analysis. Both predate the front door and are tracked separately.
+	// Empty, and it stays a list rather than becoming an assertion that every
+	// verb answers, because the point is that the exceptions are NAMED. Two
+	// lived here — refresh, which had no --help handling and refused for want
+	// of a library, and overlap, which ignored the flag and ran its analysis.
+	// Both are fixed; the list is where the next one gets written down instead
+	// of being skipped.
 	//
 	// They are NAMED rather than skipped. An earlier version of this loop did
 	// `if (!synopsis.length) continue`, which silently dropped three of nine
@@ -190,7 +193,7 @@ const VERBS = [...readFileSync(BIN, 'utf8').matchAll(/^\t\['([a-z-]+)', '([\w.-]
 	// extracted from, and the exact leak the assertion below exists to catch.
 	// A gate that quietly covers less than it appears to is the failure this
 	// project keeps finding everywhere else.
-	const NO_SYNOPSIS_YET = ['overlap', 'refresh']
+	const NO_SYNOPSIS_YET = []
 
 	const named = []
 	const leaked = []
@@ -246,6 +249,27 @@ const VERBS = [...readFileSync(BIN, 'utf8').matchAll(/^\t\['([a-z-]+)', '([\w.-]
 		leaked.length === 0,
 		leaked.join(' | ')
 	)
+
+	// Asking a tool how to use it is not a question about a library, and two
+	// verbs used to answer as though it were. refresh resolved the library
+	// first and refused with `not a skill library` — exit 2, telling a caller
+	// who had not yet named a directory that their directory was wrong.
+	// overlap ignored the flag entirely and ran its analysis, handing back a
+	// ranked table instead of an answer.
+	//
+	// ROOT is this repository, which has no skills/ — so this runs from a
+	// directory that is not a library, which is the condition that broke.
+	//
+	// Only these two. intake and promote answer --help with a refusal because
+	// their positional is required and absent; whether that should be an exit 0
+	// is a real question and a separate one from this.
+	for (const verb of ['refresh', 'overlap']) {
+		for (const flag of ['--help', '-h']) {
+			const r = run([verb, flag], { cwd: ROOT })
+			check(`\`pratiq ${verb} ${flag}\` exits 0 outside a library`, r.code === 0, `exit ${r.code} ${r.raw.slice(0, 160)}`)
+			check(`\`pratiq ${verb} ${flag}\` answers rather than refusing`, !/refused:/.test(r.raw), r.raw.slice(0, 200))
+		}
+	}
 
 	// Run directly rather than through the front door, the answer changes back.
 	// This is the half that stops the fix from being a hardcoded "pratiq": these

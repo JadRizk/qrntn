@@ -64,6 +64,23 @@ try {
 	// Deployed alone. Plain text is correct, not a failure.
 }
 
+// ── how this was invoked, which is also optional ────────────────────────────
+//
+// Guarded for the same reason colour is, and it is the same hazard: deployed as
+// a single file into a skill's scripts/ folder, invoked-as.mjs is not beside
+// this one either.
+//
+// The fallback is not a degraded mode. A script deployed alone was not reached
+// through bin/pratiq.mjs, so PRATIQ_VERB is unset and the module would return
+// this exact string anyway.
+let invokedAs = () => `node ${basename(fileURLToPath(import.meta.url))}`
+try {
+	const mod = await import('./invoked-as.mjs')
+	invokedAs = () => mod.invokedAs(import.meta.url)
+} catch {
+	// Deployed alone. Naming the file is correct, not a failure.
+}
+
 // ── the library ─────────────────────────────────────────────────────────────
 //
 // SK-97. Until the split this was `dirname(...)` of this file's own location,
@@ -332,6 +349,17 @@ function acquiredSkills() {
 }
 
 function main(argv) {
+	// Answered BEFORE the library is resolved, which is the whole bug. Asking a
+	// tool how to use it is not a question about a library, and this refused
+	// with `not a skill library` and exit 2 — telling a caller who had not yet
+	// named a directory that their directory was wrong. Every other verb
+	// answers --help from anywhere; this one could only answer it from inside a
+	// library it had not been told about.
+	if (argv.includes('--help') || argv.includes('-h')) {
+		console.log(`usage: ${invokedAs()} [<name>] [--library <dir>] [--json] [--dry-run]`)
+		console.log('  with no <name>, refreshes every acquired skill; reports drift, never moves a pin')
+		return 0
+	}
 	const JSON_OUT = argv.includes('--json')
 	const DRY = argv.includes('--dry-run')
 	LIBRARY = resolveRoot(argv)

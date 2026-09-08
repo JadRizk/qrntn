@@ -80,6 +80,23 @@ try {
 	// Deployed alone. Plain text is correct, not a failure.
 }
 
+// ── how this was invoked, which is also optional ────────────────────────────
+//
+// Guarded for the same reason colour is, and it is the same hazard: deployed as
+// a single file into a skill's scripts/ folder, invoked-as.mjs is not beside
+// this one either.
+//
+// The fallback is not a degraded mode. A script deployed alone was not reached
+// through bin/pratiq.mjs, so PRATIQ_VERB is unset and the module would return
+// this exact string anyway.
+let invokedAs = () => `node ${basename(fileURLToPath(import.meta.url))}`
+try {
+	const mod = await import('./invoked-as.mjs')
+	invokedAs = () => mod.invokedAs(import.meta.url)
+} catch {
+	// Deployed alone. Naming the file is correct, not a failure.
+}
+
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 // skills/skill-adopt/scripts -> repo root. Resolved from this file's location
@@ -404,6 +421,14 @@ function render({ pairs, candidate, excluded, all }, { top = 12 } = {}) {
 }
 
 function main(argv) {
+	// This one did not refuse — it ignored the flag and ran the analysis, so a
+	// caller asking how to use it got a ranked table instead of an answer. The
+	// quieter of the two failures and the easier to keep: nothing looks broken.
+	if (argv.includes('--help') || argv.includes('-h')) {
+		console.log(`usage: ${invokedAs()} [--candidate <dir>] [--top <n>] [--all] [--library <dir>] [--json]`)
+		console.log('  with no --candidate, ranks the held skills against each other')
+		return 0
+	}
 	const at = (flag) => {
 		const i = argv.indexOf(flag)
 		return i === -1 ? null : argv[i + 1]
