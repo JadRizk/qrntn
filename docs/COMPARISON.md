@@ -76,10 +76,14 @@ critical issue · **76** were confirmed malicious payloads under human review ·
 routinely reports the first figure as though it were the last. The
 malicious-payload number is 76.
 
-**The widely-cited scanner benchmark is vendor-authored** — the tool that wins
-it is the publisher's own. It is directionally consistent with independent work
-finding low recall for pattern-based methods, but the spread should not be
-quoted as a neutral measurement.
+**A scanner ranking is a claim about a corpus, not only about a scanner.**
+MalSkillBench finds a single detector's recall swinging by up to 66 points
+depending on which subset it is scored against — enough to move an off-the-shelf
+aggregator from near the bottom of the field to the top. So a spread quoted
+without the corpus it was measured on is not a measurement. Both benchmarks
+cited below are independent rather than vendor-authored, which is worth saying
+plainly: MalSkillBench is academic, and `skillscan.sh` holds its author's own
+retired scanner to the same test and publishes it mid-table.
 
 ## Sources
 
@@ -97,3 +101,7 @@ quoted as a neutral measurement.
 - *Skill-Inject*, arXiv 2602.20156, 2026-02 — up to 80% attack success against
   frontier models, concluding that the problem needs context-aware
   authorization rather than input filtering.
+- *MalSkillBench*, arXiv 2606.07131, 2026-06 — a runtime-verified benchmark, and
+  the recall-by-subset swing above.
+- `skillscan.sh` scoreboard, 2026-06-17 — an independent ranking over the
+  Skill-Inject corpus.
