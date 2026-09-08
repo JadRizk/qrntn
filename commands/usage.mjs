@@ -63,7 +63,7 @@
 
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { dirname, join, relative, resolve } from 'node:path'
+import { basename, dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { realpathSync } from 'node:fs'
 import { computeInstall, resolveInstallRoot, writeLedgerSections } from './ledger.mjs'
@@ -85,6 +85,23 @@ try {
 	refusalLine = mod.refusalLine
 } catch {
 	// Deployed alone. Plain text is correct, not a failure.
+}
+
+// ── how this was invoked, which is also optional ────────────────────────────
+//
+// Guarded for the same reason colour is, and it is the same hazard: deployed as
+// a single file into a skill's scripts/ folder, invoked-as.mjs is not beside
+// this one either.
+//
+// The fallback is not a degraded mode. A script deployed alone was not reached
+// through bin/pratiq.mjs, so PRATIQ_VERB is unset and the module would return
+// this exact string anyway.
+let invokedAs = () => `node ${basename(fileURLToPath(import.meta.url))}`
+try {
+	const mod = await import('./invoked-as.mjs')
+	invokedAs = () => mod.invokedAs(import.meta.url)
+} catch {
+	// Deployed alone. Naming the file is correct, not a failure.
 }
 
 // ── the library ─────────────────────────────────────────────────────────────
@@ -652,11 +669,14 @@ export function renderReport(ledger, held) {
 
 // ---------------------------------------------------------------------- main
 
+const SYNOPSIS = invokedAs()
+const CONT = ' '.repeat(SYNOPSIS.length + 2)
+
 const USAGE = `usage — count which skills actually fired
 
-  node scripts/usage.mjs [--json | --report] [--now <iso>] [--root <dir>] [--library <dir>]
-                         [--skills <dir>] [--out <path>] [--baseline]
-                         [--install [--install-root <dir>]]
+  ${SYNOPSIS} [--json | --report] [--now <iso>] [--root <dir>] [--library <dir>]
+${CONT}[--skills <dir>] [--out <path>] [--baseline]
+${CONT}[--install [--install-root <dir>]]
 
   --json         print the ledger to stdout and write nothing
   --report       print the human-facing table — usage joined to description

@@ -179,8 +179,22 @@ const VERBS = [...readFileSync(BIN, 'utf8').matchAll(/^\t\['([a-z-]+)', '([\w.-]
 		check: ['--help']
 	}
 
+	// Two verbs answer no synopsis at all: refresh has no --help handling and
+	// refuses for want of a library, overlap ignores the flag and runs its
+	// analysis. Both predate the front door and are tracked separately.
+	//
+	// They are NAMED rather than skipped. An earlier version of this loop did
+	// `if (!synopsis.length) continue`, which silently dropped three of nine
+	// verbs — and the third was usage, whose synopsis read `node
+	// scripts/usage.mjs`: a directory belonging to the library this was
+	// extracted from, and the exact leak the assertion below exists to catch.
+	// A gate that quietly covers less than it appears to is the failure this
+	// project keeps finding everywhere else.
+	const NO_SYNOPSIS_YET = ['overlap', 'refresh']
+
 	const named = []
 	const leaked = []
+	const silent = []
 	for (const { verb } of VERBS) {
 		const r = run([verb, ...HOW[verb]], { cwd: ROOT })
 		// A synopsis line, in either of the two shapes this tool uses: the
@@ -189,19 +203,43 @@ const VERBS = [...readFileSync(BIN, 'utf8').matchAll(/^\t\['([a-z-]+)', '([\w.-]
 		// somewhere in prose are not synopsis lines and are left alone.
 		const lines = r.raw.split('\n')
 		// `refused:` may sit in front — intake's usage line is a refusal.
+		//
+		// The file pattern carries a path, not just a basename. Matching only
+		// `[a-z-]+\.mjs` is what let `node scripts/usage.mjs` through: the slash
+		// stopped the character class reaching `.mjs`, so the line never became
+		// a synopsis and the leak check never saw it. The worst leak is the one
+		// naming a directory that does not ship, so it must be the easiest to
+		// match, not the hardest.
+		const FILE = String.raw`[\w./-]*[a-z-]+\.mjs`
 		const synopsis = lines.filter(
-			(l) => /^\s*(?:refused:\s*)?usage:/.test(l) || /^\s{2,}(pratiq \w|node [a-z-]+\.mjs|[a-z-]+\.mjs )/.test(l)
+			(l) =>
+				/^\s*(?:refused:\s*)?usage:/.test(l) ||
+				new RegExp(String.raw`^\s{2,}(pratiq \w|node ${FILE}|${FILE} )`).test(l)
 		)
-		if (!synopsis.length) continue
+		if (!synopsis.length) {
+			silent.push(verb)
+			continue
+		}
 		if (synopsis.some((l) => new RegExp(`\\bpratiq ${verb}\\b`).test(l))) named.push(verb)
-		const leak = synopsis.find((l) => /[a-z-]+\.mjs/.test(l))
+		const leak = synopsis.find((l) => new RegExp(FILE).test(l))
 		if (leak) leaked.push(`${verb}: ${leak.trim()}`)
 	}
 
+	// Exactly the known two, so a tenth verb arriving without a usage line —
+	// or either of these growing one — fails here rather than shrinking the
+	// coverage of the two assertions below without saying so.
+	check(
+		'the verbs printing no usage line are exactly the ones known not to',
+		silent.slice().sort().join(',') === NO_SYNOPSIS_YET.join(','),
+		`silent: [${silent.slice().sort()}] · expected: [${NO_SYNOPSIS_YET}]`
+	)
+	// Every remaining verb, counted rather than thresholded. `>= 6` passed at
+	// exactly the value the gap produced, which is a number that agrees with
+	// today and would agree with tomorrow being worse.
 	check(
 		'every verb that prints a usage line names itself as `pratiq <verb>`',
-		named.length >= 6,
-		`named: ${named.join(', ') || 'none'}`
+		named.length === VERBS.length - NO_SYNOPSIS_YET.length,
+		`named ${named.length}/${VERBS.length - NO_SYNOPSIS_YET.length}: ${named.join(', ') || 'none'}`
 	)
 	check(
 		'no usage line names the script file behind the verb',
