@@ -43,13 +43,43 @@ const MUTATIONS = [
 	},
 	{
 		name: 'arguments are dropped instead of passed through',
-		find: 'const r = spawnSync(process.execPath, [path, ...rest], { stdio: ',
-		replace: 'const r = spawnSync(process.execPath, [path], { stdio: '
+		find: 'const r = spawnSync(process.execPath, [path, ...rest], {',
+		replace: 'const r = spawnSync(process.execPath, [path], {'
+	},
+	{
+		// The command then cannot know which verb reached it, and every usage
+		// line falls back to naming its own file — which is what they all did
+		// before, and reads as perfectly normal output.
+		name: 'the verb is not passed to the command it dispatches',
+		find: '\tenv: { ...process.env, [VERB_ENV]: verb }',
+		replace: '\tenv: { ...process.env }'
+	},
+	{
+		// Drift between the two copies of the name. Nothing throws: the command
+		// reads a variable the dispatcher never set, and quietly names its file.
+		name: 'the env var name drifts from the one commands/ reads',
+		find: "const VERB_ENV = 'PRATIQ_VERB'",
+		replace: "const VERB_ENV = 'PRATIQ_COMMAND'"
 	},
 	{
 		name: 'getting it wrong and asking directly answer the same way',
 		find: '\tprocess.exit(verb ? 0 : 2)',
 		replace: '\tprocess.exit(0)'
+	},
+	{
+		name: '--version is refused as a verb again',
+		find: "if (verb === '--version' || verb === '-v') {",
+		replace: 'if (false) {'
+	},
+	{
+		name: 'the version is invented instead of read from the manifest',
+		find: "declared = JSON.parse(readFileSync(manifest, 'utf8')).version ?? null",
+		replace: "declared = '0.0.0'"
+	},
+	{
+		name: 'a package with no manifest reports a version anyway',
+		find: 'if (!existsSync(manifest)) {',
+		replace: 'if (false) {'
 	},
 	{
 		name: 'INERT CONTROL — a comment reworded, nothing else',

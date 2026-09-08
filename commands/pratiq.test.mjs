@@ -150,6 +150,145 @@ const VERBS = [...readFileSync(BIN, 'utf8').matchAll(/^\t\['([a-z-]+)', '([\w.-]
 	check('--help after a verb belongs to the verb, not the front door', !/pratiq <verb>/.test(r.raw), r.raw.slice(0, 300))
 }
 
+// ── the answer names the verb, not the file behind it ──────────────────────
+//
+// The header of bin/pratiq.mjs says the verb is the contract and the filename
+// is not. Every command printed the filename anyway, so someone who typed
+// `pratiq promote` was answered with a usage line for a script not on their
+// PATH, in a directory they have no reason to know exists.
+//
+// This is asserted HERE rather than in each command's own suite on purpose.
+// Those suites are what the mutation self-tests run inside a sandbox holding
+// one script and no siblings, where invoked-as.mjs is deliberately absent and
+// the fallback correctly names the file. An assertion on the verb would fail
+// there for a reason that has nothing to do with the mutation, and a self-test
+// that fails for the wrong reason proves nothing about itself.
+{
+	// Every verb, driven the way a user drives it. Each is given an argument
+	// shape that makes it print its own usage: for most that is `--help`, and
+	// for the two that take a required positional it is nothing at all.
+	const HOW = {
+		init: ['--help'],
+		intake: [],
+		audit: ['--help'],
+		promote: [],
+		refresh: ['--help'],
+		usage: ['--help'],
+		overlap: ['--help'],
+		ledger: ['--badflag'],
+		check: ['--help']
+	}
+
+	const named = []
+	const leaked = []
+	for (const { verb } of VERBS) {
+		const r = run([verb, ...HOW[verb]], { cwd: ROOT })
+		// A synopsis line, in either of the two shapes this tool uses: the
+		// `usage: …` prefix most commands print, and the indented bare synopsis
+		// audit-skill puts under its title. Lines that merely mention a file
+		// somewhere in prose are not synopsis lines and are left alone.
+		const lines = r.raw.split('\n')
+		// `refused:` may sit in front — intake's usage line is a refusal.
+		const synopsis = lines.filter(
+			(l) => /^\s*(?:refused:\s*)?usage:/.test(l) || /^\s{2,}(pratiq \w|node [a-z-]+\.mjs|[a-z-]+\.mjs )/.test(l)
+		)
+		if (!synopsis.length) continue
+		if (synopsis.some((l) => new RegExp(`\\bpratiq ${verb}\\b`).test(l))) named.push(verb)
+		const leak = synopsis.find((l) => /[a-z-]+\.mjs/.test(l))
+		if (leak) leaked.push(`${verb}: ${leak.trim()}`)
+	}
+
+	check(
+		'every verb that prints a usage line names itself as `pratiq <verb>`',
+		named.length >= 6,
+		`named: ${named.join(', ') || 'none'}`
+	)
+	check(
+		'no usage line names the script file behind the verb',
+		leaked.length === 0,
+		leaked.join(' | ')
+	)
+
+	// Run directly rather than through the front door, the answer changes back.
+	// This is the half that stops the fix from being a hardcoded "pratiq": these
+	// scripts are still invoked by path, by every suite here and by the docs,
+	// and a usage line naming a front door the caller did not use would be wrong
+	// in the other direction — and wrong in the way that is harder to notice.
+	const direct = spawnSync(process.execPath, [join(HERE, 'promote.mjs')], { encoding: 'utf8', cwd: ROOT })
+	const directRaw = (direct.stdout ?? '') + (direct.stderr ?? '')
+	check(
+		'invoked by path, the usage line names the file — not a front door that was not used',
+		/usage: node promote\.mjs/.test(directRaw),
+		directRaw.slice(0, 200)
+	)
+
+	// The dispatcher cannot import from commands/ — its job when commands/ is
+	// missing is to say so, and importing the constant would reintroduce exactly
+	// the ERR_MODULE_NOT_FOUND fault its header describes. So the name is
+	// written twice, and the copies are checked against each other here.
+	const binSrc = readFileSync(BIN, 'utf8')
+	const modSrc = readFileSync(join(HERE, 'invoked-as.mjs'), 'utf8')
+	const nameIn = (src) => /VERB_ENV = '([A-Z_]+)'/.exec(src)?.[1] ?? null
+	check(
+		'the env var name is the same on both sides of the copy',
+		nameIn(binSrc) !== null && nameIn(binSrc) === nameIn(modSrc),
+		`bin: ${nameIn(binSrc)} · module: ${nameIn(modSrc)}`
+	)
+
+	// It is validated rather than trusted: it arrives from the environment and
+	// is echoed straight into text a user reads.
+	const forged = spawnSync(process.execPath, [join(HERE, 'promote.mjs')], {
+		encoding: 'utf8',
+		cwd: ROOT,
+		env: { ...process.env, [nameIn(modSrc)]: 'promote; rm -rf /' }
+	})
+	const forgedRaw = (forged.stdout ?? '') + (forged.stderr ?? '')
+	check(
+		'a verb name that is not a verb shape is not echoed back',
+		!forgedRaw.includes('rm -rf') && /usage: node promote\.mjs/.test(forgedRaw),
+		forgedRaw.slice(0, 200)
+	)
+}
+
+// ── which bytes are running ────────────────────────────────────────────────
+//
+// `pratiq --version` used to be refused as a verb this tool does not have,
+// which is a confusing thing for a CLI to say about --version. It is answered
+// before the verb lookup now.
+//
+// The version is read out of package.json rather than carried as a constant in
+// the dispatcher, so these assert the two agree rather than asserting a literal
+// — a literal here would be the second place the version lives, which is the
+// fault the source comment exists to avoid.
+{
+	const declared = JSON.parse(readFileSync(PKG, 'utf8')).version
+
+	for (const flag of ['--version', '-v']) {
+		const r = run([flag])
+		check(`\`pratiq ${flag}\` exits 0`, r.code === 0, `exit ${r.code} ${r.raw.slice(0, 200)}`)
+		check(`\`pratiq ${flag}\` prints the version package.json declares`, r.raw.trim() === declared, `${JSON.stringify(r.raw)} vs ${declared}`)
+		// Bare, so a script can read it without parsing. A name or a leading `v`
+		// would each be one more thing for a caller to strip.
+		check(`\`pratiq ${flag}\` prints nothing else`, !/pratiq|version|^v/i.test(r.raw.trim()), JSON.stringify(r.raw))
+		check(`\`pratiq ${flag}\` is not treated as a verb`, !/no such verb/.test(r.raw), r.raw.slice(0, 200))
+	}
+}
+{
+	// A tool that cannot find its own manifest is broken in a way its user did
+	// not cause. Same packaging fault as a missing command, and said the same
+	// way rather than as a JSON parse error about a path they have no reason to
+	// recognise.
+	const lonely = mkdtempSync(join(tmpdir(), 'pratiq-nomanifest-'))
+	mkdirSync(join(lonely, 'bin'), { recursive: true })
+	writeFileSync(join(lonely, 'bin', 'pratiq.mjs'), readFileSync(BIN, 'utf8'))
+	const r = spawnSync(process.execPath, [join(lonely, 'bin', 'pratiq.mjs'), '--version'], { encoding: 'utf8' })
+	const raw = (r.stdout ?? '') + (r.stderr ?? '')
+	check('no package.json: refused, exit 2', r.status === 2, `exit ${r.status} ${raw.slice(0, 200)}`)
+	check('no package.json: named as a packaging fault', /packaging fault/.test(raw), raw.slice(0, 300))
+	check('no package.json: says which file it wanted', /expected .*package\.json/.test(raw), raw.slice(0, 300))
+	check('no package.json: no ENOENT stack trace', !/ENOENT/.test(raw), raw.slice(0, 300))
+}
+
 console.log(`\n${pass} passed, ${failures.length} failed`)
 for (const f of failures) console.log(`  FAIL  ${f}`)
 process.exit(failures.length ? 1 : 0)

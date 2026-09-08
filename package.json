@@ -34,6 +34,7 @@
     "commands/check-library.mjs",
     "commands/init.mjs",
     "commands/intake.mjs",
+    "commands/invoked-as.mjs",
     "commands/ledger.mjs",
     "commands/overlap.mjs",
     "commands/promote.mjs",

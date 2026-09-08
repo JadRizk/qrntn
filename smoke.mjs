@@ -135,6 +135,18 @@ const VERBS = [...readFileSync(join(INSTALL, 'node_modules', 'pratiq', 'bin', 'p
 
 check('the installed dispatcher offers verbs', VERBS.length >= 9, `found ${VERBS.length}`)
 
+// The installed tool must be able to say which bytes are running, and say the
+// same thing the tarball's own manifest says. Asserted here rather than only in
+// the checkout because the manifest and the dispatcher travel separately: npm
+// writes package.json into every tarball whatever `files` says, and a version
+// read from the wrong place would still look right from a checkout.
+{
+	const declared = JSON.parse(readFileSync(join(INSTALL, 'node_modules', 'pratiq', 'package.json'), 'utf8')).version
+	const r = run(['--version'])
+	check('the installed tool reports its version', r.code === 0, `exit ${r.code} ${r.raw.slice(0, 200)}`)
+	check('and it is the version the installed manifest declares', r.raw.trim() === declared, `${JSON.stringify(r.raw)} vs ${declared}`)
+}
+
 // Pointed at a folder with nothing in it. Every verb must reach its own opinion
 // about that, and none may fail because a file it needed was not shipped.
 const bare = join(SANDBOX, 'bare')

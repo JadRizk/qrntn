@@ -46,6 +46,23 @@ try {
 	// Deployed alone. Plain text is correct, not a failure.
 }
 
+// ── how this was invoked, which is also optional ────────────────────────────
+//
+// Guarded for the same reason colour is, and it is the same hazard: deployed as
+// a single file into a skill's scripts/ folder, invoked-as.mjs is not beside
+// this one either.
+//
+// The fallback is not a degraded mode. A script deployed alone was not reached
+// through bin/pratiq.mjs, so PRATIQ_VERB is unset and the module would return
+// this exact string anyway.
+let invokedAs = () => `node ${basename(fileURLToPath(import.meta.url))}`
+try {
+	const mod = await import('./invoked-as.mjs')
+	invokedAs = () => mod.invokedAs(import.meta.url)
+} catch {
+	// Deployed alone. Naming the file is correct, not a failure.
+}
+
 // ── the library ─────────────────────────────────────────────────────────────
 //
 // SK-97. Until the split this was `dirname(...)` of this file's own location,
@@ -272,7 +289,7 @@ function main(argv) {
 	const src = positional[0]
 	if (!src) {
 		refuse(
-			`usage: intake.mjs <source> [--name X] [--subpath P] [--ref R] [--library D]\n` +
+			`usage: ${invokedAs()} <source> [--name X] [--subpath P] [--ref R] [--library D]\n` +
 				'  <source> may be a repository url, a repository url with /tree/<ref>/<subpath> on it, or a local checkout'
 		)
 	}

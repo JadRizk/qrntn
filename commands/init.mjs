@@ -44,7 +44,7 @@
 
 import { spawnSync } from 'node:child_process'
 import { existsSync, readdirSync, writeFileSync } from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
+import { basename, dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { realpathSync } from 'node:fs'
 
@@ -65,6 +65,23 @@ try {
 	refusalLine = mod.refusalLine
 } catch {
 	// Deployed alone. Plain text is correct, not a failure.
+}
+
+// ── how this was invoked, which is also optional ────────────────────────────
+//
+// Guarded for the same reason colour is, and it is the same hazard: deployed as
+// a single file into a skill's scripts/ folder, invoked-as.mjs is not beside
+// this one either.
+//
+// The fallback is not a degraded mode. A script deployed alone was not reached
+// through bin/pratiq.mjs, so PRATIQ_VERB is unset and the module would return
+// this exact string anyway.
+let invokedAs = () => `node ${basename(fileURLToPath(import.meta.url))}`
+try {
+	const mod = await import('./invoked-as.mjs')
+	invokedAs = () => mod.invokedAs(import.meta.url)
+} catch {
+	// Deployed alone. Naming the file is correct, not a failure.
 }
 
 
@@ -187,7 +204,7 @@ function invokedAsScript() {
 
 function main(argv) {
 	if (argv.includes('--help') || argv.includes('-h')) {
-		console.log('usage: init.mjs [--library <dir>] [--json]')
+		console.log(`usage: ${invokedAs()} [--library <dir>] [--json]`)
 		return 0
 	}
 	const lib = resolveLibrary(argv)

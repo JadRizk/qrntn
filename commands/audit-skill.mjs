@@ -46,7 +46,6 @@ import { fileURLToPath } from 'node:url';
 // pipe. Severity is carried by the WORD — BLOCK, REVIEW, NOTE — and the ink is
 // only a second copy of it, so a report with the colour stripped says the same
 // thing. That is the test for whether an ink belongs anywhere in this file.
-//
 // `enabled` is here because the real object has it. A fallback that is merely
 // good enough for today's call sites breaks the day someone adds one, and it
 // breaks ONLY in the copied-alone path — the one that runs on a user's machine
@@ -57,6 +56,23 @@ try {
   tint = mod.tint;
 } catch {
   // Deployed alone. Plain text is correct, not a failure.
+}
+
+// ── how this was invoked, which is also optional ────────────────────────────
+//
+// Guarded for the same reason colour is, and it is the same hazard: deployed as
+// a single file into a skill's scripts/ folder, invoked-as.mjs is not beside
+// this one either. promote.test.mjs copies exactly this script that way.
+//
+// The fallback is not a degraded mode. A script deployed alone was not reached
+// through bin/pratiq.mjs, so PRATIQ_VERB is unset and the module would return
+// this exact string anyway.
+let invokedAs = () => `node ${basename(fileURLToPath(import.meta.url))}`;
+try {
+  const mod = await import('./invoked-as.mjs');
+  invokedAs = () => mod.invokedAs(import.meta.url);
+} catch {
+  // Deployed alone. Naming the file is correct, not a failure.
 }
 
 // ── limits ───────────────────────────────────────────────────────────────────
@@ -1141,7 +1157,7 @@ export function summarise(findings) {
 
 const USAGE = `audit-skill — static audit of an untrusted skill directory
 
-  node audit-skill.mjs <skill-dir> [--json] [--quiet] [--exclude <glob>]…
+  ${invokedAs()} <skill-dir> [--json] [--quiet] [--exclude <glob>]…
 
   --json            machine-readable findings
   --quiet           suppress NOTE-level findings

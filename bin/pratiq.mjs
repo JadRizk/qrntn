@@ -36,12 +36,20 @@
 // else does.
 
 import { spawnSync } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const COMMANDS = join(HERE, '..', 'commands')
+
+// Duplicated from commands/invoked-as.mjs, which exports it under the same
+// name, and duplicated ON PURPOSE for the reason in the header: this file
+// cannot import from commands/, because its whole job when commands/ is missing
+// is to say so. Importing the constant would reintroduce the exact fault that
+// header describes, to save one line. commands/pratiq.test.mjs asserts the two
+// agree, so the copy cannot drift silently.
+const VERB_ENV = 'PRATIQ_VERB'
 
 // The verb is the contract; the filename behind it is not. `audit` runs
 // audit-skill.mjs and `check` runs check-library.mjs — the latter deliberately
@@ -76,6 +84,36 @@ function refuse(message, detail) {
 	process.exit(2)
 }
 
+// Read out of package.json, never carried as a constant here. A constant would
+// be a second place the version lives, and the two would disagree at exactly the
+// moment it mattered — a release, where the whole question is which bytes are
+// running. npm puts package.json in every tarball whatever `files` says, so
+// there is no allowlist entry to forget.
+//
+// Printed bare, with no name and no `v`. `pratiq --version` is something a
+// script reads far more often than a person does, and a bare version needs no
+// parsing; `pratiq` with no arguments already says what this is.
+function version() {
+	const manifest = join(HERE, '..', 'package.json')
+	// The same packaging fault as a missing command, and said the same way. A
+	// tool that cannot find its own manifest is broken in a manner its user did
+	// not cause and cannot fix.
+	if (!existsSync(manifest)) {
+		refuse(
+			'cannot read its own version',
+			`  expected ${manifest}\n  This is a packaging fault, not something you did — please report it.`
+		)
+	}
+	let declared = null
+	try {
+		declared = JSON.parse(readFileSync(manifest, 'utf8')).version ?? null
+	} catch (e) {
+		refuse('cannot read its own version', `  ${manifest}\n  ${e.message}`)
+	}
+	if (!declared) refuse('its own package.json declares no version', `  ${manifest}`)
+	console.log(declared)
+}
+
 function usage() {
 	const width = Math.max(...VERBS.map(([v]) => v.length))
 	console.log('\npratiq — record and gate a human decision about a skill before it loads\n')
@@ -92,6 +130,14 @@ if (!verb || verb === '--help' || verb === '-h') {
 	// Asking what this does is not an error when it is asked directly, and is
 	// when it is the result of getting it wrong. `pratiq` bare answers 0.
 	process.exit(verb ? 0 : 2)
+}
+
+// Before the verb lookup, so it is answered rather than refused as a verb this
+// tool does not have — which is what it did until now, and is a confusing thing
+// for a CLI to say about `--version`.
+if (verb === '--version' || verb === '-v') {
+	version()
+	process.exit(0)
 }
 
 const file = script(verb)
@@ -113,7 +159,17 @@ if (!existsSync(path)) {
 	)
 }
 
-const r = spawnSync(process.execPath, [path, ...rest], { stdio: 'inherit' })
+// Arguments are still passed through untouched — this is not an argument. The
+// command needs to know which verb reached it so its own usage line can say
+// `pratiq promote` instead of `promote.mjs`, and the environment is where that
+// belongs: a flag would be a flag every command had to parse and every caller
+// could set, and the whole point is that this is not something a caller says.
+// commands/invoked-as.mjs is the only reader, and it validates rather than
+// trusts, because the value ends up in text a user reads.
+const r = spawnSync(process.execPath, [path, ...rest], {
+	stdio: 'inherit',
+	env: { ...process.env, [VERB_ENV]: verb }
+})
 
 // Killed by a signal rather than exiting: there is no status to propagate, and
 // reporting 0 would say the gate passed. 1 is the honest answer.

@@ -104,7 +104,7 @@
 import { createHash } from 'node:crypto'
 import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, readlinkSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { dirname, join, relative, resolve } from 'node:path'
+import { basename, dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { realpathSync } from 'node:fs'
 
@@ -125,6 +125,23 @@ try {
 	refusalLine = mod.refusalLine
 } catch {
 	// Deployed alone. Plain text is correct, not a failure.
+}
+
+// ── how this was invoked, which is also optional ────────────────────────────
+//
+// Guarded for the same reason colour is, and it is the same hazard: deployed as
+// a single file into a skill's scripts/ folder, invoked-as.mjs is not beside
+// this one either.
+//
+// The fallback is not a degraded mode. A script deployed alone was not reached
+// through bin/pratiq.mjs, so PRATIQ_VERB is unset and the module would return
+// this exact string anyway.
+let invokedAs = () => `node ${basename(fileURLToPath(import.meta.url))}`
+try {
+	const mod = await import('./invoked-as.mjs')
+	invokedAs = () => mod.invokedAs(import.meta.url)
+} catch {
+	// Deployed alone. Naming the file is correct, not a failure.
 }
 
 
@@ -642,7 +659,7 @@ function main(argv) {
 		const dirAt = argv.indexOf('--skill-dir')
 		const dateAt = argv.indexOf('--date')
 		if (!name || name.startsWith('--')) {
-			console.error('usage: ledger.mjs --write-structural <name> [--skill-dir <dir>] [--date <iso>] [--library <dir>]')
+			console.error(`usage: ${invokedAs()} --write-structural <name> [--skill-dir <dir>] [--date <iso>] [--library <dir>]`)
 			return 2
 		}
 		const skillDir = dirAt !== -1 ? argv[dirAt + 1] : join(ROOT, 'skills', name)
@@ -671,7 +688,7 @@ function main(argv) {
 	}
 
 	console.error(
-		'usage: ledger.mjs --check [--install [--install-root <dir>]] | --backfill [--force] | --write-structural <name> [--skill-dir <dir>] [--date <iso>] [--library <dir>] [--json]'
+		`usage: ${invokedAs()} --check [--install [--install-root <dir>]] | --backfill [--force] | --write-structural <name> [--skill-dir <dir>] [--date <iso>] [--library <dir>] [--json]`
 	)
 	return 2
 }
