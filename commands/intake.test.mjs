@@ -149,6 +149,94 @@ function intake(host, args) {
 	check('two sources at once: refused', /one source at a time/.test(r.err), r.all.slice(0, 160))
 }
 
+// ── a pasted browser url ────────────────────────────────────────────────────
+//
+// The url in the address bar when someone finds a skill is the repository url
+// with /tree/<ref>/<subpath> on the end, and the README documents intake in
+// exactly that form. It used to be handed to git whole and fail on a fetch that
+// could never have worked.
+//
+// Every case here resolves before a single byte leaves the machine — the split,
+// the reconciliation and the name derivation all run ahead of fetchAt — so the
+// suite stays offline. `example.invalid` is reserved by RFC 2606 and is never
+// reached; if one of these ever hangs, something has moved in front of the
+// checks and that is itself the finding.
+{
+	const host = mkHost('weburl')
+
+	// The split, proved by what the name is derived from. With the ref and
+	// subpath still on the url, `basename` would take "main" and go to the
+	// network; taking it from the repository is only possible after the split.
+	const bare = intake(host, ['https://example.invalid/someone/Skills_Repo/tree/main'])
+	check(
+		'tree url without a subpath: the name comes from the repository',
+		/unusable skill name: "Skills_Repo"/.test(bare.err),
+		bare.all.slice(0, 200)
+	)
+
+	// A flag that disagrees with the url is refused rather than resolved. Both
+	// values appear in the message, because the caller has to see which halves
+	// of what they typed were in conflict.
+	const refClash = intake(host, ['https://example.invalid/someone/skills/tree/main/foo', '--ref', 'v2'])
+	check(
+		'--ref disagreeing with the url: refused',
+		/--ref says "v2" and the url says "main"/.test(refClash.err),
+		refClash.all.slice(0, 200)
+	)
+	check('--ref disagreeing with the url: exits 2', refClash.code === 2, `exit ${refClash.code}`)
+
+	const subClash = intake(host, ['https://example.invalid/someone/skills/tree/main/foo', '--subpath', 'bar'])
+	check(
+		'--subpath disagreeing with the url: refused',
+		/--subpath says "bar" and the url says "foo"/.test(subClash.err),
+		subClash.all.slice(0, 200)
+	)
+
+	// Agreeing is not disagreeing. This one gets past the reconciliation and
+	// fails later, on the name, which is how we know it was allowed through.
+	const agree = intake(host, ['https://example.invalid/someone/skills/tree/main/Ok_Name', '--ref', 'main'])
+	check(
+		'a flag that agrees with the url is not a conflict',
+		/unusable skill name/.test(agree.err) && !/pass one or the other/.test(agree.err),
+		agree.all.slice(0, 200)
+	)
+
+	// A subpath lifted out of a url is no more trusted than one typed as a flag.
+	const escaping = intake(host, ['https://example.invalid/someone/skills/tree/main/../../etc'])
+	check(
+		'a subpath escaping the repo is refused wherever it came from',
+		/subpath must stay inside the repo/.test(escaping.err),
+		escaping.all.slice(0, 200)
+	)
+
+	// A blob url names a file. Guessing at its parent directory would be intake
+	// inferring the artefact's boundary from a url.
+	const blob = intake(host, ['https://example.invalid/someone/skills/blob/main/foo/SKILL.md'])
+	check(
+		'blob url: refused, and says why',
+		/names a file, not a skill directory/.test(blob.err),
+		blob.all.slice(0, 200)
+	)
+
+	// GitLab renders the same view one segment further along. Subgroups mean the
+	// repository part cannot be a segment count, so the marker has to end it.
+	const gitlab = intake(host, ['https://example.invalid/group/sub/Proj/-/tree/main'])
+	check(
+		'gitlab /-/tree/ with a subgroup path: split at the marker',
+		/unusable skill name: "Proj"/.test(gitlab.err),
+		gitlab.all.slice(0, 200)
+	)
+
+	// A plain repository url still has no ref and no subpath in it, and a repo
+	// whose own path contains "tree" is not a tree view.
+	const plain = intake(host, ['https://example.invalid/someone/Tree_Things'])
+	check(
+		'a plain repository url is untouched by the split',
+		/unusable skill name: "Tree_Things"/.test(plain.err),
+		plain.all.slice(0, 200)
+	)
+}
+
 // ── the licence, read at the pin ────────────────────────────────────────────
 //
 // SK-91. The licence has to be captured at intake or it is captured never: read

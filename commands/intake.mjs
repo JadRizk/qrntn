@@ -46,7 +46,6 @@ try {
 	// Deployed alone. Plain text is correct, not a failure.
 }
 
-
 // ── the library ─────────────────────────────────────────────────────────────
 //
 // SK-97. Until the split this was `dirname(...)` of this file's own location,
@@ -88,6 +87,33 @@ function classifySource(src) {
 	const abs = resolve(src)
 	if (existsSync(join(abs, '.git'))) return { kind: 'local', url: abs }
 	refuse(`not a source this understands: expected an https git URL or a local git checkout, got "${src}"`)
+}
+
+// A pasted browser url is the form a user actually has. GitHub and GitLab both
+// render a directory at `<repo>/tree/<ref>/<subpath>` — GitLab with a `/-/`
+// segment in front — and that string is what is in the address bar when someone
+// finds a skill they want to take in. Splitting it here is not a convenience:
+// HTTPS_REMOTE above matches the whole thing, `/tree/main/foo` included, so an
+// unsplit tree url is handed to git as a remote and dies on a fetch that could
+// never have worked. The repository part is non-greedy so a GitLab subgroup
+// path survives; the marker, not a segment count, is what ends it.
+const WEB_VIEW = /^(https:\/\/[a-zA-Z0-9._-]+\/[a-zA-Z0-9._/-]+?)(?:\.git)?\/(?:-\/)?(tree|blob)\/([^/]+)(?:\/(.*))?$/
+
+// The ref is ONE segment. `tree/release/2.1/foo` is genuinely ambiguous — the
+// host resolves it against the refs it holds, and this runs before any fetch,
+// so it cannot. One segment is correct for a branch, a tag and a bare SHA;
+// anything else is what --ref is for.
+function splitWebUrl(src) {
+	const m = WEB_VIEW.exec(src)
+	if (!m) return null
+	const [, url, kind, ref, subpath] = m
+	// A blob url names a file. Guessing that its parent directory is the skill
+	// would be this script inferring the artefact's boundary from a url, which
+	// is exactly the sort of thing it is not allowed to do.
+	if (kind === 'blob') {
+		refuse(`that url names a file, not a skill directory — pass the directory it sits in`)
+	}
+	return { url, ref, subpath: subpath?.replace(/\/+$/, '') || null }
 }
 
 // ── fetch ────────────────────────────────────────────────────────────────────
@@ -244,15 +270,35 @@ function main(argv) {
 	}
 	const flag = (n) => (typeof flags[n] === 'string' ? flags[n] : null)
 	const src = positional[0]
-	if (!src) refuse('usage: intake.mjs <source> [--name X] [--subpath P] [--ref R] [--library D]')
+	if (!src) {
+		refuse(
+			`usage: intake.mjs <source> [--name X] [--subpath P] [--ref R] [--library D]\n` +
+				'  <source> may be a repository url, a repository url with /tree/<ref>/<subpath> on it, or a local checkout'
+		)
+	}
 	if (positional.length > 1) refuse(`one source at a time, got ${positional.length}`)
 
-	const ref = flag('--ref')
+	// A pasted url may carry a ref and a subpath of its own. A flag that agrees
+	// with it is redundant and harmless; one that disagrees is a question this
+	// script has no way to answer, so it is refused rather than resolved in
+	// either direction — silently preferring one half of what the caller typed
+	// is how an artefact ends up fetched from somewhere nobody named.
+	const web = splitWebUrl(src)
+	const reconcile = (which, fromFlag, fromUrl) => {
+		if (fromFlag && fromUrl && fromFlag !== fromUrl) {
+			refuse(`${which} says "${fromFlag}" and the url says "${fromUrl}" — pass one or the other, not both`)
+		}
+		return fromFlag ?? fromUrl ?? null
+	}
+
+	// Both are validated after the merge, not before: a ref or a subpath lifted
+	// out of a url is no more trusted than one typed as a flag.
+	const ref = reconcile('--ref', flag('--ref'), web?.ref ?? null)
 	if (ref && !SAFE_REF.test(ref)) refuse(`unusable ref: "${ref}"`)
-	const subpath = flag('--subpath')
+	const subpath = reconcile('--subpath', flag('--subpath'), web?.subpath ?? null)
 	if (subpath && (subpath.includes('..') || subpath.startsWith('/'))) refuse(`subpath must stay inside the repo: "${subpath}"`)
 
-	const source = classifySource(src)
+	const source = classifySource(web?.url ?? src)
 	const name = flag('--name') ?? basename(subpath ?? source.url)
 	if (!SAFE_NAME.test(name)) refuse(`unusable skill name: "${name}" — lowercase letters, digits and hyphens`)
 

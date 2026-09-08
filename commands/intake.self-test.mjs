@@ -58,6 +58,29 @@ const MUTATIONS = [
 		replace: 'if (false) refuse('
 	},
 	{
+		// The defect this shipped with: the url went to git whole, /tree/main/foo
+		// and all, and the fetch failed for a reason that named the url rather
+		// than the form. A no-op split is the exact shape of the regression.
+		name: 'a pasted browser url is no longer split',
+		find: 'const web = splitWebUrl(src)',
+		replace: 'const web = null'
+	},
+	{
+		// Silently preferring one half of what the caller typed. The artefact
+		// still lands, from a ref or a subpath nobody named — which is the
+		// failure mode that prints nothing and reads as success.
+		name: 'a flag disagreeing with the url is resolved instead of refused',
+		find: `refuse(\`\${which} says "\${fromFlag}" and the url says "\${fromUrl}" — pass one or the other, not both\`)`,
+		replace: 'void 0'
+	},
+	{
+		// The url's own subpath skipping the containment check, while a subpath
+		// typed as a flag still gets it.
+		name: 'a subpath lifted out of a url is trusted',
+		find: "const subpath = reconcile('--subpath', flag('--subpath'), web?.subpath ?? null)",
+		replace: "const subpath = flag('--subpath')"
+	},
+	{
 		name: 'subpath traversal accepted',
 		find: "if (subpath && (subpath.includes('..') || subpath.startsWith('/'))) refuse(",
 		replace: 'if (false) refuse('
