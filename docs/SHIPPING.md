@@ -176,6 +176,31 @@ contact with what is actually shipping.
 **Size:** small, but it changes a published flag's polarity — do it before
 `0.1.0`, never after.
 
+**Landed.** `--no-install` is gone; `--install` turns the diff on, in both
+`ledger` and `usage`. Location resolves `--install-root`, then
+`SKILL_INSTALL_ROOT`, then `~/.claude/skills`. `--install-root` without
+`--install` is refused rather than ignored or silently honoured — the latter
+would be the opt-out default returning through a side door — and
+`SKILL_INSTALL_ROOT` sets the location without turning the look on, for the
+same reason.
+
+One decision was taken here that this section did not specify, because the
+write path reached `~/.claude` as well as the diff, and flipping only the diff
+would have left the claim half true. **`install` is now nullable, and `null`
+means no run has looked.** It is not the same claim as `{ symlinked: false }`,
+which is a finding and requires having looked. `EMPTY_ENTRY.install` changed
+from `{ symlinked: false, path: null }` to `null` to match, and `usage` omits
+the key entirely rather than writing null, so an unflagged run leaves what an
+earlier `--install` run recorded instead of erasing it. This is the same
+convention the header already stated for `usage` and `origin.upstreamHead` —
+*"null is a real value throughout"* — applied to the one section that was
+defaulting instead.
+
+`ledger.test.mjs` gained 15 assertions, every one against an install root
+under the fixture; nothing in the suite reads the real `~/.claude`, which is
+the property being tested as much as it is a way of testing it. Reverting the
+polarity fails two of them, checked rather than assumed.
+
 ### 5 · What `promote` says when it finishes
 
 `promote.mjs:480` currently prints *"Add it to catalog.json, declare its edges,

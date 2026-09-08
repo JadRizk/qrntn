@@ -7,8 +7,12 @@
 //                                                 for every held skill, diff
 //                                                 against ledger/<name>.json,
 //                                                 exit non-zero on any mismatch
-//   node scripts/ledger.mjs --check --no-install  the same, but install is not
-//                                                 diffed — see the note below
+//   node scripts/ledger.mjs --check --install    the same, and also diff the
+//                                                 install section against a
+//                                                 live filesystem — see below
+//   node scripts/ledger.mjs --check --install --install-root <dir>
+//                                                 the same, against <dir>
+//                                                 rather than ~/.claude/skills
 //   node scripts/ledger.mjs --backfill            write ledger/<name>.json for
 //                                                 every held skill that lacks one
 //   node scripts/ledger.mjs --backfill --force    rewrite every held skill's
@@ -55,7 +59,9 @@
 //               stages: number,
 //               gated: boolean | null,          // null if there are no stages to gate
 //               tests: { files: number, hasSelfTest: boolean } | null }  // null: no scripts/
-//   install:  { symlinked: boolean, path: string | null }   // ~/.claude/skills/<name>
+//   install:  { symlinked: boolean, path: string | null } | null
+//                                     // <install-root>/<name>, when a run was
+//                                     // asked to look; null means not looked at
 //   usage:    { invocations: { d7, d30, d90, all }, lastInvoked: string | null } | null
 // }
 //
@@ -64,19 +70,30 @@
 // external state, not values derivable from what skills/<name>/ currently
 // holds. Everything else is: --check recomputes it fresh from disk and
 // refuses on a mismatch, exactly the "hand-edited ledger file cannot reach
-// main" gate this ticket asks for. install IS diffed, but against the live
-// filesystem (~/.claude/skills), not against skills/<name>/ — a different
-// authoritative source, still derivable, still checked.
+// main" gate this ticket asks for. install can be diffed too, but against a
+// live filesystem rather than against skills/<name>/ — a different
+// authoritative source, derivable only where that filesystem is the one the
+// person running this actually loads skills from.
 //
-// That live filesystem does not exist on every machine this runs on, though
-// — a CI runner never symlinks anything into ~/.claude/skills, because
-// install.sh has no reason to run there. --no-install skips the install
-// section of the diff for exactly that case — a gate that only passes on
-// one machine is not a gate. check.mjs passes it so the automated gate
-// stays identical between CI and a session; running `ledger.mjs --check`
-// by hand, with no flag, still checks install — "did I forget to
-// re-install this skill" is a real question on a machine that has ever
-// run install.sh.
+// SK-97 §4. install checking is OPT-IN — `--install` — and it used to be
+// opt-out. The polarity was wrong in a way that is invisible until this tool
+// leaves the machine it was written on: the default reached into
+// ~/.claude/skills, which made every default run of --check assert something
+// about one vendor's directory layout on behalf of a user who may load skills
+// from somewhere else entirely, or from nowhere. SURFACE.md excludes the
+// `manifest` verb from the surface because pratiq is cross-harness; that
+// argument did not survive contact with a default that was not.
+//
+// A gate that only passes on one machine is not a gate — which was the
+// original argument for --no-install, and it is the same argument. It just
+// points the other way once the machine in question is a stranger's. The
+// location is --install-root, then SKILL_INSTALL_ROOT, then ~/.claude/skills:
+// Claude-aware as a default, never as an assumption.
+//
+// `install: null` is what a record says when no run has looked. It is not the
+// same claim as { symlinked: false } — "not installed" is a finding and
+// requires having looked — and the distinction is why the field is nullable
+// rather than defaulted.
 //
 // null is a real value throughout. Nothing here is guessed to fill a gap —
 // an unrecorded commit stays null rather than being mined out of prose that
@@ -344,8 +361,13 @@ function computeAudit(skillDir) {
 // Read-only against a directory outside this repo. Legitimate: nothing here
 // writes there, and "is this symlinked in" is exactly the live fact neither
 // skills/<name>/ nor catalog.json can answer.
-export function computeInstall(name) {
-	const linkPath = join(homedir(), '.claude', 'skills', name)
+//
+// `root` is required and has no default. A default here is what made the
+// ~/.claude assumption invisible for as long as it was — the caller decides
+// whether anyone looked, and null is how it says nobody did.
+export function computeInstall(name, root) {
+	if (!root) return null
+	const linkPath = join(root, name)
 	if (!existsSync(linkPath)) return { symlinked: false, path: null }
 	try {
 		const st = lstatSync(linkPath)
@@ -356,19 +378,37 @@ export function computeInstall(name) {
 	}
 }
 
+// The location, resolved in the order the README freezes: an explicit flag,
+// then the environment, then Claude's. Named SKILL_INSTALL_ROOT to match
+// SKILL_LIBRARY rather than a PRATIQ_* of its own — two naming conventions in
+// one surface, decided at different times for no recoverable reason, is its
+// own defect.
+export const DEFAULT_INSTALL_ROOT = join(homedir(), '.claude', 'skills')
+
+export function resolveInstallRoot(argv = []) {
+	const i = argv.indexOf('--install-root')
+	if (i !== -1) {
+		const value = argv[i + 1]
+		if (!value || value.startsWith('--')) return { error: '--install-root needs a directory' }
+		return { root: resolve(value) }
+	}
+	if (process.env.SKILL_INSTALL_ROOT) return { root: resolve(process.env.SKILL_INSTALL_ROOT) }
+	return { root: DEFAULT_INSTALL_ROOT }
+}
+
 // ----------------------------------------------------------- the full structural block
 
 // Everything --check can regenerate and diff: origin.kind/source/commit,
 // integrity.fileCount/files, audit.*, contract.*, install. Excludes
 // origin.date, origin.upstreamHead, integrity.lastVerified and usage — see
 // the header comment for why each is excluded.
-export function computeStructural(skillDir, name) {
+export function computeStructural(skillDir, name, installRoot = null) {
 	return {
 		origin: computeOrigin(skillDir),
 		integrity: computeIntegrity(skillDir),
 		audit: computeAudit(skillDir),
 		contract: computeContract(skillDir),
-		install: computeInstall(name)
+		install: computeInstall(name, installRoot)
 	}
 }
 
@@ -389,7 +429,7 @@ const EMPTY_ENTRY = {
 	integrity: { fileCount: 0, files: {}, lastVerified: null },
 	audit: { verdict: null, counts: null, dispositioned: null, reportPath: null },
 	contract: { modelInvocable: null, descBytes: null, stages: null, gated: null, tests: null },
-	install: { symlinked: false, path: null },
+	install: null,
 	usage: null
 }
 
@@ -410,8 +450,8 @@ export function writeLedgerSections(name, sections, root = LIBRARY) {
 // backfill both do, since both are producing a whole fresh entry rather than
 // updating the one field usage.mjs owns. usage.mjs's own section is never
 // part of `sections`, so writeLedgerSections leaves it untouched either way.
-export function writeStructural(name, skillDir, { date = null } = {}, root = LIBRARY) {
-	const structural = computeStructural(skillDir, name)
+export function writeStructural(name, skillDir, { date = null, installRoot = null } = {}, root = LIBRARY) {
+	const structural = computeStructural(skillDir, name, installRoot)
 	structural.origin.date = date
 	structural.integrity.lastVerified = new Date().toISOString().slice(0, 10)
 	return writeLedgerSections(name, structural, root)
@@ -446,12 +486,15 @@ function stableStringify(v) {
 	return JSON.stringify(v)
 }
 
-export function checkAll({ noInstall = false } = {}) {
+export function checkAll({ install = false, installRoot = null } = {}) {
 	const errors = []
 	const held = new Set(heldSkills())
-	const sections = noInstall
-		? ['origin', 'integrity', 'audit', 'contract']
-		: ['origin', 'integrity', 'audit', 'contract', 'install']
+	// Opt-in, and the section is absent from the diff rather than compared
+	// loosely when it is off. A section nobody asked about is not a section
+	// that passed.
+	const sections = install
+		? ['origin', 'integrity', 'audit', 'contract', 'install']
+		: ['origin', 'integrity', 'audit', 'contract']
 
 	for (const name of held) {
 		const onDisk = readLedger(name)
@@ -459,7 +502,7 @@ export function checkAll({ noInstall = false } = {}) {
 			errors.push(`${name}: no ledger/${name}.json for a held skill`)
 			continue
 		}
-		const fresh = computeStructural(join(SKILLS_DIR, name), name)
+		const fresh = computeStructural(join(SKILLS_DIR, name), name, install ? installRoot : null)
 		for (const section of sections) {
 			const onDiskValue = { ...(onDisk[section] ?? {}) }
 			const freshValue = { ...(fresh[section] ?? {}) }
@@ -492,7 +535,7 @@ export function checkAll({ noInstall = false } = {}) {
 
 // ---------------------------------------------------------------------- backfill
 
-export function backfill({ force = false } = {}) {
+export function backfill({ force = false, installRoot = null } = {}) {
 	const written = []
 	const skipped = []
 	for (const name of heldSkills()) {
@@ -501,7 +544,7 @@ export function backfill({ force = false } = {}) {
 			continue
 		}
 		const skillDir = join(SKILLS_DIR, name)
-		const fresh = computeStructural(skillDir, name)
+		const fresh = computeStructural(skillDir, name, installRoot)
 		fresh.integrity.lastVerified = new Date().toISOString().slice(0, 10)
 		// A backfill has no promotion moment to read a date from. Where the
 		// record names an arrival date, that is used — it is a real fact, not a
@@ -532,13 +575,28 @@ function main(argv) {
 	const BACKFILL = argv.includes('--backfill')
 	const FORCE = argv.includes('--force')
 	const JSON_OUT = argv.includes('--json')
-	const NO_INSTALL = argv.includes('--no-install')
+	const INSTALL = argv.includes('--install')
 	const WRITE_STRUCTURAL = argv.includes('--write-structural')
 	const rootAt = argv.indexOf('--library')
 	const ROOT = rootAt !== -1 && argv[rootAt + 1] ? resolve(argv[rootAt + 1]) : LIBRARY
 
+	// --install-root without --install is refused rather than ignored or
+	// silently honoured. Ignoring it would drop a location the caller cared
+	// enough to name; honouring it would let a location turn a check on, which
+	// is the opt-out polarity coming back in through a side door.
+	if (argv.includes('--install-root') && !INSTALL) {
+		console.error('refused: --install-root without --install — nothing would look there')
+		return 2
+	}
+	const installRoot = resolveInstallRoot(argv)
+	if (installRoot.error) {
+		console.error(`refused: ${installRoot.error}`)
+		return 2
+	}
+	const INSTALL_ROOT = INSTALL ? installRoot.root : null
+
 	if (BACKFILL) {
-		const { written, skipped } = backfill({ force: FORCE })
+		const { written, skipped } = backfill({ force: FORCE, installRoot: INSTALL_ROOT })
 		if (JSON_OUT) {
 			console.log(JSON.stringify({ written, skipped }, null, 2))
 		} else {
@@ -573,14 +631,14 @@ function main(argv) {
 			return 2
 		}
 		const date = dateAt !== -1 ? argv[dateAt + 1] : null
-		const entry = writeStructural(name, skillDir, { date }, ROOT)
+		const entry = writeStructural(name, skillDir, { date, installRoot: INSTALL_ROOT }, ROOT)
 		if (JSON_OUT) console.log(JSON.stringify(entry, null, 2))
 		else console.log(`ledger — wrote ${name}`)
 		return 0
 	}
 
 	if (CHECK) {
-		const errors = checkAll({ noInstall: NO_INSTALL })
+		const errors = checkAll({ install: INSTALL, installRoot: INSTALL_ROOT })
 		if (JSON_OUT) {
 			console.log(JSON.stringify({ errors }, null, 2))
 		} else if (errors.length) {
@@ -592,7 +650,9 @@ function main(argv) {
 		return errors.length ? 1 : 0
 	}
 
-	console.error('usage: ledger.mjs --check [--no-install] | --backfill [--force] | --write-structural <name> [--skill-dir <dir>] [--date <iso>] [--library <dir>] [--json]')
+	console.error(
+		'usage: ledger.mjs --check [--install [--install-root <dir>]] | --backfill [--force] | --write-structural <name> [--skill-dir <dir>] [--date <iso>] [--library <dir>] [--json]'
+	)
 	return 2
 }
 

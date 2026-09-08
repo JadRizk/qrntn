@@ -66,7 +66,7 @@ import { homedir } from 'node:os'
 import { dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { realpathSync } from 'node:fs'
-import { computeInstall, writeLedgerSections } from './ledger.mjs'
+import { computeInstall, resolveInstallRoot, writeLedgerSections } from './ledger.mjs'
 
 // ── the library ─────────────────────────────────────────────────────────────
 //
@@ -637,6 +637,7 @@ const USAGE = `usage — count which skills actually fired
 
   node scripts/usage.mjs [--json | --report] [--now <iso>] [--root <dir>] [--library <dir>]
                          [--skills <dir>] [--out <path>] [--baseline]
+                         [--install [--install-root <dir>]]
 
   --json         print the ledger to stdout and write nothing
   --report       print the human-facing table — usage joined to description
@@ -650,6 +651,12 @@ const USAGE = `usage — count which skills actually fired
   --library <dir> which skill library's ledger to write (default: this tree)
   --skills <dir> where the held skills are (default skills/)
   --out <path>   where to write (default ledger/usage.json, must stay in-repo)
+  --install      also refresh each entry's install section from a live
+                 filesystem. Off by default: without it this writes nothing
+                 about install and leaves what is already recorded alone.
+  --install-root <dir>
+                 where installed skills live, when --install is passed.
+                 Defaults to SKILL_INSTALL_ROOT, then ~/.claude/skills.
 
 Reads only. Never opens message text, never carries an invocation's arguments.
 `
@@ -673,6 +680,23 @@ function main(argv) {
 
 	const root = resolve(flag('--root') ?? DEFAULT_ROOT)
 	const now = flag('--now') ?? new Date().toISOString()
+
+	// Opt-in, and the same resolution order ledger.mjs freezes — one
+	// implementation of it, imported, because two would drift the moment one
+	// of them learned about a new location.
+	if (argv.includes('--install-root') && !argv.includes('--install')) {
+		process.stderr.write('error: --install-root without --install — nothing would look there\n')
+		return 2
+	}
+	let installRoot = null
+	if (argv.includes('--install')) {
+		const resolved = resolveInstallRoot(argv)
+		if (resolved.error) {
+			process.stderr.write(`error: ${resolved.error}\n`)
+			return 2
+		}
+		installRoot = resolved.root
+	}
 	// Which library's ledger this writes into. `--root` is already taken here,
 	// and means something else entirely — where the transcripts are — so the
 	// library flag is `--library`, the same name `refresh` and `ledger` use.
@@ -772,14 +796,19 @@ function main(argv) {
 	if (out === defaultOut) {
 		for (const s of heldSkills(resolve(flag('--skills') ?? join(library, 'skills')))) {
 			const entry = ledger.skills[s.name]
-			writeLedgerSections(
-				s.dir,
-				{
-					usage: entry ? { invocations: entry.invocations, lastInvoked: entry.lastInvoked } : null,
-					install: computeInstall(s.dir)
-				},
-				library
-			)
+			// `install` is written only when this run was asked to look for it
+			// (SK-97 §4). Omitting the key is not the same as writing null:
+			// writeLedgerSections merges at the top level, so an absent key
+			// leaves whatever an earlier --install run recorded, where a null
+			// would erase it on every unflagged usage run. This script refreshes
+			// install because it is the writer that runs again after an install
+			// step does — that is a reason to keep the value current, never a
+			// reason to overwrite it with a claim this run did not make.
+			const sections = {
+				usage: entry ? { invocations: entry.invocations, lastInvoked: entry.lastInvoked } : null
+			}
+			if (installRoot) sections.install = computeInstall(s.dir, installRoot)
+			writeLedgerSections(s.dir, sections, library)
 		}
 	}
 

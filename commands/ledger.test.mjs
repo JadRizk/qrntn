@@ -366,6 +366,93 @@ Pinned to \`deadbee\`. The repository was committed to on this date.
 	check('backfill --force: usage is preserved, not reset to null', after.usage?.invocations?.all === 3, JSON.stringify(after.usage))
 }
 
+// ── install is opt-in, and its location is named (SK-97 §4) ─────────────────
+//
+// The polarity used to be the other way: --check diffed install by default,
+// against ~/.claude/skills, on every machine. That made every default run
+// assert something about one vendor's directory layout on behalf of a user who
+// may load skills from somewhere else, or from nowhere — which is the coupling
+// SURFACE.md's cross-harness claim depends on not existing.
+//
+// Every case below names its own install root under the fixture. Nothing here
+// reads the real ~/.claude, which is the property being tested as much as it is
+// a way of testing it.
+{
+	const repo = mkRepo('install-optin', { 'tidy-notes': { 'SKILL.md': SKILL_MD } })
+	const installRoot = join(ROOT, 'install-optin-root')
+	mkdirSync(installRoot, { recursive: true })
+
+	run(repo, ['--backfill'])
+	check('install: a backfill that was not asked to look records null', readLedger(repo, 'tidy-notes').install === null, JSON.stringify(readLedger(repo, 'tidy-notes').install))
+	check('install: --check passes on that record without --install', run(repo, ['--check']).code === 0, run(repo, ['--check']).raw.slice(0, 200))
+
+	// Now look, at a root this test owns, with the skill symlinked in.
+	symlinkSync(join(repo, 'skills', 'tidy-notes'), join(installRoot, 'tidy-notes'))
+	run(repo, ['--backfill', '--force', '--install', '--install-root', installRoot])
+	const linked = readLedger(repo, 'tidy-notes')
+	check('install: --install records the symlink it found', linked.install?.symlinked === true, JSON.stringify(linked.install))
+	check('install: the recorded path is the link target', linked.install?.path === join(repo, 'skills', 'tidy-notes'), JSON.stringify(linked.install))
+
+	// Break it. The record now claims a symlink that is not there.
+	rmSync(join(installRoot, 'tidy-notes'))
+	const checked = run(repo, ['--check', '--install', '--install-root', installRoot])
+	check('install: --check --install catches a record that no longer matches the filesystem', checked.code === 1, checked.raw.slice(0, 300))
+	check('install: and says which section', (checked.json?.errors ?? []).some((e) => /\.install/.test(e)), JSON.stringify(checked.json))
+
+	// The same broken record, unflagged. This is the assertion that fails if the
+	// polarity is ever flipped back: an opt-out default would diff install here
+	// and exit 1.
+	const unflagged = run(repo, ['--check'])
+	check('install: --check without --install does not diff it at all', unflagged.code === 0, unflagged.raw.slice(0, 300))
+	check('install: and reports no install mismatch', !(unflagged.json?.errors ?? []).some((e) => /install/.test(e)), JSON.stringify(unflagged.json))
+}
+{
+	// A location with nothing to look at is a finding — "not installed" — and is
+	// a different record from null, which is the absence of a look.
+	const repo = mkRepo('install-absent', { 'tidy-notes': { 'SKILL.md': SKILL_MD } })
+	const emptyRoot = join(ROOT, 'install-absent-root')
+	mkdirSync(emptyRoot, { recursive: true })
+	run(repo, ['--backfill', '--install', '--install-root', emptyRoot])
+	const entry = readLedger(repo, 'tidy-notes')
+	check('install: looking and finding nothing records symlinked false, not null', entry.install?.symlinked === false, JSON.stringify(entry.install))
+	check('install: not-installed is distinguishable from never-looked', entry.install !== null, JSON.stringify(entry.install))
+}
+{
+	// Naming a location without asking for the look is refused rather than
+	// ignored — and rather than silently enabling the look, which is the
+	// opt-out default returning through a side door.
+	const repo = mkRepo('install-root-alone', { 'tidy-notes': { 'SKILL.md': SKILL_MD } })
+	run(repo, ['--backfill'])
+	const r = run(repo, ['--check', '--install-root', join(ROOT, 'anywhere')])
+	check('install: --install-root without --install is refused', r.code === 2, `exit ${r.code} ${r.raw.slice(0, 200)}`)
+	check('install: the refusal says why', /nothing would look there/.test(r.raw), r.raw.slice(0, 200))
+}
+{
+	// SKILL_INSTALL_ROOT, named to match SKILL_LIBRARY. It sets the location; it
+	// does not turn the look on, for the same reason --install-root does not.
+	const repo = mkRepo('install-env', { 'tidy-notes': { 'SKILL.md': SKILL_MD } })
+	const envRoot = join(ROOT, 'install-env-root')
+	mkdirSync(envRoot, { recursive: true })
+	symlinkSync(join(repo, 'skills', 'tidy-notes'), join(envRoot, 'tidy-notes'))
+	const withEnv = (args) => {
+		const r = spawnSync(process.execPath, [SRC, ...args, '--library', repo, '--json'], {
+			encoding: 'utf8',
+			env: { ...process.env, SKILL_INSTALL_ROOT: envRoot }
+		})
+		let json = null
+		try { json = JSON.parse(r.stdout) } catch { /* asserted by caller */ }
+		return { code: r.status, json, raw: r.stdout + r.stderr }
+	}
+
+	withEnv(['--backfill'])
+	check('install: SKILL_INSTALL_ROOT alone does not turn the look on', readLedger(repo, 'tidy-notes').install === null, JSON.stringify(readLedger(repo, 'tidy-notes').install))
+
+	withEnv(['--backfill', '--force', '--install'])
+	const entry = readLedger(repo, 'tidy-notes')
+	check('install: --install uses SKILL_INSTALL_ROOT when no flag names one', entry.install?.symlinked === true, JSON.stringify(entry.install))
+	check('install: and finds it at the env root, not ~/.claude', entry.install?.path === join(repo, 'skills', 'tidy-notes'), JSON.stringify(entry.install))
+}
+
 console.log(`\n${pass} passed, ${failures.length} failed`)
 for (const f of failures) console.log(`  FAIL  ${f}`)
 process.exit(failures.length ? 1 : 0)
