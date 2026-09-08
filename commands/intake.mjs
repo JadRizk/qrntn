@@ -375,8 +375,19 @@ try {
 		console.log(`\nlanded  ${r.dest}  ${r.files} file(s)  @ ${r.sha.slice(0, 12)}`)
 		if (!r.skillFile) console.log('  note: no SKILL.md at the root — this may not be a skill')
 		if (r.symlinks) console.log(`  note: ${r.symlinks} symlink(s), all resolving inside the artefact`)
-		console.log('\nNothing was executed and nothing was read. Run /skill-adopt next,')
-		console.log('in a fresh session.\n')
+		// This used to end with `Run /skill-adopt next` — a skill belonging to the
+		// library this tool was extracted from, which a stranger who installed the
+		// package does not have. The same defect promote.mjs's `./install.sh`
+		// ending was, and missed here because nothing ran intake outside that
+		// tree. The replacement names a verb this tool actually ships, and shows
+		// the form `audit` takes: a path, not the skill's name.
+		//
+		// The fresh session is not politeness. THREATS.md models two readers, and
+		// the whole guarantee is that the payload does not enter a context before
+		// it is scanned — a fetch and a report sharing one context spends it.
+		console.log('\nNothing was executed and nothing was read. Audit it next, in a fresh')
+		console.log(`session — \`qrntn audit ${r.dest}\` — so the fetch and the report never`)
+		console.log('share a context.\n')
 	}
 } catch (e) {
 	if (e instanceof Refusal) {
