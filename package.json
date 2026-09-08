@@ -1,5 +1,5 @@
 {
-  "name": "pratiq",
+  "name": "@oxx/pratiq",
   "version": "0.1.0",
   "description": "Record and gate a human decision about an agent skill before it is allowed to load.",
   "keywords": [
@@ -23,6 +23,9 @@
   "homepage": "https://github.com/JadRizk/pratiQ#readme",
   "bugs": {
     "url": "https://github.com/JadRizk/pratiQ/issues"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "engines": {
     "node": ">=20"

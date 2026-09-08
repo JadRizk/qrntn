@@ -56,14 +56,14 @@ list look complete is precisely the move this tool exists to refuse.
 | **view** | the graph, served locally against any skill library | from a checkout; `pratiq view` in `0.2` |
 
 ```
-npx pratiq init                 # once, to make a folder of skills into a library
-npx pratiq intake https://github.com/someone/skills/tree/main/foo
-npx pratiq audit foo
-                                # read the report; write the decision into
-                                # AUDIT.md, or a REJECTED.md row, by hand
-npx pratiq promote foo
-npx pratiq refresh
-npx pratiq check                # is every skill filed and every record still true
+npx @oxx/pratiq init                 # once, to make a folder of skills into a library
+npx @oxx/pratiq intake https://github.com/someone/skills/tree/main/foo
+npx @oxx/pratiq audit foo
+                                     # read the report; write the decision into
+                                     # AUDIT.md, or a REJECTED.md row, by hand
+npx @oxx/pratiq promote foo
+npx @oxx/pratiq refresh
+npx @oxx/pratiq check                # is every skill filed and every record still true
 ```
 
 Nine verbs: `init`, `intake`, `audit`, `promote`, `refresh`, `usage`, `overlap`,

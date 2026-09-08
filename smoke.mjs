@@ -38,6 +38,20 @@ import { dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
+
+// Read from the manifest rather than written down. The package name reaches the
+// install path, the bin link and the zero-dependency check, and all three were
+// spelled out by hand until the package gained a scope — at which point the
+// path grew a segment and the dependency check started looking at a directory
+// called `@pratiq` instead of at a package.
+const MANIFEST = JSON.parse(readFileSync(join(HERE, 'package.json'), 'utf8'))
+const PKG_NAME = MANIFEST.name
+// `@scope/name` installs to node_modules/@scope/name; a bare name to one
+// segment. split('/') is the whole difference and is why this is derived.
+const PKG_PATH = PKG_NAME.split('/')
+// The binary is named by `bin`, not by the package. Those are allowed to
+// differ — and now do.
+const BIN_NAME = Object.keys(MANIFEST.bin)[0]
 const KEEP = process.argv.includes('--keep')
 
 let pass = 0
@@ -105,15 +119,34 @@ const installed = spawnSync('npm', ['install', join(SANDBOX, tarball), '--no-aud
 })
 check('the tarball installs into a directory that has never seen this project', installed.status === 0, (installed.stderr ?? '').slice(-400))
 
-const PRATIQ = join(INSTALL, 'node_modules', '.bin', 'pratiq')
+const PRATIQ = join(INSTALL, 'node_modules', '.bin', BIN_NAME)
 check('the bin link exists', existsSync(PRATIQ), PRATIQ)
 
 // Zero dependencies is a claim the README makes; a tarball that quietly pulled
 // something in would falsify it here rather than in someone else's lockfile.
-const installedDirs = existsSync(join(INSTALL, 'node_modules'))
-	? readdirSync(join(INSTALL, 'node_modules')).filter((n) => !n.startsWith('.'))
-	: []
-check('it brought no dependencies with it', installedDirs.length === 1 && installedDirs[0] === 'pratiq', JSON.stringify(installedDirs))
+// A scope directory is not a package. Listing one level deep would find a
+// single entry called `@pratiq` and report exactly one installed package —
+// true of a tarball with no dependencies and equally true of one with twenty
+// scoped siblings beside it. So scopes are descended into, and what is counted
+// is package names.
+const installedPackages = (() => {
+	const nm = join(INSTALL, 'node_modules')
+	if (!existsSync(nm)) return []
+	const out = []
+	for (const entry of readdirSync(nm).filter((n) => !n.startsWith('.'))) {
+		if (entry.startsWith('@')) {
+			for (const inner of readdirSync(join(nm, entry))) out.push(`${entry}/${inner}`)
+		} else {
+			out.push(entry)
+		}
+	}
+	return out
+})()
+check(
+	'it brought no dependencies with it',
+	installedPackages.length === 1 && installedPackages[0] === PKG_NAME,
+	JSON.stringify(installedPackages)
+)
 
 if (!existsSync(PRATIQ)) {
 	console.error('\nsmoke: nothing to run — the remaining questions are unaskable')
@@ -130,7 +163,7 @@ const run = (args, cwd = SANDBOX) => {
 //
 // The verbs are read out of the installed dispatcher rather than listed here,
 // so a verb added later is covered without anyone remembering to add it.
-const VERBS = [...readFileSync(join(INSTALL, 'node_modules', 'pratiq', 'bin', 'pratiq.mjs'), 'utf8')
+const VERBS = [...readFileSync(join(INSTALL, 'node_modules', ...PKG_PATH, 'bin', 'pratiq.mjs'), 'utf8')
 	.matchAll(/^\t\['([a-z-]+)', '([\w.-]+)'/gm)].map((m) => m[1])
 
 check('the installed dispatcher offers verbs', VERBS.length >= 9, `found ${VERBS.length}`)
@@ -141,7 +174,7 @@ check('the installed dispatcher offers verbs', VERBS.length >= 9, `found ${VERBS
 // writes package.json into every tarball whatever `files` says, and a version
 // read from the wrong place would still look right from a checkout.
 {
-	const declared = JSON.parse(readFileSync(join(INSTALL, 'node_modules', 'pratiq', 'package.json'), 'utf8')).version
+	const declared = JSON.parse(readFileSync(join(INSTALL, 'node_modules', ...PKG_PATH, 'package.json'), 'utf8')).version
 	const r = run(['--version'])
 	check('the installed tool reports its version', r.code === 0, `exit ${r.code} ${r.raw.slice(0, 200)}`)
 	check('and it is the version the installed manifest declares', r.raw.trim() === declared, `${JSON.stringify(r.raw)} vs ${declared}`)
@@ -213,7 +246,7 @@ check('nothing was written into HOME', homeFiles.length === 0, JSON.stringify(ho
 
 // The installed package must not be written into either — a tool that caches
 // into its own node_modules is a tool that behaves differently on second run.
-const pkgDir = join(INSTALL, 'node_modules', 'pratiq')
+const pkgDir = join(INSTALL, 'node_modules', ...PKG_PATH)
 const strayInPackage = readdirSync(pkgDir).filter((n) => !['bin', 'commands', 'package.json', 'README.md', 'LICENSE', 'NOTICE'].includes(n))
 check('nothing was written into the installed package', strayInPackage.length === 0, JSON.stringify(strayInPackage))
 
