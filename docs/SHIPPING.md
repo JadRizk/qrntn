@@ -152,12 +152,17 @@ checked, not assumed. A third gate asserts the allowlist ships no tests, no
 fixtures and no `check.mjs`.
 
 **Verified against a real tarball, not only against the manifest.** `npm pack`
-produces 16 files and 85.4 kB with no dependencies; installed into a clean
+produces 20 files and 101.6 kB with no dependencies; installed into a clean
 directory and run with `HOME` pointed at an empty one, all nine verbs run, the
 three exit codes come back distinct, and **nothing was written into `HOME`** —
 which is §4's flip working, and would not have been true before it. That is most
 of §7's smoke test performed by hand; §7 still owes the automation and the CI
 matrix.
+
+That count was written down by hand and went stale twice — once when the
+package took a scope and once when `argv.mjs` was added. The number above is
+worth no more than the day it was written; `.github/workflows/check.yml` prints
+`npm pack --dry-run` on every pull request, which is the copy to trust.
 
 ### 2 · `qrntn check`
 
@@ -202,9 +207,10 @@ the two that matter most, since this command's worst failure is not a refusal
 but the word *clean*: reporting a library it only half looked at, and reporting
 one it could not look at because half the tool was missing.
 
-**Not wired up**, for the same reason as `init`: absent from `bin/qrntn.mjs`'s
-`VERBS` table and `package.json`'s `files` allowlist, both §1's uncommitted
-work. It runs today as `node commands/check-library.mjs --library <dir>`.
+**Wired up.** `check` is in `bin/qrntn.mjs`'s `VERBS` table and
+`package.json`'s `files` allowlist, both of which landed with §1. It runs as
+`qrntn check`, and `node commands/check-library.mjs --library <dir>` still
+works from a checkout.
 
 ### 3 · `qrntn init`
 
@@ -258,10 +264,10 @@ smoke test: the fixture starts at `check-catalog` exit 2 and ends at exit 0.
 43 assertions; the self-test's seven mutations are all caught and the inert
 control survives.
 
-**Not wired up.** `init` is absent from `bin/qrntn.mjs`'s `VERBS` table and
-from `package.json`'s `files` allowlist, both of which are §1's uncommitted
-work. The verb runs today as `node commands/init.mjs --library <dir>`; it
-becomes `qrntn init` when §1 lands and adds the row.
+**Wired up.** `init` is in `bin/qrntn.mjs`'s `VERBS` table and in
+`package.json`'s `files` allowlist, both of which landed with §1. It runs as
+`qrntn init`, and `node commands/init.mjs --library <dir>` still works from a
+checkout.
 
 ### 4 · The `~/.claude` flip
 
@@ -496,8 +502,8 @@ to one command's exit looks local and harmless, and there is no line anywhere it
 visibly violates. It goes in the README as a table.
 
 `--json` shapes are **explicitly unstable in `0.x`**, and the README says that
-too. Seven of the eight commands emit JSON, and `promote`'s shape gained
-`staged` and `stageError` in `603821b` — these are demonstrably still moving.
+too. All nine verbs accept `--json`, and `promote`'s shape gained `staged` and
+`stageError` in `603821b` — these are demonstrably still moving.
 
 ## Corrections to the dated records
 
