@@ -23,8 +23,9 @@ moved — runs from a checkout today; `pratiq view` ships in `0.2`.
 ## It is not a scanner
 
 Scanners exist. Cisco, NVIDIA, Socket, Snyk and VirusTotal all ship one, along
-with eight open-source projects, and every one of them has been bypassed on
-record. `pratiq` has a scanner inside it, and that is not the claim.
+with eight open-source projects, and every scanner anyone has publicly tested
+has been bypassed on record. `pratiq` has a scanner inside it, and that is not
+the claim.
 
 The claim is that **a human decision is recorded against specific bytes, and a
 gate enforces that decision without being able to be argued with.** Nothing is
@@ -36,6 +37,12 @@ Put plainly: before a skill you downloaded from a stranger runs inside your
 agent, someone has to have actually read it. `pratiq` turns that reading into a
 permanent record tied to specific bytes, and refuses to install anything that
 does not have one.
+
+[`docs/COMPARISON.md`](docs/COMPARISON.md) sets out the four categories this is
+routinely mistaken for — scanner, registry signing, evaluation, sandbox — what
+each one establishes that the others do not, and how to cite the numbers people
+quote about this space. [`docs/THREATS.md`](docs/THREATS.md) is what `pratiq`
+does not defend against, which is the more useful half.
 
 ## The lifecycle
 

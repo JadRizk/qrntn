@@ -33,6 +33,14 @@ a working tool behind its two least-finished parts buys nothing.
 | `view` | — | **0.2** |
 | `manifest` | — | does not ship, per `SURFACE.md` |
 
+**`0.2` also carries `--no-evidence`.** Not a verb, so not a row above — a flag
+on `audit` that prints each finding's severity, code, file and location while
+withholding the matched bytes. It exists because [`THREATS.md`](THREATS.md)
+models two readers and finds that `intake`'s guarantee holds for both while
+`audit`'s does not: an evidence excerpt is attacker-chosen text, and under an
+agent reader it re-enters the context `intake` kept it out of. An explicit flag
+rather than suppression on a non-terminal stream, for the reason recorded there.
+
 **Ordering.** `0.1.0` is published to npm on the `latest` tag. Then the skills
 library migrates onto the published package (`SURFACE.md`'s drift mechanism, and
 the other half of the split). Then `1.0.0`. The migration cannot come first —
@@ -41,6 +49,15 @@ validating it against `npm link` would exercise a resolution path nobody else
 uses. `0.x` carries the "surface may move" signal in semver; no `next` or `beta`
 tag, because a dist-tag nobody is told about mostly hides the release from the
 people who would report bugs.
+
+**Release and launch are separate events.** `0.1.0` publishes quietly — no
+post, no announcement — because publishing is what takes the name, and the name
+is the perishable part. The launch is `0.2`, the first version whose verb list
+matches the claim: `adopt` is the verb for the recorded decision the whole pitch
+rests on, and `view` is the only surface that shows a library at once. Launching
+at `0.1.0` would mean answering "so the human decision is a text editor?" in the
+comments rather than in the release. Recorded in
+[`POSITIONING.md`](POSITIONING.md).
 
 **The name is available.** `https://registry.npmjs.org/pratiq` returns 404.
 Bare, not scoped: availability is the perishable part, and every `npx`
