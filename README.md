@@ -121,14 +121,16 @@ harmless, and there is no line it visibly violates.
 A script consuming these has to tell `1` and `2` apart. Collapsing them is how a
 CI gate starts lying about which problem it found.
 
-**What colour does, and does not, change.** Nine verbs colour `refused:` and
-`audit` colours its severity column, counts and verdict. The words carry the
-meaning and the ink is a second copy of them, so **stripping the escapes
-reproduces the output byte for byte** — a test asserts exactly that. Colour is
-off unless the stream is a terminal, `NO_COLOR` is honoured on its presence
-rather than its value, and `FORCE_COLOR` overrides the terminal check. A script
-reading this output never has to know, and `qrntn audit > report.txt` writes a
-clean file while still colouring the refusal it prints to stderr.
+**What colour does, and does not, change.** Eight verbs colour `refused:`.
+`audit` has no such line — it reports rather than refuses, and prefixes the one
+thing it cannot do `error:` — and colours its severity column, counts and
+verdict instead. The words carry the meaning and the ink is a second copy of
+them, so **stripping the escapes reproduces the output byte for byte** — a test
+asserts exactly that. Colour is off unless the stream is a terminal, `NO_COLOR`
+is honoured on its presence rather than its value, and `FORCE_COLOR` overrides
+the terminal check. A script reading this output never has to know, and
+`qrntn audit > report.txt` writes a clean file while still colouring the
+refusal it prints to stderr.
 
 **Explicitly not frozen:** the `--json` shapes. Most commands emit JSON and
 those shapes are still moving in `0.x`.

@@ -198,8 +198,10 @@ not own.
   colour, because a helper that can paint anything gets used to paint
   everything. `tint.test.mjs` fails if a fifth ink appears.
 
-  All nine verbs colour `refused:`, and `audit-skill` colours its severity
-  column, its counts and its verdict. Two rules constrain where it went: a zero
+  Eight of the nine verbs colour `refused:`. `audit-skill` is the ninth and has
+  no such line: it reports findings rather than refusing, and prefixes the one
+  thing it cannot do `error:`. What it colours instead is its severity column,
+  its counts and its verdict. Two rules constrain where it went: a zero
   count never spends an ink (`0 block` in alarm red is the interface shouting
   about the absence of a problem), and the flag itself is spent on exactly one
   string in the whole CLI — the verdict `NO BLOCKING FINDINGS`. A vessel is
