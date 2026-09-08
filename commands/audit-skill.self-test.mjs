@@ -32,6 +32,22 @@ const TEST = join(HERE, 'audit-skill.test.mjs');
 // be a change that genuinely alters nothing.
 const MUTATIONS = [
   {
+    // The false positive this shipped with: a Source path reported as an
+    // encoded payload, on every audit of a freshly intaken skill, on any
+    // machine whose temp directory is deep enough.
+    name: 'a filesystem path is reported as base64 again',
+    find: '      if (isPathLike(m[0])) continue; // a path, not an encoding — see isPathLike\n',
+    replace: ''
+  },
+  {
+    // The separation inverted: slash DENSITY is what tells a path from an
+    // encoding, so a threshold that rejects everything containing one would
+    // stop reading real base64 rather than start reading paths.
+    name: 'any run containing a slash is dismissed as a path',
+    find: '  return slashes * 16 > run.length;',
+    replace: '  return slashes > 0;'
+  },
+  {
     name: 'invisible-character class emptied',
     find: 'const INVISIBLE_RE = /[\\u200B-\\u200F\\u2060-\\u2064\\uFEFF\\u00AD\\u180E\\u2028\\u2029]/g;',
     replace: 'const INVISIBLE_RE = /(?!)/g;'

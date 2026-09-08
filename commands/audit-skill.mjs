@@ -634,6 +634,32 @@ function decodeHexRun(s) {
   }
 }
 
+/**
+ * Is this run a filesystem path rather than an encoded payload?
+ *
+ * `/` is in the base64 alphabet, so a long absolute path matches the run
+ * pattern exactly as a blob does. This is not hypothetical: every ORIGIN.md
+ * intake writes carries a Source path, and on a machine whose temp directory
+ * is long — macOS gives every user one about forty characters deep — that row
+ * was reported as an encoded payload on every audit of a freshly intaken
+ * skill.
+ *
+ * The separation is the same kind decodeHexRun makes, and rests on what the
+ * character MEANS in each. Base64 puts a `/` there as data, at one character
+ * in sixty-four by construction. A path puts one there as a separator, at
+ * roughly one in eight. Density tells them apart without asking what the text
+ * says.
+ *
+ * The floor is one in sixteen: four times what base64 produces, half what a
+ * path does. It is not a bypass. Stuffing slashes into a payload to slip under
+ * it corrupts the payload — the inserted characters decode as data, and what
+ * comes out is no longer the thing that was worth encoding.
+ */
+function isPathLike(run) {
+  const slashes = (run.match(/\//g) ?? []).length;
+  return slashes * 16 > run.length;
+}
+
 // ── the audit ────────────────────────────────────────────────────────────────
 
 /**
@@ -1033,6 +1059,7 @@ export function auditSkill(root, options = {}) {
     }
 
     for (const m of text.matchAll(new RegExp(`[A-Za-z0-9+/]{${BASE64_MIN_RUN},}={0,2}`, 'g'))) {
+      if (isPathLike(m[0])) continue; // a path, not an encoding — see isPathLike
       if (/^[0-9a-fA-F]+$/.test(m[0])) {
         const hex = decodeHexRun(m[0]);
         if (!hex) continue; // a digest — see decodeHexRun

@@ -575,6 +575,35 @@ for (const [path, label] of [['commands/deploy.md', 'commands'], ['hooks/pre.sh'
   check('hex digest: not reported as a hex blob', !r.codes.has('INSTR-HEXBLOB'), [...r.codes].join(', '));
   check('hex digest: exits 0', r.code === 0, `exit ${r.code}`);
 }
+
+// ── filesystem paths are not base64 payloads ─────────────────────────────────
+{
+  // `/` is in the base64 alphabet, so a long absolute path clears the run-length
+  // floor exactly as a blob does. This was not hypothetical: every ORIGIN.md
+  // intake writes carries a Source path, and on a macOS temp directory it was
+  // reported as an encoded payload on every audit of a freshly intaken skill —
+  // green locally, red on every Linux CI run, for a reason about the machine
+  // rather than about the skill.
+  const dir = mkSkill('paths', {
+    'SKILL.md': `${GOOD_FM}
+Fetched from /var/folders/7f/2wsys6l136b8hdng2zn90my40000gn/T/round-trip-src-MXeWOT today.
+`
+  });
+  const r = audit(dir);
+  check('path: not reported as base64', !r.codes.has('INSTR-BASE64'), [...r.codes].join(', '));
+  check('path: exits 0', r.code === 0, `exit ${r.code}`);
+}
+{
+  // The separation is density, not the presence of a slash, so base64 that
+  // happens to contain one is still read as base64. Sparse slashes are what
+  // the encoding produces; a run of them is what a path produces.
+  const blob = 'aGVsbG8/d29ybGRhbmR0aGVyZXN0b2ZpdGdvZXNvbmZvcmF3aGlsZXllc2luZGVlZA';
+  const dir = mkSkill('slashed', { 'SKILL.md': `${GOOD_FM}
+Data: ${blob}
+` });
+  const r = audit(dir);
+  check('base64 containing a slash: still reported', r.codes.has('INSTR-BASE64'), [...r.codes].join(', '));
+}
 {
   // ...but hex that decodes to readable text is a payload, which nothing
   // previously caught: INSTR-HEXESC only matches escaped \xNN sequences.

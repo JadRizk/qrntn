@@ -137,16 +137,48 @@ try {
 		const bare = run('audit-skill.mjs', [join(lib, 'inbox', 'tidy-notes')])
 		check('audit: read the artefact intake produced', /verdict/i.test(bare.all), bare.all.slice(0, 200))
 
-		// Scanned bare, the only finding is against ORIGIN.md — intake's own
-		// arrival record, whose inventory of sha256 hashes reads as long
-		// base64-like runs. That is the scanner working: the record is a file in
-		// the directory and nothing here exempts a file for having been written
-		// by this tool. `--exclude` is how a reader says so, and it still scans
-		// and still counts, it only moves where the finding is attributed.
-		check('audit: the bare scan flags the record intake wrote, not the skill', /ORIGIN\.md/.test(bare.all), bare.all.slice(-300))
+		// The record intake wrote is scanned like anything else in the directory:
+		// nothing here exempts a file for having been written by this tool.
+		//
+		// Asserted against the SCANNED-FILE LIST, not against a finding on it.
+		// This check used to read `/ORIGIN\.md/` over the report, on the stated
+		// grounds that the inventory of sha256 hashes "reads as long base64-like
+		// runs" — which was already untrue when it was written, since
+		// decodeHexRun exists precisely to stop digests being reported that way.
+		//
+		// What actually matched was the Source row: `/` is in the base64
+		// alphabet, and on macOS the per-user temp directory makes that path
+		// long enough to clear BASE64_MIN_RUN. On Linux, where tmpdir() is
+		// `/tmp`, nothing matched and this failed — every CI run, and only
+		// there. The scanner no longer reports paths, so there is no finding to
+		// assert on and there never should have been: whether a rule fires on
+		// ORIGIN.md depends on the machine the fixture ran on, which is not a
+		// property of the round trip.
+		//
+		// Being scanned is the property. It holds on every platform.
+		const listed = run('audit-skill.mjs', [join(lib, 'inbox', 'tidy-notes'), '--json'])
+		let scanned = null
+		try { scanned = JSON.parse(listed.out).files } catch { /* asserted below */ }
+		check(
+			'audit: scanned the record intake wrote, not only the skill',
+			Array.isArray(scanned) && scanned.includes('ORIGIN.md'),
+			JSON.stringify(scanned)
+		)
 
 		const r = run('audit-skill.mjs', [join(lib, 'inbox', 'tidy-notes'), '--exclude', 'ORIGIN.md'])
 		check('audit: found nothing to block on a benign skill', r.code === 0, r.all.slice(-300))
+
+		// `--exclude` is how a reader says "I know about this one". It still
+		// scans and still counts; it moves where the finding is attributed. The
+		// file stays in the scanned list — excluding is not the same as not looking.
+		const excluded = run('audit-skill.mjs', [join(lib, 'inbox', 'tidy-notes'), '--exclude', 'ORIGIN.md', '--json'])
+		let ex = null
+		try { ex = JSON.parse(excluded.out) } catch { /* asserted below */ }
+		check(
+			'audit: --exclude marks the record without ceasing to read it',
+			ex?.excludedFiles?.includes('ORIGIN.md') === true && ex?.files?.includes('ORIGIN.md') === true,
+			`excluded=${JSON.stringify(ex?.excludedFiles)} files=${JSON.stringify(ex?.files)}`
+		)
 	}
 
 	needs(join(lib, 'inbox', 'tidy-notes'), 'intake produced no inbox artefact — every later stage is unaskable')
