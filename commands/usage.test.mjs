@@ -736,6 +736,81 @@ check('--library is a distinct flag from --root, which means transcripts', () =>
 	ok(/--root <dir>\s+where the transcripts are/.test(text), '--root no longer documents the transcripts root')
 })
 
+// ─────────────────────────────────────────── the library it writes into ──
+//
+// SK-97. `check` and `refresh` both refuse a directory with no skills/ in it,
+// and this did not — so it was the one verb that would create ledger/usage.json
+// wherever a stray invocation happened to be standing, which is how it came to
+// leave a file in this tool's own repository.
+//
+// The rule under test is about the path NOBODY NAMED. An explicit --out is a
+// location the caller chose; printing to stdout writes nothing at all. Only the
+// inferred default is guarded, because that is the one a caller may not know is
+// about to appear.
+check('a directory with no skills/ is refused, and nothing is written', () => {
+	const dir = mkdtempSync(join(tmpdir(), 'usage-notlib-'))
+	try {
+		const r = cli(['--root', FIXTURES, '--now', NOW, '--library', dir])
+		eq(r.status, 2, 'exit code')
+		ok(/not a skill library/.test(r.stderr), `expected a refusal, got ${r.stderr.slice(0, 200)}`)
+		ok(!existsSync(join(dir, 'ledger')), 'a ledger directory was created in a non-library')
+	} finally {
+		rmSync(dir, { recursive: true, force: true })
+	}
+})
+
+check('the refusal says how to proceed rather than only that it will not', () => {
+	const dir = mkdtempSync(join(tmpdir(), 'usage-notlib-why-'))
+	try {
+		const r = cli(['--root', FIXTURES, '--now', NOW, '--library', dir])
+		ok(/--library/.test(r.stderr) && /--out/.test(r.stderr), `no remedy named: ${r.stderr.slice(0, 200)}`)
+	} finally {
+		rmSync(dir, { recursive: true, force: true })
+	}
+})
+
+check('--json in a non-library still prints, because it writes nothing', () => {
+	const dir = mkdtempSync(join(tmpdir(), 'usage-notlib-json-'))
+	try {
+		const r = cli(['--root', FIXTURES, '--now', NOW, '--library', dir, '--json'])
+		eq(r.status, 0, `exit code — ${r.stderr.slice(0, 200)}`)
+		ok(r.stdout.startsWith('{'), 'no JSON on stdout')
+		ok(!existsSync(join(dir, 'ledger')), 'a read-only run wrote to disk')
+	} finally {
+		rmSync(dir, { recursive: true, force: true })
+	}
+})
+
+// The aggregate is not the only thing this command writes. A baseline with no
+// --out resolves its own default the same way, and a guard covering one write
+// and not the other would leave the file appearing in a directory nobody named
+// — the whole complaint, moved one flag along.
+check('a baseline is guarded too, not only the aggregate', () => {
+	const dir = mkdtempSync(join(tmpdir(), 'usage-notlib-baseline-'))
+	try {
+		const r = cli(['--root', FIXTURES, '--now', NOW, '--library', dir, '--report', '--baseline'])
+		eq(r.status, 2, `exit code — ${r.stderr.slice(0, 200)}`)
+		ok(/not a skill library/.test(r.stderr), `expected a refusal, got ${r.stderr.slice(0, 200)}`)
+		ok(!existsSync(join(dir, 'ledger')), 'a ledger directory was created in a non-library')
+	} finally {
+		rmSync(dir, { recursive: true, force: true })
+	}
+})
+
+check('an explicit --out is the caller`s choice and is not second-guessed', () => {
+	// Still inside the named library, so the containment guard is satisfied;
+	// what is being asserted is that naming a path does not require skills/.
+	const dir = mkdtempSync(join(tmpdir(), 'usage-named-out-'))
+	try {
+		const out = join(dir, 'somewhere', 'counts.json')
+		const r = cli(['--root', FIXTURES, '--now', NOW, '--library', dir, '--out', out])
+		eq(r.status, 0, `exit code — ${r.stderr.slice(0, 200)}`)
+		ok(existsSync(out), 'the named path was not written')
+	} finally {
+		rmSync(dir, { recursive: true, force: true })
+	}
+})
+
 check('--library writes the aggregate into that library, not this tree', () => {
 	const lib = mkdtempSync(join(tmpdir(), 'usage-library-'))
 	mkdirSync(join(lib, 'skills'), { recursive: true })

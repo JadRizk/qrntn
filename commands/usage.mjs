@@ -87,7 +87,6 @@ try {
 	// Deployed alone. Plain text is correct, not a failure.
 }
 
-
 // ── the library ─────────────────────────────────────────────────────────────
 //
 // SK-97. Until the split this was `dirname(...)` of this file's own location,
@@ -725,8 +724,43 @@ function main(argv) {
 	// together, which is the only coherent pair.
 	const library = resolve(flag('--library') ?? process.env.SKILL_LIBRARY ?? DEFAULT_LIBRARY)
 	const defaultOut = join(library, 'ledger', 'usage.json')
-	const out = resolve(flag('--out') ?? defaultOut)
+	const namedOut = flag('--out') !== null
+	const out = resolve(namedOut ? flag('--out') : defaultOut)
 	const wantsReport = argv.includes('--report')
+
+	// SK-97. `check` and `refresh` both refuse a directory with no skills/ in it
+	// — "not a skill library" — and this did not, so it was the one verb that
+	// would create ledger/usage.json in a checkout, a home directory, or
+	// wherever a stray invocation happened to be standing. It did exactly that
+	// in this tool's own repository.
+	//
+	// The rule is about the path NOBODY NAMED. An explicit --out is a location
+	// the caller chose and can see; the containment guard below already keeps it
+	// inside the library, and refusing it here would break writing a baseline or
+	// an aggregate to a path picked on purpose. The default is different: it is
+	// inferred from the working directory, so the caller may not know a file is
+	// about to appear, let alone where.
+	//
+	// Read-only invocations are left alone for the same reason. --json and a
+	// --report without --baseline write nothing, and counting transcripts is a
+	// question about the machine rather than about any one library.
+	//
+	// One check covers both writes. The aggregate resolves its default against
+	// `library` and an unnamed baseline against `DEFAULT_LIBRARY`, which reads
+	// as two different roots and is not: resolveLibrary() parses `--library` off
+	// argv itself, so both expressions collapse to the same directory for every
+	// invocation. The two spellings are redundant rather than divergent, and a
+	// guard written to tell them apart would be describing a difference that
+	// does not exist.
+	if (!namedOut && !argv.includes('--json') && !(wantsReport && !argv.includes('--baseline'))) {
+		if (!existsSync(join(library, 'skills'))) {
+			process.stderr.write(
+				`${refusalLine(`${library} has no skills/ — not a skill library`)}\n` +
+					'  usage writes into a library ledger; name one with --library, or --out to write elsewhere\n'
+			)
+			return 2
+		}
+	}
 
 	// Two output shapes, one of them machine-readable and one of them not.
 	// Silently preferring either would make a scripted caller that passed both

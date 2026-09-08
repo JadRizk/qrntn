@@ -96,6 +96,21 @@ const MUTATIONS = [
 		replace: '	if (false) {',
 	},
 	{
+		// The defect this shipped with. Nothing throws and nothing looks wrong:
+		// a ledger/ appears in whatever directory the caller was standing in,
+		// and the run reports success.
+		name: 'a directory that is not a library is written into anyway',
+		find: "		if (!existsSync(join(library, 'skills'))) {",
+		replace: '		if (false) {',
+	},
+	{
+		// The guard kept but narrowed to the aggregate, leaving the other write
+		// this command makes — an unnamed baseline — unguarded.
+		name: 'only the aggregate is guarded, not the baseline',
+		find: "	if (!namedOut && !argv.includes('--json') && !(wantsReport && !argv.includes('--baseline'))) {",
+		replace: "	if (!namedOut && !argv.includes('--json') && !wantsReport) {",
+	},
+	{
 		name: 'a blank line counts as a corrupt one',
 		find: "			if (!line.trim()) continue",
 		replace: "			if (false) continue",
