@@ -1,0 +1,52 @@
+{
+  "name": "pratiq",
+  "version": "0.1.0",
+  "description": "Record and gate a human decision about an agent skill before it is allowed to load.",
+  "keywords": [
+    "agent-skills",
+    "skills",
+    "supply-chain",
+    "audit",
+    "provenance",
+    "claude"
+  ],
+  "license": "Apache-2.0",
+  "author": "Jad Rizk",
+  "type": "module",
+  "bin": {
+    "pratiq": "./bin/pratiq.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JadRizk/pratiQ.git"
+  },
+  "homepage": "https://github.com/JadRizk/pratiQ#readme",
+  "bugs": {
+    "url": "https://github.com/JadRizk/pratiQ/issues"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "bin/pratiq.mjs",
+    "commands/audit-skill.mjs",
+    "commands/check-catalog.mjs",
+    "commands/check-library.mjs",
+    "commands/init.mjs",
+    "commands/intake.mjs",
+    "commands/ledger.mjs",
+    "commands/overlap.mjs",
+    "commands/promote.mjs",
+    "commands/refresh.mjs",
+    "commands/usage.mjs",
+    "commands/TRANSCRIPTS.md",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "scripts": {
+    "test": "node check.mjs",
+    "test:quick": "node check.mjs --quick",
+    "prepublishOnly": "node check.mjs"
+  }
+}

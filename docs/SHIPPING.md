@@ -109,6 +109,34 @@ dump, never a stack trace.
 
 **Size:** small. **Blocks:** everything below.
 
+**Landed.** `bin/pratiq.mjs` and the root `package.json` were written first and
+sat uncommitted while §§2–6 were built around them; they are committed now with
+`init` and `check` added to the `VERBS` table and to the `files` allowlist, and
+one stale comment corrected — the table used to say `check` "will run a script
+that does not exist yet", which stopped being true when §2 landed.
+
+`commands/pratiq.test.mjs` is new, and lives in `commands/` rather than beside
+the file it tests because `check.mjs` discovers suites from that one directory:
+a suite in `bin/` would never run, and a test nobody executes is worse than none
+because it reads as coverage.
+
+**Two of its gates are about the tarball rather than about behaviour**, and they
+are the reason the file is worth having at all. The dispatcher's behaviour is
+nearly self-evident; what is not is whether every verb it offers still resolves
+once the tree is reduced to the `files` allowlist. A checkout cannot fail that —
+every file is present in a checkout — so the allowlist is read and cross-checked
+against the verb table directly. Deleting one entry fails the suite by name;
+checked, not assumed. A third gate asserts the allowlist ships no tests, no
+fixtures and no `check.mjs`.
+
+**Verified against a real tarball, not only against the manifest.** `npm pack`
+produces 16 files and 85.4 kB with no dependencies; installed into a clean
+directory and run with `HOME` pointed at an empty one, all nine verbs run, the
+three exit codes come back distinct, and **nothing was written into `HOME`** —
+which is §4's flip working, and would not have been true before it. That is most
+of §7's smoke test performed by hand; §7 still owes the automation and the CI
+matrix.
+
 ### 2 · `pratiq check`
 
 `SURFACE.md`: *every held skill is filed, every declared edge resolves, every
