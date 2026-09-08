@@ -22,10 +22,13 @@ moved — runs from a checkout today; `qrntn view` ships in `0.2`.
 
 ## It is not a scanner
 
-Scanners exist. Cisco, NVIDIA, Socket, Snyk and VirusTotal all ship one, along
-with eight open-source projects, and every scanner anyone has publicly tested
-has been bypassed on record. `qrntn` has a scanner inside it, and that is not
-the claim.
+Scanners exist. Cisco, NVIDIA, Socket, Snyk and VirusTotal all ship one, and so
+do several open-source projects. Every independent team that has published an
+attempt has bypassed the scanners it tested, several inside an hour — which is
+not a criticism of any of them. A scanner examines a fixed artefact while
+whoever wrote it can keep adjusting until it passes, and that asymmetry is why
+detection is not the last line here. `qrntn` has a scanner inside it, and that
+is not the claim.
 
 The claim is that **a human decision is recorded against specific bytes, and a
 gate enforces that decision without being able to be argued with.** Nothing is
