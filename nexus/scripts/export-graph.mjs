@@ -19,6 +19,8 @@
 // the same order and the same refusal as every verb in commands/. The decision
 // itself lives in src/data/integrity.ts, with the other pure pieces of this
 // pipeline, so it is unit-tested rather than only exercised by running this.
+// The output takes `--out <file>` for the same reason, one release later: the
+// bundle `qrntn view` runs has no public/data/ beside it.
 //
 // The ONLY place Nexus touches files outside its own directory, and it only
 // reads them: edges.json, catalog.json, ledger/*.json, skills/*/SKILL.md
@@ -49,9 +51,20 @@ const choice = chooseLibrary(process.argv.slice(2), process.env, process.cwd())
 if (!choice.ok) refuse(choice.error)
 const LIBRARY = resolve(choice.path)
 
-// The OUTPUT still belongs to the viewer, so it is still resolved from this
-// module's own URL. That half of the original reasoning was correct.
-const OUT_PATH = join(dirname(fileURLToPath(import.meta.url)), '..', 'public', 'data', 'graph.json')
+// The OUTPUT still belongs to the viewer, so by default it is still resolved
+// from this module's own URL. That half of the original reasoning was correct
+// — for a checkout. `qrntn view` runs a bundle of this file from a tarball
+// with no viewer beside it, and has to say where the graph goes: `--out
+// <file>`. Named, or the viewer's own data directory; never inferred from
+// where the bundle happens to sit, which is the same rule the input follows.
+function chooseOut(argv) {
+  const i = argv.indexOf('--out')
+  if (i === -1) return join(dirname(fileURLToPath(import.meta.url)), '..', 'public', 'data', 'graph.json')
+  const value = argv[i + 1]
+  if (!value || value.startsWith('--')) refuse('--out needs a file path')
+  return resolve(value)
+}
+const OUT_PATH = chooseOut(process.argv.slice(2))
 
 // Named refusals rather than an ENOENT stack trace naming a path the reader
 // has no reason to recognise — the same two things `init` refuses on.
