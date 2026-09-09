@@ -30,7 +30,7 @@ a working tool behind its two least-finished parts buys nothing.
 | `ledger` | `commands/ledger.mjs` | wrap |
 | `check` | **new — §2** | composition over `check-catalog.mjs` and `ledger --check` |
 | `adopt` | `commands/adopt.mjs` | **0.2 — landed**, §8 |
-| `view` | — | **0.2** |
+| `view` | `commands/view.mjs` + `view/` | **0.2 — landed**, §8 |
 | `manifest` | — | does not ship, per `SURFACE.md` |
 
 **`0.2` also carries `--no-evidence`.** Not a verb, so not a row above — a flag
@@ -492,6 +492,20 @@ about. **Landed.**
   extracted from. Fine as a fixture, and it must never ship as truth — `view`
   generates the graph for the library it is pointed at, when it is pointed
   there.
+
+**Landed, 2026-09-09.** All three, as recorded: the exporter takes `--out`;
+`nexus/scripts/build-view.mjs` builds the viewer and bundles the exporter to
+one plain-Node file into `view/`, gitignored, listed in `files`, made at
+publish time by `release.yml` and by `check.mjs` when the toolchain is
+installed; `commands/view.mjs` runs the bundle against the named library into
+a temporary directory and serves that on `127.0.0.1`, answering nothing under
+`/data/` but the graph it exported. The fixture is removed from the build and
+would not be served if it were not. The smoke gate drives the real tarball
+when the bundle is present and asserts the packaging-fault refusal when it is
+absent; CI's `viewer` job is the run where it is present. What was not
+foreseen: Ctrl-C is a signal death to the dispatcher, which reports it as
+`1`, so `view` handles `SIGINT` itself and exits `0` — a viewer someone closed
+is not a failed gate.
 
 ## The frozen contracts
 

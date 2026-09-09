@@ -15,7 +15,7 @@
 //   node qrntn.self-test.mjs
 
 import { spawnSync } from 'node:child_process'
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -38,13 +38,23 @@ const MUTATIONS = [
 	},
 	{
 		name: 'every exit code is reported as success',
-		find: 'process.exit(r.status)',
-		replace: 'process.exit(0)'
+		find: '\tprocess.exit(code)',
+		replace: '\tprocess.exit(0)'
 	},
 	{
 		name: 'arguments are dropped instead of passed through',
-		find: 'const r = spawnSync(process.execPath, [path, ...rest], {',
-		replace: 'const r = spawnSync(process.execPath, [path], {'
+		find: 'const child = spawn(process.execPath, [path, ...rest], {',
+		replace: 'const child = spawn(process.execPath, [path], {'
+	},
+	{
+		// The verb decides what an interrupt means and the dispatcher carries
+		// its answer out. Without forwarding, a verb that handles a signal
+		// never hears it and the dispatcher blocks; without the handler at all,
+		// the dispatcher dies of the signal and the verb's exit code is lost.
+		// Both were real, in that order, and `view` is the verb that showed it.
+		name: 'signals are not forwarded to the verb',
+		find: '\t\t\tchild.kill(signal)',
+		replace: '\t\t\tvoid signal'
 	},
 	{
 		// The command then cannot know which verb reached it, and every usage
@@ -99,6 +109,13 @@ for (const f of readdirSync(join(REPO, 'commands'))) {
 	if (f.endsWith('.mjs') || f.endsWith('.md') || f.endsWith('.json')) cpSync(join(REPO, 'commands', f), join(dir, 'commands', f))
 }
 cpSync(TEST, join(dir, 'commands', 'qrntn.test.mjs'))
+// The viewer bundle, when the tree has one. The suite's signal assertions
+// drive `view`, the only verb that runs until interrupted, and without the
+// bundle here it refuses as a packaging fault instead — which failed the suite
+// on every mutation and on the inert control alike, making every "caught"
+// meaningless. Copied rather than skipped so those assertions are exercised
+// here too; the suite skips them by the same test when the tree has no build.
+if (existsSync(join(REPO, 'view', 'index.html'))) cpSync(join(REPO, 'view'), join(dir, 'view'), { recursive: true })
 const sandboxSrc = join(dir, 'bin', 'qrntn.mjs')
 const sandboxTest = join(dir, 'commands', 'qrntn.test.mjs')
 

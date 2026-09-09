@@ -79,6 +79,7 @@ is therefore answered twice.
 | `promote` | Sees a verdict, and refusals | Same, plus whatever the artefact's own tests print when they run |
 | `refresh` | Sees that the pin and upstream differ | Same. Drift is reported as a fact, never as the diff's contents |
 | `usage` · `overlap` · `ledger` | Local records and counts | Same. No artefact text on either path |
+| `view` | The graph, in a browser on 127.0.0.1 | Same: the CLI prints a URL and counts, never the graph. The browser renders held skills' names and descriptions, which is artefact text — but into a page on this machine, not into a context, and only for skills a human already adopted |
 
 The result worth naming: **`intake` holds for both readers, and `audit` does
 not.** The gate was never the leak; the report is.

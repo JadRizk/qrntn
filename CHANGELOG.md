@@ -15,6 +15,35 @@ and a release that made a refusal clearer shipped something.
 
 ## 0.2.0 — unreleased
 
+**`view`.** The eleventh verb: the graph, served locally against any skill
+library. `qrntn view --library <dir>` exports the graph for that library,
+serves it on `127.0.0.1` with the viewer, prints the URL and runs until
+Ctrl-C, which exits `0`. Nothing leaves the machine and no browser is opened.
+The viewer is `nexus/`, a Vite + React + three.js application, and the CLI
+stays zero-dependency: the package now carries `view/`, the viewer's build
+plus `nexus/scripts/export-graph.mjs` bundled to one plain-Node file, made at
+publish time from the one implementation — `docs/SHIPPING.md` §8 rejected a
+second one on the record — and never committed. The viewer's own
+`public/data/graph.json`, a fixture of the library this was extracted from,
+does not ship and is never served; nothing under `/data/` is answered but the
+graph exported for the library you named.
+
+The exporter resolved its library from `--library`, `SKILL_LIBRARY` and the
+working directory already; it now takes `--out` as well, because a bundle
+running from a tarball has no `public/data/` beside it to write into.
+
+**The tarball is bigger, and says what it carries.** `package.json` still
+declares no dependencies because none are resolved on your machine; `view/`
+brings three.js, React and zod compiled in, about 880 KB, and `NOTICE` now
+lists them. A tool about what enters a library should be plain about what it
+brings with it.
+
+**Gates.** `check.mjs` builds the bundle when the viewer's toolchain is
+installed, so the smoke gate drives the real tarball; without it, the smoke
+gate asserts that `view` refuses as a packaging fault rather than serving
+anything else. CI gains a `viewer` job for the same reason, and the release
+workflow builds the bundle before it publishes.
+
 **`adopt`.** The tenth verb, and the lifecycle's central one: the human
 decision, recorded by a command instead of by hand. `qrntn adopt <name>` writes
 the verdict `ADOPT` into `inbox/<name>/AUDIT.md`, in the row `promote` already

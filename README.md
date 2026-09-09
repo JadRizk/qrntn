@@ -17,7 +17,7 @@ adding a dependency: the text becomes instructions before any code runs.
 auditing them, deciding about them, and keeping the decision. A browser-based
 graph viewer that shows the whole library at once — every skill, where it came
 from, what the audit found, whether it has ever fired, whether its upstream has
-moved — runs from a checkout today; `qrntn view` ships in `0.2`.
+moved — is served by `qrntn view`, locally, against any library you name.
 
 ## It is not a scanner
 
@@ -62,7 +62,7 @@ list look complete is precisely the move this tool exists to refuse.
 | **ledger** | one machine-written record per held skill: origin, hashes, audit verdict, contract, install, usage | `qrntn ledger` |
 | **refresh** | re-diff the pinned commit against upstream; report drift, never move the pin | `qrntn refresh` |
 | **usage** | count what actually fired, from local transcripts, reading no message text | `qrntn usage` |
-| **view** | the graph, served locally against any skill library | from a checkout; `qrntn view` in `0.2` |
+| **view** | the graph, served locally against any skill library | `qrntn view` |
 
 ```
 npx qrntn init                 # once, to make a folder of skills into a library
@@ -76,9 +76,9 @@ npx qrntn refresh
 npx qrntn check                # is every skill filed and every record still true
 ```
 
-Ten verbs: `init`, `intake`, `audit`, `adopt`, `promote`, `refresh`, `usage`,
-`overlap`, `ledger`, `check`. Run `qrntn` with no arguments for what each one
-does.
+Eleven verbs: `init`, `intake`, `audit`, `adopt`, `promote`, `refresh`,
+`usage`, `overlap`, `ledger`, `check`, `view`. Run `qrntn` with no arguments
+for what each one does.
 
 ## The principles it is built on
 
@@ -155,7 +155,15 @@ those shapes are still moving in `0.x`.
 ledger, refresh, usage and the catalog check — with every test and mutation
 self-test beside the script it covers. `audit-record.mjs` is the one
 statement of what a filled-in `AUDIT.md` contains; `adopt` and `promote` both
-read it, so the record one accepts is never one the other refuses. `nexus/` is the viewer. `brand/` is where the
+read it, so the record one accepts is never one the other refuses.
+
+`view/` in the published package is not source. It is the viewer's build,
+plus the graph exporter bundled to one plain-Node file, made at publish time
+by `nexus/scripts/build-view.mjs` from the one implementation in `nexus/` —
+never reimplemented, never committed. `package.json` declares no dependencies
+because none are resolved on your machine; that directory nonetheless carries
+three.js, React and zod compiled in, and `NOTICE` says so. A tool about what
+enters a library should be plain about what it brings with it. `nexus/` is the viewer. `brand/` is where the
 identity was decided — a thesis, and a palette whose every number prints the
 command that reproduces it — and `site/` is the page built from those tokens.
 `check.mjs` runs the lot,
@@ -178,7 +186,7 @@ tool happens to be installed.
 
 ## Status
 
-**`qrntn` is on npm**, first published 2026-09-09 on the `latest` tag: ten
+**`qrntn` is on npm**, first published 2026-09-09 on the `latest` tag: eleven
 verbs, zero dependencies, `node >= 20`. Every `npx` line above runs, and the
 badge above carries the current version rather than this paragraph. The name was
 chosen on 2026-09-07, changed to `qrntn` on 2026-09-08 when the first one could
