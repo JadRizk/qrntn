@@ -74,7 +74,8 @@ is therefore answered twice.
 | Stage | Reader A | Reader B |
 |---|---|---|
 | `intake` | Sees a name, a source and a pinned ref. Never the artefact | **Same.** Contents never printed, never summarised, never executed. The guarantee holds identically |
-| `audit` | Sees findings, and evidence excerpts drawn from the artefact | **Exposed.** Evidence is attacker-chosen text entering the agent's context — see below |
+| `audit` | Sees findings, and evidence excerpts drawn from the artefact | **Exposed.** Evidence is attacker-chosen text entering the agent's context — see below. `--no-evidence` closes it |
+| `adopt` | Sees the record it wrote, and the row | **Same.** Its scan runs with `--no-evidence`; the row carries counts and codes, never bytes. It records and removes; it never executes |
 | `promote` | Sees a verdict, and refusals | Same, plus whatever the artefact's own tests print when they run |
 | `refresh` | Sees that the pin and upstream differ | Same. Drift is reported as a fact, never as the diff's contents |
 | `usage` · `overlap` · `ledger` | Local records and counts | Same. No artefact text on either path |

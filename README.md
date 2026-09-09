@@ -57,7 +57,7 @@ list look complete is precisely the move this tool exists to refuse.
 |---|---|---|
 | **intake** | fetch from a link at a pinned commit, *without reading it*, into quarantine | `qrntn intake` |
 | **audit** | scan every file as data; a human adjudicates every finding; report only, never edit | `qrntn audit` |
-| **adopt / decline / refuse** | the human decides. A declined or refused skill keeps a permanent row, so it is never re-audited from nothing | by hand, into `AUDIT.md` and `REJECTED.md`; `qrntn adopt` in `0.2` |
+| **adopt / decline / refuse** | the human decides. A declined or refused skill keeps a permanent row, so it is never re-audited from nothing | `qrntn adopt` |
 | **promote** | a script re-scans and moves it into the library — or refuses | `qrntn promote` |
 | **ledger** | one machine-written record per held skill: origin, hashes, audit verdict, contract, install, usage | `qrntn ledger` |
 | **refresh** | re-diff the pinned commit against upstream; report drift, never move the pin | `qrntn refresh` |
@@ -68,15 +68,17 @@ list look complete is precisely the move this tool exists to refuse.
 npx qrntn init                 # once, to make a folder of skills into a library
 npx qrntn intake https://github.com/someone/skills/tree/main/foo
 npx qrntn audit inbox/foo      # audit takes the path it landed at, not the name
-                               # read the report; write the decision into
-                               # AUDIT.md, or a REJECTED.md row, by hand
+                               # read the report; decide every finding in AUDIT.md
+npx qrntn adopt foo            # record the verdict — or --decline / --refuse,
+                               # which writes a permanent REJECTED.md row instead
 npx qrntn promote foo
 npx qrntn refresh
 npx qrntn check                # is every skill filed and every record still true
 ```
 
-Nine verbs: `init`, `intake`, `audit`, `promote`, `refresh`, `usage`, `overlap`,
-`ledger`, `check`. Run `qrntn` with no arguments for what each one does.
+Ten verbs: `init`, `intake`, `audit`, `adopt`, `promote`, `refresh`, `usage`,
+`overlap`, `ledger`, `check`. Run `qrntn` with no arguments for what each one
+does.
 
 ## The principles it is built on
 
@@ -149,9 +151,11 @@ those shapes are still moving in `0.x`.
 
 ## Where the code lives
 
-`commands/` holds the pipeline — init, intake, audit, promote, overlap, ledger,
-refresh, usage and the catalog check — with every test and mutation self-test
-beside the script it covers. `nexus/` is the viewer. `brand/` is where the
+`commands/` holds the pipeline — init, intake, audit, adopt, promote, overlap,
+ledger, refresh, usage and the catalog check — with every test and mutation
+self-test beside the script it covers. `audit-record.mjs` is the one
+statement of what a filled-in `AUDIT.md` contains; `adopt` and `promote` both
+read it, so the record one accepts is never one the other refuses. `nexus/` is the viewer. `brand/` is where the
 identity was decided — a thesis, and a palette whose every number prints the
 command that reproduces it — and `site/` is the page built from those tokens.
 `check.mjs` runs the lot,
@@ -174,7 +178,7 @@ tool happens to be installed.
 
 ## Status
 
-**`qrntn` is on npm**, first published 2026-09-09 on the `latest` tag: nine
+**`qrntn` is on npm**, first published 2026-09-09 on the `latest` tag: ten
 verbs, zero dependencies, `node >= 20`. Every `npx` line above runs, and the
 badge above carries the current version rather than this paragraph. The name was
 chosen on 2026-09-07, changed to `qrntn` on 2026-09-08 when the first one could
@@ -187,8 +191,8 @@ which the lifecycle table above marks as such.
 
 From a checkout, `node check.mjs` runs every gate the project has: the suites,
 the mutation self-tests, and a smoke gate that packs the tarball, installs it
-into a clean directory with `HOME` pointed somewhere empty, and drives all nine
-verbs from it. [`docs/SHIPPING.md`](docs/SHIPPING.md) is the plan and marks what
+into a clean directory with `HOME` pointed somewhere empty, and drives every
+verb from it. [`docs/SHIPPING.md`](docs/SHIPPING.md) is the plan and marks what
 has landed against what has not; [`CHANGELOG.md`](CHANGELOG.md) records what
 each release actually contained.
 

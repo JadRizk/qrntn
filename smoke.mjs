@@ -234,6 +234,15 @@ const unadjudicated = run(['promote', 'sort-inbox', '--library', LIB])
 check('promote: refuses an artefact nobody adjudicated', unadjudicated.code === 1, `exit ${unadjudicated.code} ${unadjudicated.raw.slice(0, 200)}`)
 check('promote: and refuses by name rather than by crash', /no AUDIT\.md|refused/.test(unadjudicated.raw), unadjudicated.raw.slice(0, 300))
 
+// The decision, recorded from the tarball: a decline writes the permanent row
+// and ends the quarantine. It runs the installed scanner with --no-evidence to
+// fill the scan cell, which is the one cross-command spawn adopt has, and the
+// one that only a packaged install can prove resolves.
+const declined = run(['adopt', 'sort-inbox', '--decline', '--why', 'smoke: declined on purpose', '--library', LIB])
+check('adopt: declined from the tarball', declined.code === 0, `exit ${declined.code} ${declined.raw.slice(0, 300)}`)
+check('adopt: wrote the row', existsSync(join(LIB, 'REJECTED.md')) && /`sort-inbox`/.test(readFileSync(join(LIB, 'REJECTED.md'), 'utf8')), 'no row for sort-inbox')
+check('adopt: ended the quarantine', !existsSync(join(LIB, 'inbox', 'sort-inbox')), 'inbox/sort-inbox survived a decline')
+
 const refresh = run(['refresh', '--library', LIB])
 check('refresh: ran against the pin intake wrote', refresh.code === 0 || /drift|clean|skill/i.test(refresh.raw), `exit ${refresh.code} ${refresh.raw.slice(0, 300)}`)
 

@@ -29,7 +29,7 @@ a working tool behind its two least-finished parts buys nothing.
 | `overlap` | `commands/overlap.mjs` | wrap |
 | `ledger` | `commands/ledger.mjs` | wrap |
 | `check` | **new — §2** | composition over `check-catalog.mjs` and `ledger --check` |
-| `adopt` | — | **0.2** |
+| `adopt` | `commands/adopt.mjs` | **0.2 — landed**, §8 |
 | `view` | — | **0.2** |
 | `manifest` | — | does not ship, per `SURFACE.md` |
 
@@ -450,11 +450,23 @@ independent readers a writer has to satisfy: `check-catalog.mjs:209`
 `## Refused` is `` `name` `` | `[repo](url)` | date | blocking finding, and
 `## Declined` adds a scan and a why. And `promote.mjs:109` already refuses a
 `REJECT` with *"a rejected skill is deleted with a REJECTED.md row, never
-promoted"*, so the shape of the outcome is decided too. Two questions remain
+promoted"*, so the shape of the outcome is decided too. Two questions remained
 open and were deliberately not settled here: whether `--decline` keeps or
 deletes the bytes, and whether `adopt` moves the artefact or only records the
 decision and leaves the move to `promote`. Two verbs that both move things is
 how they drift.
+
+**Both answered, 2026-09-09, for `0.2`.** `--decline` deletes: declined and
+refused differ in what the row says, not in what happens to the bytes, and the
+row carries the source, the pinned commit, the scan and the reason, so the
+source is re-fetchable at the same bytes and quarantine is a state that ends.
+`adopt` records only: `promote` stays the one thing that moves bytes into
+`skills/`, and the one filesystem act `adopt` has beyond writing records is the
+removal of what it declined or refused. The `AUDIT.md` contract moved out of
+`promote.mjs` into `commands/audit-record.mjs` so both verbs read one
+statement of it — `promote.mjs` runs a promotion on import, so sharing by
+import was not available and typing it twice was the drift this section is
+about. **Landed.**
 
 **`view`** — three problems, none of them packaging:
 

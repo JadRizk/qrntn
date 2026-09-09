@@ -62,6 +62,10 @@ const VERBS = [...readFileSync(BIN, 'utf8').matchAll(/^\t\['([a-z-]+)', '([\w.-]
 	// The dispatcher itself, and the one non-verb sibling promote spawns.
 	check('bin/qrntn.mjs is in the allowlist', files.includes('bin/qrntn.mjs'), JSON.stringify(files))
 	check('check-catalog.mjs is too — promote spawns it, though no verb names it', files.includes('commands/check-catalog.mjs'), JSON.stringify(files))
+	// The AUDIT.md contract. Both verbs that read it import this and refuse by
+	// name without it — which the smoke gate would read as an ordinary refusal,
+	// so the allowlist is the place to catch it.
+	check('audit-record.mjs is too — adopt and promote import it, though no verb names it', files.includes('commands/audit-record.mjs'), JSON.stringify(files))
 
 	// The allowlist must not ship the suites. Nothing at runtime reads them, and
 	// a tarball carrying tests but not check.mjs — which is deliberately not
@@ -171,6 +175,7 @@ const VERBS = [...readFileSync(BIN, 'utf8').matchAll(/^\t\['([a-z-]+)', '([\w.-]
 		init: ['--help'],
 		intake: [],
 		audit: ['--help'],
+		adopt: ['--help'],
 		promote: [],
 		refresh: ['--help'],
 		usage: ['--help'],

@@ -166,19 +166,19 @@ function spawnDetail(r, lines) {
 }
 
 // ── the audit record's machine-checkable contract ────────────────────────────
-
-// Placeholders left in place are the commonest way a record looks complete and
-// says nothing. Each of these is a token the template ships and a filled record
-// cannot contain.
-const PLACEHOLDERS = [
-	{ re: /YYYY-MM-DD/, why: 'an unfilled date' },
-	{ re: /ADOPT\s*·\s*REVISE\s*·\s*REJECT/, why: 'the verdict menu, not a verdict' },
-	{ re: /Ready\s*·\s*Adopt with changes/, why: 'the quality menu, not an assessment' },
-	{ re: /Real \/ Accepted \/ False positive/, why: 'the disposition menu, not a disposition' },
-	{ re: /<[a-z][^>\n]{2,}>/i, why: 'an unfilled <angle-bracket> field' }
-]
-
-const DISPOSITIONS = /^(real|accepted|false positive|fixed|removed|n\/a)\b/i
+//
+// The rules lived here until `adopt` needed them too. This file runs a
+// promotion on import, so the only way to share them was to move them out:
+// audit-record.mjs holds the placeholders, the disposition rule and the verdict
+// row, and both verbs read the same ones. Guarded like the siblings above, but
+// with no degraded mode — there is no honest fallback for a contract, so its
+// absence is reported as the packaging fault it is.
+let auditRecord = null
+try {
+	auditRecord = await import('./audit-record.mjs')
+} catch {
+	// Reported by readAudit, once there is somewhere to report it.
+}
 
 function readAudit(dir) {
 	const path = join(dir, 'AUDIT.md')
@@ -186,33 +186,13 @@ function readAudit(dir) {
 		refuse('no AUDIT.md', 'nothing has been adjudicated; there is no record to promote against')
 		return null
 	}
+	if (!auditRecord) {
+		refuse('audit-record.mjs is missing beside this script', `expected ${join(HERE, 'audit-record.mjs')} — a packaging fault, not something you did; please report it`)
+		return null
+	}
 	const text = readFileSync(path, 'utf8')
-
-	for (const p of PLACEHOLDERS) {
-		if (p.re.test(text)) refuse('AUDIT.md still carries ' + p.why, String(p.re))
-	}
-
-	// Tolerant of the house format, which bolds the verdict and appends a
-	// qualifier — "| **Verdict** | **ADOPT** — no findings |". The first version
-	// of this demanded a bare "| ADOPT |" and so would have refused every audit
-	// already written in this repo, which is a gate enforcing a convention
-	// nobody uses.
-	const verdict = /\|\s*\*\*Verdict\*\*\s*\|[\s*]*(ADOPT|REVISE|REJECT)\b/i.exec(text)?.[1]?.toUpperCase()
-	if (!verdict) refuse('AUDIT.md has no resolved verdict', 'expected a | **Verdict** | ADOPT | row')
-	else if (verdict === 'REJECT') refuse('the verdict is REJECT', 'a rejected skill is deleted with a REJECTED.md row, never promoted')
-	else if (!['ADOPT', 'REVISE'].includes(verdict)) refuse(`unrecognised verdict "${verdict}"`, 'expected ADOPT, REVISE or REJECT')
-
-	// Findings rows: a table row whose disposition cell is blank is a finding
-	// nobody decided about, which is indistinguishable from one nobody read.
-	let undecided = 0
-	for (const line of text.split('\n')) {
-		const m = /^\|\s*\d+\s*\|\s*`?([A-Z]+-[A-Z0-9]+)`?\s*\|([^|]*)\|([^|]*)\|/.exec(line)
-		if (!m) continue
-		if (!DISPOSITIONS.test(m[3].trim())) undecided++
-	}
-	if (undecided) refuse(`${undecided} finding(s) with no disposition`, 'every row in the findings table needs one')
-
-	return { text, verdict }
+	for (const p of auditRecord.checkAuditRecord(text)) refuse(p.why, p.detail)
+	return { text, verdict: auditRecord.readVerdict(text) }
 }
 
 // ── arrival hashes versus what is on disk now ────────────────────────────────

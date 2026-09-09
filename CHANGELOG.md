@@ -15,6 +15,29 @@ and a release that made a refusal clearer shipped something.
 
 ## 0.2.0 — unreleased
 
+**`adopt`.** The tenth verb, and the lifecycle's central one: the human
+decision, recorded by a command instead of by hand. `qrntn adopt <name>` writes
+the verdict `ADOPT` into `inbox/<name>/AUDIT.md`, in the row `promote` already
+reads, and refuses when the record is unfinished — a placeholder left in, a
+finding with no disposition — or already decided. `--decline --why "…"` and
+`--refuse` write a permanent row into `REJECTED.md`, under `## Declined` or
+`## Refused`, in the shape `check` and the viewer already parse: the name, the
+source as `[repo](url)` with the pinned commit, the date, and for a decline
+the scan counts and the reason, for a refusal the blocking finding. Then the
+artefact is removed from `inbox/`. That was one of two questions left open in
+`docs/SHIPPING.md` §8 and is answered there: quarantine is a state that ends,
+and the row keeps everything needed to fetch the same bytes again. The other
+is answered the same way: `adopt` records and never moves; `promote` stays the
+only thing that moves bytes into the library.
+
+Nothing the artefact wrote reaches the record. The scan `adopt` runs is
+`audit --no-evidence`, so the row carries counts and codes, never bytes.
+
+**The `AUDIT.md` contract has one home.** The placeholders, the disposition
+rule and the verdict row moved out of `promote.mjs` into
+`commands/audit-record.mjs`, which `adopt` and `promote` both read. Typing it
+twice is how a record one verb accepts becomes one the other refuses.
+
 **`audit --no-evidence`.** Each finding keeps its severity, code, file,
 location and reason; the matched bytes are withheld — the excerpt, a decoded
 payload, and any fragment the reason would have quoted from the artefact, which

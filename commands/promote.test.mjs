@@ -161,6 +161,8 @@ function mkRepo(label, { files = { 'SKILL.md': SKILL_MD }, originFor = null, aud
 	cpSync(SCANNER, join(repo, 'skills', 'skill-audit'), { recursive: true })
 	mkdirSync(join(repo, 'skills', 'skill-adopt', 'scripts'), { recursive: true })
 	cpSync(join(HERE, 'promote.mjs'), join(repo, 'skills', 'skill-adopt', 'scripts', 'promote.mjs'))
+	// The AUDIT.md contract ships beside promote and is gated by `files`.
+	cpSync(join(HERE, 'audit-record.mjs'), join(repo, 'skills', 'skill-adopt', 'scripts', 'audit-record.mjs'))
 	mkdirSync(join(repo, 'scripts'), { recursive: true })
 	cpSync(LEDGER, join(repo, 'scripts', 'ledger.mjs'))
 	if (held) mkdirSync(join(repo, 'skills', 'tidy-notes'), { recursive: true })
@@ -202,6 +204,8 @@ function mkAuthoredRepo(
 	cpSync(SCANNER, join(repo, 'skills', 'skill-audit'), { recursive: true })
 	mkdirSync(join(repo, 'skills', 'skill-adopt', 'scripts'), { recursive: true })
 	cpSync(join(HERE, 'promote.mjs'), join(repo, 'skills', 'skill-adopt', 'scripts', 'promote.mjs'))
+	// The AUDIT.md contract ships beside promote and is gated by `files`.
+	cpSync(join(HERE, 'audit-record.mjs'), join(repo, 'skills', 'skill-adopt', 'scripts', 'audit-record.mjs'))
 	mkdirSync(join(repo, 'scripts'), { recursive: true })
 	cpSync(LEDGER, join(repo, 'scripts', 'ledger.mjs'))
 

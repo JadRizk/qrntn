@@ -66,6 +66,7 @@ const VERBS = [
 	['init', 'init.mjs', 'make a folder of skills into a library — once, before anything else'],
 	['intake', 'intake.mjs', 'fetch a skill at a pinned commit into quarantine, without reading it'],
 	['audit', 'audit-skill.mjs', 'scan every file as data; report, never edit'],
+	['adopt', 'adopt.mjs', 'record the decision — adopted, declined or refused — before anything moves'],
 	['promote', 'promote.mjs', 're-scan and move it into the library, or refuse'],
 	['refresh', 'refresh.mjs', 're-diff the pin against upstream; report drift, never move the pin'],
 	['usage', 'usage.mjs', 'count what actually fired, from local transcripts'],

@@ -32,7 +32,9 @@
   },
   "files": [
     "bin/qrntn.mjs",
+    "commands/adopt.mjs",
     "commands/argv.mjs",
+    "commands/audit-record.mjs",
     "commands/audit-skill.mjs",
     "commands/check-catalog.mjs",
     "commands/check-library.mjs",
