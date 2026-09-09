@@ -152,6 +152,29 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+
+      # The documented workaround, applied whole this time. registry-url is
+      # kept because npm wants the registry configured in an .npmrc; what it
+      # must not find there is the credential line the action writes beside it.
+      # Removing registry-url instead took away both, and npm went on
+      # publishing as nobody.
+      - name: strip the credential setup-node wrote beside the registry
+        run: |
+          cfg="${NPM_CONFIG_USERCONFIG:-$HOME/.npmrc}"
+          if [ ! -f "$cfg" ]; then
+            echo "refused: no .npmrc at $cfg — registry-url did not write one" >&2
+            exit 1
+          fi
+          sed -i '/_authToken/d' "$cfg"
+          # Never printed. The line is gone or it is not, and that is all this
+          # needs to say; the file is a credential store even when the
+          # credential in it is a placeholder.
+          if grep -q "_authToken" "$cfg"; then
+            echo "refused: _authToken survived the strip" >&2
+            exit 1
+          fi
+          echo "registry configured, credential line removed"
 
       - name: npm is new enough to publish over OIDC
         run: |
@@ -171,6 +194,12 @@ jobs:
       # publishing without provenance if the token is real, and failing with a
       # misleading 404 if it is a placeholder.
       - name: nothing is authenticating but OIDC
+        env:
+          # setup-node exports this as the literal placeholder
+          # `XXXXX-XXXXX-XXXXX-XXXXX` whenever registry-url is set. Emptied
+          # here rather than tolerated: the check below is the real assertion
+          # and it should be allowed to fail if anything else sets this.
+          NODE_AUTH_TOKEN: ''
         run: |
           bad=0
           if [ -n "${NODE_AUTH_TOKEN:-}" ]; then
@@ -211,4 +240,6 @@ jobs:
 
       - name: publish
         if: github.event_name == 'push' || inputs.publish
+        env:
+          NODE_AUTH_TOKEN: ''
         run: npm publish
