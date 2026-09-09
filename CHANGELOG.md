@@ -13,6 +13,27 @@ appears in a release.
 A version that only refuses better still gets an entry. Declining is a success,
 and a release that made a refusal clearer shipped something.
 
+## 0.1.1 — 2026-09-09
+
+**Documentation only.** `bin/`, `commands/` and the `files` allowlist are
+byte-identical to `0.1.0`. Nothing behaves differently and there is nothing to
+upgrade for.
+
+**The package's own page said the package did not exist.** npm snapshots the
+README at publish time, so `0.1.0` went up on the registry opening with
+*"Nothing is published. There is no npm package and no release, so none of the
+`npx` lines above run yet."* True when it was written, false the second it was
+uploaded, and printed on the one page most people will ever read. A registry
+README cannot be corrected without a version, so this is the version.
+
+The `status` badge said `not published` in the palette's warning colour. It is
+removed rather than flipped: `brand/BRAND.md` has no success ink by decision,
+so there was no honest colour to turn it, and the npm badge beside it answers
+the question anyway. That badge is now live rather than a hand-typed `0.1.0`,
+for the reason the tarball's file count stopped being written down in
+`docs/SHIPPING.md` — a number maintained by hand is a number that goes stale,
+and this one would have gone stale at `0.2`.
+
 ## 0.1.0 — 2026-09-09
 
 First publish. The pipeline, extracted from the skill library it was written

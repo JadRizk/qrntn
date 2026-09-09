@@ -164,12 +164,13 @@ tool happens to be installed.
 
 ## Status
 
-**`0.1.0` is on npm**, published 2026-09-09 on the `latest` tag: nine verbs,
-zero dependencies, `node >= 20`. Every `npx` line above runs. The name was
+**`qrntn` is on npm**, first published 2026-09-09 on the `latest` tag: nine
+verbs, zero dependencies, `node >= 20`. Every `npx` line above runs, and the
+badge above carries the current version rather than this paragraph. The name was
 chosen on 2026-09-07, changed to `qrntn` on 2026-09-08 when the first one could
 not be taken, and is recorded in SK-90.
 
-`0.1.0` is a quiet release rather than a launch. `adopt` — the verb for the
+`0.1.x` is a quiet release rather than a launch. `adopt` — the verb for the
 recorded decision the whole pitch rests on — and `view` are `0.2`, and until
 they land the decision is written by hand into `AUDIT.md` and `REJECTED.md`,
 which the lifecycle table above marks as such.

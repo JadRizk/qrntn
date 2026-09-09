@@ -1,6 +1,6 @@
 {
   "name": "qrntn",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Record and gate a human decision about an agent skill before it is allowed to load.",
   "keywords": [
     "agent-skills",
