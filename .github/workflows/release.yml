@@ -141,7 +141,15 @@ jobs:
       #
       # registry.npmjs.org is the default registry, so naming it bought
       # nothing and cost the release.
-      - uses: actions/setup-node@v4
+      #
+      # v6, and not v4, which is the other half of the same failure. Trusted
+      # publishing is not supported before v6 — removing registry-url stopped
+      # npm being handed a fake credential, but the action still had no OIDC
+      # support to offer, so npm went on publishing as nobody. The two look
+      # identical from the log because npm reports both as ENEEDAUTH rather
+      # than as a trusted-publishing diagnostic (npm/cli#9088), which is what
+      # made this three failures instead of one.
+      - uses: actions/setup-node@v6
         with:
           node-version: '24'
 
