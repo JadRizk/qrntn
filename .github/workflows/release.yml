@@ -1,0 +1,137 @@
+# Publishing, triggered by the tag and authenticated by nobody.
+#
+# `check.yml` deferred this and said why: a publish pipeline debugged during
+# the first publish is two problems at once. That was right, and the first
+# publish has happened — 0.1.0 went up by hand on 2026-09-09 — so the reason
+# has expired rather than been overruled.
+#
+# NO NPM TOKEN. This publishes over OIDC, which npm calls trusted publishing:
+# GitHub mints a short-lived identity token for this workflow, npm checks it
+# against the publisher configured on the package, and nothing long-lived is
+# stored anywhere. The alternative was an automation token in a repository
+# secret — a credential that publishes to npm under a human's name, sitting in
+# CI, bypassing that human's 2FA. This project's whole argument is about that
+# class of credential. Shipping one to save a config screen would be the tool
+# contradicting its own README.
+#
+# The payoff is not only the absent secret. Publishing this way attaches a
+# provenance attestation: a signed statement tying the bytes on the registry to
+# this repository, this workflow and this commit. It is automatic and there is
+# no flag for it — public repository, public package and OIDC are the whole
+# requirement, and all three hold. A tool that sells a recorded link between an
+# artefact and where it came from should carry one.
+#
+# CONFIGURED OFF-REPOSITORY, WHICH IS THE FAILURE MODE. npm holds the trusted
+# publisher on the package settings page and does not validate it when saved,
+# so a wrong workflow filename there is silent until a release fails. This file
+# must stay named `release.yml`, or the setting has to change with it.
+#
+# The gate is not repeated here. `npm publish` runs `prepublishOnly`, which is
+# `node check.mjs` — every gate, including the smoke gate that packs and
+# installs the tarball — and a failure there aborts before anything reaches the
+# registry. Running it as a separate job first would be a second copy of the
+# same question, and the copy that ran would not be the one guarding the
+# publish.
+
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  # A tag is a claim about which bytes a version is. This job is the only thing
+  # standing between a mistyped tag and a wrong number on the registry, where it
+  # cannot be corrected without burning another version.
+  agree:
+    name: the tag, the manifest and the changelog agree
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: check
+        env:
+          # Through the environment rather than `${{ }}` in the script body,
+          # for the reason commit-style.yml gives: substitution happens before
+          # the shell sees it, and a ref name is not this workflow's to trust.
+          TAG: ${{ github.ref_name }}
+        run: |
+          node <<'EOF'
+          const { readFileSync } = require('node:fs')
+          const tag = process.env.TAG ?? ''
+          const fail = (why, hint) => {
+            console.error(`refused: ${why}`)
+            if (hint) console.error(`  ${hint}`)
+            process.exit(1)
+          }
+
+          // Tags carry the `v` and the manifest does not. CHANGELOG.md says so
+          // in its own header, and this is where that sentence is enforced.
+          if (!/^v\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/.test(tag)) {
+            fail(`\`${tag}\` is not a release tag`, 'expected v<major>.<minor>.<patch>')
+          }
+          const version = tag.slice(1)
+
+          const manifest = JSON.parse(readFileSync('package.json', 'utf8')).version
+          if (manifest !== version) {
+            fail(`the tag says ${version} and package.json says ${manifest}`,
+                 'tag the commit that carries the version, or bump the version first')
+          }
+
+          // The heading, not a mention. `## 0.1.1 — 2026-09-09` is the shape
+          // CHANGELOG.md already uses, and an entry with no date is an entry
+          // for a release that has not happened.
+          const log = readFileSync('CHANGELOG.md', 'utf8')
+          const heading = new RegExp(`^## ${version.replace(/\./g, '\\.')} — \\d{4}-\\d{2}-\\d{2}$`, 'm')
+          if (!heading.test(log)) {
+            fail(`CHANGELOG.md has no dated entry for ${version}`,
+                 `expected a line: ## ${version} — YYYY-MM-DD`)
+          }
+
+          console.log(`${tag} · package.json ${manifest} · CHANGELOG.md entry present`)
+          EOF
+
+  publish:
+    name: publish to npm with provenance
+    needs: agree
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # The whole authentication story. Without it npm sees an anonymous
+      # runner; with it, npm sees this workflow in this repository.
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      # Not the supported floor. `engines` says node >=20 and check.yml tests
+      # 20, 22 and 24, because that is what a consumer may run. Trusted
+      # publishing needs node >=22.14 and npm >=11.5.1, and those are
+      # requirements of the act of publishing rather than of the package.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+          # npm's own guidance for release builds: a cache is a second copy of
+          # the dependency tree, and this package has none to cache anyway.
+          package-manager-cache: false
+
+      - name: npm is new enough to publish over OIDC
+        run: |
+          have=$(npm --version)
+          need=11.5.1
+          # sort -V, so 11.10 does not compare below 11.5.
+          if [ "$(printf '%s\n%s\n' "$need" "$have" | sort -V | head -1)" != "$need" ]; then
+            echo "refused: npm $have cannot use trusted publishing — $need or later is required" >&2
+            echo "  the runner's bundled npm moved; pin node-version or add npm i -g npm@latest" >&2
+            exit 1
+          fi
+          echo "npm $have"
+
+      # No NODE_AUTH_TOKEN, deliberately and load-bearingly. Setting one makes
+      # npm authenticate as that token's owner instead of over OIDC, which
+      # publishes without provenance and reintroduces exactly the stored
+      # credential this workflow exists to avoid.
+      - name: publish
+        run: npm publish

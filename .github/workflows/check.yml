@@ -17,8 +17,12 @@
 # `view` is not in 0.1.0, so the viewer's toolchain must not be able to block
 # the pipeline's release. When `view` ships, add a job; do not add it here.
 #
-# Publishing is not automated. §7: a publish pipeline debugged during the first
-# publish is two problems at once. See docs/SHIPPING.md §7 for what that defers.
+# Publishing is not here, and is no longer deferred. The reason it was — a
+# publish pipeline debugged during the first publish is two problems at once —
+# expired when 0.1.0 went up by hand. It now lives in release.yml, triggered by
+# the tag and authenticated over OIDC with no stored token. That workflow does
+# not repeat the gates below: `npm publish` runs them through `prepublishOnly`,
+# so the copy that guards the publish is this one.
 
 name: check
 
@@ -58,6 +62,54 @@ jobs:
       # would still create a node_modules this project does not otherwise have.
       - name: every gate
         run: node check.mjs
+
+  # A change to shipped code that says nothing in CHANGELOG.md is a release
+  # note written later, from a diff, by someone reconstructing intent. The
+  # entry is not generated here and never will be — this file has no opinion
+  # about what the change means, only that the person who made it said so
+  # while they still knew.
+  #
+  # What counts as shipped is DERIVED, from `files` in the manifest, for the
+  # reason smoke.mjs derives the same list: an allowlist written down twice
+  # drifts the moment one copy gains an entry, and that has already happened
+  # here once. Only `.mjs` entries count. A README edit is not a behaviour
+  # change and should not be made to pretend it is, or the gate becomes noise
+  # and the next person adds a bypass.
+  changelog:
+    name: shipped code changed, so the changelog did too
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: check
+        env:
+          BASE: ${{ github.base_ref }}
+        run: |
+          git fetch --no-tags --quiet origin "+refs/heads/$BASE:refs/remotes/origin/$BASE"
+          git diff --name-only "origin/$BASE...HEAD" > /tmp/changed.txt
+          node <<'EOF'
+          const { readFileSync } = require('node:fs')
+          const changed = readFileSync('/tmp/changed.txt', 'utf8').split('\n').filter(Boolean)
+          const shipped = new Set(
+            JSON.parse(readFileSync('package.json', 'utf8')).files.filter((f) => f.endsWith('.mjs')),
+          )
+          const touched = changed.filter((f) => shipped.has(f))
+
+          if (touched.length === 0) {
+            console.log('no shipped code changed — nothing to record')
+            process.exit(0)
+          }
+          if (changed.includes('CHANGELOG.md')) {
+            console.log(`${touched.length} shipped file(s) changed, and CHANGELOG.md with them`)
+            process.exit(0)
+          }
+          console.error('refused: shipped code changed and CHANGELOG.md did not')
+          for (const f of touched) console.error(`  ${f}`)
+          console.error('  add the entry now, while you still know what it means')
+          process.exit(1)
+          EOF
 
   # The smoke gate runs inside check.mjs above, on every Node in the matrix.
   # This job asserts the thing a matrix cannot: that the tarball's own contents
