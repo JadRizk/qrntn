@@ -13,6 +13,27 @@ appears in a release.
 A version that only refuses better still gets an entry. Declining is a success,
 and a release that made a refusal clearer shipped something.
 
+## 0.2.0 — unreleased
+
+**`audit --no-evidence`.** Each finding keeps its severity, code, file,
+location and reason; the matched bytes are withheld — the excerpt, a decoded
+payload, and any fragment the reason would have quoted from the artefact, which
+reads `[withheld]` instead. Counts, verdict and exit code are identical with and
+without the flag. Under `--json` every finding's `evidence` is `null` and the
+top level gains `"evidence": "withheld"`, so a consumer can tell a silenced
+excerpt from an absent one. For the reader that is an agent: an excerpt is text
+the artefact's author chose, and printing it into an agent's context is the
+thing `intake` kept out of it. A flag, not a test of whether stdout is a
+terminal — [`docs/THREATS.md`](docs/THREATS.md) says why.
+
+**A quoted fragment is bounded.** Nine findings quote the artefact into their
+reason — a frontmatter key, a referenced path, a directory name — and until now
+those quotes were unbounded and unescaped, outside the cap and the
+`JSON.stringify` that evidence goes through. They now pass through the same
+bound: whitespace collapsed, 60 characters, anything outside printable ASCII
+printed as its escape. `THREATS.md` said the reason was written by the tool
+alone; it was not, and now says so.
+
 ## 0.1.1 — 2026-09-09
 
 **Documentation only.** `bin/`, `commands/` and the `files` allowlist are

@@ -134,6 +134,16 @@ the terminal check. A script reading this output never has to know, and
 `qrntn audit > report.txt` writes a clean file while still colouring the
 refusal it prints to stderr.
 
+**What `--no-evidence` withholds.** `audit` prints an excerpt of what matched
+under each finding, and that excerpt is text the skill's author chose. When the
+reader is an agent rather than a person, `qrntn audit inbox/foo --no-evidence`
+keeps every finding's severity, code, file, location and reason and withholds
+the bytes: the excerpt, a decoded payload, and any fragment the reason would
+have quoted. Counts, verdict and exit code do not change. It is a flag and not a
+test of where stdout goes, for the reason [`docs/THREATS.md`](docs/THREATS.md)
+gives: a report must not mean different things depending on what it is piped
+into.
+
 **Explicitly not frozen:** the `--json` shapes. Most commands emit JSON and
 those shapes are still moving in `0.x`.
 

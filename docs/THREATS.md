@@ -101,10 +101,12 @@ What already limits it:
   runs of whitespace are collapsed.
 - The `why` text of every finding is written by this tool. It is not entirely
   free of the artefact: nine findings quote a fragment of it into the sentence —
-  a frontmatter key, a referenced path, a directory name — and `file` is the
-  artefact's own name for the file on every finding. Until `0.2` bounds the
-  quoted fragments, `why` is a second, narrower copy of the evidence channel,
-  and this sentence used to say otherwise.
+  a frontmatter key, a referenced path, a directory name — and those fragments
+  pass through the same bound as evidence: whitespace collapsed, capped at 60
+  characters, anything outside printable ASCII printed as its escape. `file` is
+  the artefact's own name for the file on every finding, and cannot be bounded
+  without ceasing to be a location. This sentence used to say `why` was written
+  by the tool alone; it was not, and the bound is what made it nearly so.
 
 None of that is a security control. Truncation bounds the size of an injection
 attempt and does not prevent one, and a hundred characters is ample.
@@ -114,10 +116,14 @@ cannot ask a human to adjudicate a finding you decline to show them, so the
 tension between Reader A's need for evidence and Reader B's exposure to it is
 inherent to reporting at all.
 
-`0.2` adds `--no-evidence`, which prints each finding's severity, code, file and
-location and withholds the matched bytes, for the case where the reader is known
-to be an agent. It is an explicit flag rather than automatic suppression on a
-non-terminal stream. Colour is suppressed that way because colour is a second
+`--no-evidence` prints each finding's severity, code, file, location and reason
+and withholds the matched bytes — the excerpt, a decoded payload, and any
+fragment the reason would have quoted, which reads `[withheld]` instead — for
+the case where the reader is known to be an agent. Counts, verdict and exit
+code do not change: the flag changes what is shown, never what was found, and
+under `--json` the top level says `"evidence": "withheld"` so a consumer can
+tell a silenced excerpt from an absent one. It is an explicit flag rather than
+automatic suppression on a non-terminal stream. Colour is suppressed that way because colour is a second
 copy of a word already present, and stripping it reproduces the output byte for
 byte; evidence is not a second copy of anything, and making a report mean
 different things depending on what it is piped into would be the same defect
