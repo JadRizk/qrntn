@@ -220,23 +220,63 @@ jobs:
       # this is ENEEDAUTH — "you need to authorize this machine" — which
       # describes a laptop and not a runner, and sends you looking at the
       # registry rather than at the permission.
-      - name: the runner can mint an OIDC identity
+      # Two questions, asked here because npm will not answer either one.
+      # `npm publish` reports every trusted-publishing failure as ENEEDAUTH,
+      # "you need to authorize this machine using npm adduser" — a sentence
+      # about a laptop — and prints nothing about OIDC whether it never tried
+      # or tried and was refused (npm/cli#9088). Five releases failed on that
+      # sentence. So the exchange is done here first, where the status code is
+      # visible, and eight minutes of prepublishOnly are not spent to reach a
+      # message that does not distinguish the causes.
+      #
+      # A 404 from the exchange is npm saying no trusted publisher matches this
+      # workflow — not that the route is missing. That is the documented
+      # behaviour and it is the difference between a repository problem and a
+      # settings-page problem.
+      #
+      # No token is ever printed. The id_token goes into a header; the exchange
+      # response is shown only when it is not 200, because a 200 body carries a
+      # registry token.
+      - name: npm will accept this workflow's identity
         run: |
           if [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]; then
             echo "refused: no OIDC token endpoint in this job's environment" >&2
             echo "  id-token: write was requested and not granted" >&2
             exit 1
           fi
-          # Presence and status only. The token is a credential and is never
-          # printed, logged, or passed anywhere but this request.
-          code=$(curl -s -o /dev/null -w '%{http_code}' \
+
+          id_token=$(curl -sS \
             -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
-            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=npm:registry.npmjs.org")
-          if [ "$code" != "200" ]; then
-            echo "refused: the OIDC endpoint answered HTTP $code" >&2
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=npm:registry.npmjs.org" \
+            | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{process.stdout.write(JSON.parse(s).value??'')}catch{}}")
+          if [ -z "$id_token" ]; then
+            echo "refused: GitHub issued no id_token for audience npm:registry.npmjs.org" >&2
             exit 1
           fi
-          echo "OIDC endpoint present and issuing"
+          echo "GitHub issued an id_token"
+
+          pkg=$(node -p "require('./package.json').name")
+          body=$(mktemp)
+          code=$(curl -sS -o "$body" -w '%{http_code}' -X POST \
+            -H "Authorization: Bearer $id_token" \
+            -H "Content-Type: application/json" \
+            "https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/$pkg")
+
+          if [ "$code" = "200" ]; then
+            echo "npm exchanged it — a trusted publisher matches this workflow"
+            exit 0
+          fi
+
+          echo "refused: npm answered HTTP $code to the token exchange" >&2
+          echo "--- npm said ---" >&2
+          cat "$body" >&2
+          echo >&2
+          if [ "$code" = "404" ]; then
+            echo "  404 means no trusted publisher matches. Check, on the package" >&2
+            echo "  settings page: user JadRizk, repository qrntn (bare name)," >&2
+            echo "  workflow filename release.yml (basename), environment EMPTY." >&2
+          fi
+          exit 1
 
       - name: publish
         if: github.event_name == 'push' || inputs.publish
