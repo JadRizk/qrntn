@@ -60,6 +60,10 @@ jobs:
   # cannot be corrected without burning another version.
   agree:
     name: the tag, the manifest and the changelog agree
+    # Only a tag can disagree with anything. A dispatched run has no version to
+    # check, so this is skipped rather than made to pass on an exception —
+    # a gate with a bypass in it stops being a gate.
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -108,6 +112,9 @@ jobs:
   publish:
     name: publish to npm with provenance
     needs: agree
+    # `needs` alone would skip this whenever `agree` is skipped, which is every
+    # dispatched run. Skipped is not failed, and only failed should stop it.
+    if: ${{ !cancelled() && (needs.agree.result == 'success' || needs.agree.result == 'skipped') }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
