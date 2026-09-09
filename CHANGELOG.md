@@ -13,7 +13,7 @@ appears in a release.
 A version that only refuses better still gets an entry. Declining is a success,
 and a release that made a refusal clearer shipped something.
 
-## 0.1.0 — unreleased
+## 0.1.0 — 2026-09-09
 
 First publish. The pipeline, extracted from the skill library it was written
 inside and made to run against any library but its own.

@@ -1,8 +1,7 @@
 <h1><img src="brand/assets/readme-header.png" alt="qrntn" width="100%"></h1>
 
 ![signal](https://img.shields.io/badge/signal-Q-FEDD00?style=flat-square&labelColor=0A0C0B)
-![version](https://img.shields.io/badge/version-0.1.0-F2ECD9?style=flat-square&labelColor=0A0C0B)
-![status](https://img.shields.io/badge/status-not%20published-BF6408?style=flat-square&labelColor=0A0C0B)
+![npm](https://img.shields.io/npm/v/qrntn?style=flat-square&labelColor=0A0C0B&color=F2ECD9&label=npm)
 ![license](https://img.shields.io/badge/license-Apache--2.0-7F7966?style=flat-square&labelColor=0A0C0B)
 ![node](https://img.shields.io/badge/node-%E2%89%A5%2020-7F7966?style=flat-square&labelColor=0A0C0B)
 
@@ -165,19 +164,22 @@ tool happens to be installed.
 
 ## Status
 
-**Nothing is published.** There is no npm package and no release, so none of
-the `npx` lines above run yet — that block is the `0.1.0` surface, not an
-installation instruction. The name was chosen on 2026-09-07, changed to `qrntn`
-on 2026-09-08 when the first one could not be published, and is recorded in
-SK-90.
+**`0.1.0` is on npm**, published 2026-09-09 on the `latest` tag: nine verbs,
+zero dependencies, `node >= 20`. Every `npx` line above runs. The name was
+chosen on 2026-09-07, changed to `qrntn` on 2026-09-08 when the first one could
+not be taken, and is recorded in SK-90.
 
-What does work, from a checkout: every command takes `--library`, so the
-pipeline runs against a library holding no copy of the tool, and
-`node commands/init.mjs --library <dir>` turns a bare folder of skills into one
-the gates report on rather than refuse. `node check.mjs` runs every gate the
-project has. [`docs/SHIPPING.md`](docs/SHIPPING.md) is the plan for the rest and
-marks what has landed against what has not;
-[`CHANGELOG.md`](CHANGELOG.md) records what each release actually contained.
+`0.1.0` is a quiet release rather than a launch. `adopt` — the verb for the
+recorded decision the whole pitch rests on — and `view` are `0.2`, and until
+they land the decision is written by hand into `AUDIT.md` and `REJECTED.md`,
+which the lifecycle table above marks as such.
+
+From a checkout, `node check.mjs` runs every gate the project has: the suites,
+the mutation self-tests, and a smoke gate that packs the tarball, installs it
+into a clean directory with `HOME` pointed somewhere empty, and drives all nine
+verbs from it. [`docs/SHIPPING.md`](docs/SHIPPING.md) is the plan and marks what
+has landed against what has not; [`CHANGELOG.md`](CHANGELOG.md) records what
+each release actually contained.
 
 ## The name
 
