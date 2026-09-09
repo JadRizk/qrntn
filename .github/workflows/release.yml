@@ -262,10 +262,16 @@ jobs:
             -H "Content-Type: application/json" \
             "https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/$pkg")
 
-          if [ "$code" = "200" ]; then
-            echo "npm exchanged it — a trusted publisher matches this workflow"
-            exit 0
-          fi
+          # Any 2xx. The exchange answers 201 — it creates a token — and an
+          # equality test against 200 read that success as a failure. A probe
+          # that reports a working system as broken is worse than no probe,
+          # which is the second reason this step does not get to refuse.
+          case "$code" in
+            2*)
+              echo "npm exchanged it ($code) — a trusted publisher matches this workflow"
+              exit 0
+              ;;
+          esac
 
           # ADVISORY, NOT A GATE, and the distinction is the point. The route
           # above was taken from a search result rather than from npm's API
@@ -273,7 +279,7 @@ jobs:
           # to refuse a publish that would otherwise succeed. `npm publish` is
           # the authority on whether npm accepts this identity; this step only
           # gets to say what it saw on the way past.
-          echo "note: the token exchange answered HTTP $code, not 200"
+          echo "note: the token exchange answered HTTP $code, which is not a success"
           echo "--- npm said ---"
           cat "$body"
           echo
