@@ -14,7 +14,7 @@
   "author": "Jad Rizk",
   "type": "module",
   "bin": {
-    "qrntn": "./bin/qrntn.mjs"
+    "qrntn": "bin/qrntn.mjs"
   },
   "repository": {
     "type": "git",
