@@ -109,13 +109,22 @@ jobs:
       # 20, 22 and 24, because that is what a consumer may run. Trusted
       # publishing needs node >=22.14 and npm >=11.5.1, and those are
       # requirements of the act of publishing rather than of the package.
+      #
+      # NO `registry-url`, and that is the whole lesson of the first attempt.
+      # setup-node's registry-url writes an .npmrc holding
+      # `_authToken=${NODE_AUTH_TOKEN}` and sets that variable to the literal
+      # placeholder `XXXXX-XXXXX-XXXXX-XXXXX`. npm then finds credentials,
+      # authenticates with a string that is not a token, and never tries OIDC
+      # at all — the registry answers `404 Not Found - PUT`, because npm
+      # returns 404 rather than 403 so publishing cannot be used to probe which
+      # packages exist. Nothing in the log mentions OIDC, which is how you tell
+      # this apart from a rejected identity.
+      #
+      # registry.npmjs.org is the default registry, so naming it bought
+      # nothing and cost the release.
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-          registry-url: 'https://registry.npmjs.org'
-          # npm's own guidance for release builds: a cache is a second copy of
-          # the dependency tree, and this package has none to cache anyway.
-          package-manager-cache: false
 
       - name: npm is new enough to publish over OIDC
         run: |
@@ -129,9 +138,26 @@ jobs:
           fi
           echo "npm $have"
 
-      # No NODE_AUTH_TOKEN, deliberately and load-bearingly. Setting one makes
-      # npm authenticate as that token's owner instead of over OIDC, which
-      # publishes without provenance and reintroduces exactly the stored
-      # credential this workflow exists to avoid.
+      # Asserted rather than assumed, because assuming it is what broke the
+      # first release. Any credential visible to npm here means it will
+      # authenticate as that credential's owner instead of over OIDC —
+      # publishing without provenance if the token is real, and failing with a
+      # misleading 404 if it is a placeholder.
+      - name: nothing is authenticating but OIDC
+        run: |
+          bad=0
+          if [ -n "${NODE_AUTH_TOKEN:-}" ]; then
+            echo "refused: NODE_AUTH_TOKEN is set — npm will use it instead of OIDC" >&2
+            bad=1
+          fi
+          cfg="${NPM_CONFIG_USERCONFIG:-}"
+          if [ -n "$cfg" ] && [ -f "$cfg" ] && grep -q "_authToken" "$cfg"; then
+            echo "refused: $cfg configures _authToken — npm will use it instead of OIDC" >&2
+            echo "  almost certainly setup-node's registry-url; remove it" >&2
+            bad=1
+          fi
+          [ "$bad" -eq 0 ] || exit 1
+          echo "no stored credential — the only identity here is this workflow's"
+
       - name: publish
         run: npm publish
