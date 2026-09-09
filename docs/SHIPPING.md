@@ -458,11 +458,16 @@ how they drift.
 
 **`view`** — three problems, none of them packaging:
 
-- `nexus/scripts/export-graph.mjs:26` resolves `REPO_ROOT` from
-  `import.meta.url`. That is precondition 2 of `SURFACE.md` — the finding that
-  shaped the entire split — still live in the viewer, untouched because SK-97
-  scoped itself to `commands/`. Until it takes a library root, `view` can only
-  graph the tree it was installed into.
+- `nexus/scripts/export-graph.mjs` used to resolve its root from
+  `import.meta.url` — precondition 2 of `SURFACE.md`, the finding that shaped
+  the entire split, still live in the viewer because SK-97 scoped itself to
+  `commands/`. **Landed** since: it resolves `--library`, then `SKILL_LIBRARY`,
+  then the working directory through `chooseLibrary` in
+  `nexus/src/data/integrity.ts`, unit-tested for the order and the refusal.
+  What it does *not* take is an output path. `graph.json` is still written
+  beside the viewer, resolved from the script's own URL, which is right for a
+  checkout and wrong for a bundle running from a tarball with no viewer beside
+  it. That is the remaining precondition for `view`, and it is smaller.
 - The exporter's dependency is **shallower than it first appears**.
   `integrity.ts` has *zero* zod references — 223 lines of pure logic. Only
   `types.ts` uses zod, and `export-graph.mjs` imports exactly one thing from it:
@@ -516,8 +521,10 @@ lives here.
   `ledger.mjs:348` read `~/.claude/skills` by default. §4 makes the claim true;
   until §4 lands it is aspirational.
 - **`SURFACE.md`, precondition 2:** described as satisfied for the command
-  surface, which it is. It was never applied to `nexus/scripts/export-graph.mjs`,
-  which still resolves its root from `import.meta.url`.
+  surface, which it is. It was not applied to `nexus/scripts/export-graph.mjs`
+  in SK-97; it has been since (§8), and this entry said "still resolves its root
+  from `import.meta.url`" for a while after that stopped being true. The
+  exporter's *output* path still resolves from its own URL, by design.
 - **`PORTABILITY.md`, "What was not exercised":** intake's successful path in a
   foreign tree is now exercised, by `round-trip.test.mjs`.
 

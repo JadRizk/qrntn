@@ -99,7 +99,12 @@ What already limits it:
   `\u200b` instead of vanishing into the reviewer's terminal.
 - Excerpts are capped at 100 characters, 60 or 80 on the encoded paths, and
   runs of whitespace are collapsed.
-- The `why` text of every finding is written by this tool, not by the artefact.
+- The `why` text of every finding is written by this tool. It is not entirely
+  free of the artefact: nine findings quote a fragment of it into the sentence —
+  a frontmatter key, a referenced path, a directory name — and `file` is the
+  artefact's own name for the file on every finding. Until `0.2` bounds the
+  quoted fragments, `why` is a second, narrower copy of the evidence channel,
+  and this sentence used to say otherwise.
 
 None of that is a security control. Truncation bounds the size of an injection
 attempt and does not prevent one, and a hundred characters is ample.
