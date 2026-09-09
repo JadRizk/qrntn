@@ -35,9 +35,21 @@
 
 name: release
 
+# A tag is the release trigger. `workflow_dispatch` exists so the identity
+# half can be exercised without one: the first two attempts each burned eight
+# minutes and a tag to learn one fact about authentication, which is the
+# problem check.yml warned about — a publish pipeline debugged during a publish.
+# Dispatched without `publish`, this runs every check and stops before the
+# registry.
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'publish, rather than stopping after the identity checks'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -159,5 +171,29 @@ jobs:
           [ "$bad" -eq 0 ] || exit 1
           echo "no stored credential — the only identity here is this workflow's"
 
+      # Fails in seconds, and before `npm publish` spends eight minutes in
+      # prepublishOnly only to discover the same thing. npm's own error for
+      # this is ENEEDAUTH — "you need to authorize this machine" — which
+      # describes a laptop and not a runner, and sends you looking at the
+      # registry rather than at the permission.
+      - name: the runner can mint an OIDC identity
+        run: |
+          if [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]; then
+            echo "refused: no OIDC token endpoint in this job's environment" >&2
+            echo "  id-token: write was requested and not granted" >&2
+            exit 1
+          fi
+          # Presence and status only. The token is a credential and is never
+          # printed, logged, or passed anywhere but this request.
+          code=$(curl -s -o /dev/null -w '%{http_code}' \
+            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=npm:registry.npmjs.org")
+          if [ "$code" != "200" ]; then
+            echo "refused: the OIDC endpoint answered HTTP $code" >&2
+            exit 1
+          fi
+          echo "OIDC endpoint present and issuing"
+
       - name: publish
+        if: github.event_name == 'push' || inputs.publish
         run: npm publish
