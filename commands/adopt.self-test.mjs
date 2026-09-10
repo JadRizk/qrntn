@@ -61,6 +61,25 @@ const MUTATIONS = [
 		replace: 'const cell = (text) => String(text).trim()'
 	},
 	{
+		// Text the artefact chose, on its way into a row a human reads and onto
+		// a terminal. Both halves of the bound get a mutation, because a
+		// filename long enough to be truncated never reaches the escaping and
+		// one short enough never reaches the cap.
+		name: 'an artefact-chosen filename is no longer bounded at all',
+		find: "\t\t\tconst finding = why ?? (first ? `${first.code} ${fromArtefact(first.file)}` : null)",
+		replace: '\t\t\tconst finding = why ?? (first ? `${first.code} ${first.file}` : null)'
+	},
+	{
+		name: 'a control character in a filename is carried, not escaped',
+		find: "\treturn cut.replace(/[^\\x20-\\x7e…]/g, (ch) => {",
+		replace: '\treturn cut.replace(/[^\\s\\S]/g, (ch) => {'
+	},
+	{
+		name: 'an over-long filename is no longer capped',
+		find: '\tconst cut = flat.length > max ? `${flat.slice(0, max)}…` : flat',
+		replace: '\tconst cut = flat'
+	},
+	{
 		name: 'a second row for the same name is written',
 		find: '\t\tif (readRejected(LIBRARY).has(name)) {',
 		replace: '\t\tif (false) {'

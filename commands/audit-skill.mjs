@@ -501,7 +501,7 @@ function excerpt(text, index, length, max = 100) {
  * collapsed, capped, and anything that is not printable ASCII escaped so a
  * terminal cannot be steered and an invisible character cannot vanish.
  */
-function fragment(text, max = 60) {
+export function fragment(text, max = 60) {
   const flat = String(text).replace(/\s+/g, ' ').trim();
   const cut = flat.length > max ? `${flat.slice(0, max)}…` : flat;
   return cut.replace(/[^\x20-\x7e…]/g, (ch) => {

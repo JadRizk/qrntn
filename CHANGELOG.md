@@ -60,7 +60,14 @@ is answered the same way: `adopt` records and never moves; `promote` stays the
 only thing that moves bytes into the library.
 
 Nothing the artefact wrote reaches the record. The scan `adopt` runs is
-`audit --no-evidence`, so the row carries counts and codes, never bytes.
+`audit --no-evidence`, so the row carries counts and codes, never bytes — and
+the one field that is still the artefact's to choose, a finding's file name, is
+bounded the way the scanner bounds a quoted fragment: whitespace collapsed,
+capped, anything outside printable ASCII written as its escape. Found by review
+before release rather than after: a skill carrying a 200-character file name
+with an ANSI escape in it put the whole thing into `REJECTED.md` and printed
+the live escape to the terminal, and a file name containing a newline could
+have written a second, forged row naming a skill nobody decided about.
 
 **The `AUDIT.md` contract has one home.** The placeholders, the disposition
 rule and the verdict row moved out of `promote.mjs` into

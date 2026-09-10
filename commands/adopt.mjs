@@ -127,6 +127,34 @@ const today = () => new Date().toISOString().slice(0, 10)
 // reason becomes a broken bar, which reads the same and splits nothing.
 const cell = (text) => String(text).replace(/\|/g, '¦').trim()
 
+// TEXT THE ARTEFACT CHOSE, on its way into a row a human reads and onto a
+// terminal. `cell` above is not enough for it: a bar cannot split the row any
+// more, but nothing bounded the length and nothing neutralised a control
+// character.
+//
+// The one that gets here is a finding's `file` — a path inside the fetched
+// skill, so its name is the author's to choose. Measured before it was fixed: a
+// skill carrying `scripts/<200 chars><ESC>[31mRED<ESC>[0m|pipe` put all of it
+// into REJECTED.md and printed the live escape to the terminal, which is
+// precisely what THREATS.md says the evidence channel neutralises by emitting
+// through JSON.stringify. `adopt` read that field out of the JSON and
+// interpolated it raw, so the protection stopped at the scanner's own output.
+//
+// Same bound as the scanner's `fragment`, and deliberately a second copy of it
+// rather than an import: audit-skill.mjs is 1,300 lines that this file already
+// runs as a subprocess, and importing it to borrow six lines would couple the
+// two for no gain. adopt.test.mjs imports both and asserts they agree on the
+// same inputs, so the copy cannot drift silently — the same arrangement
+// bin/qrntn.mjs has with VERB_ENV.
+function fromArtefact(text, max = 60) {
+	const flat = String(text).replace(/\s+/g, ' ').trim()
+	const cut = flat.length > max ? `${flat.slice(0, max)}…` : flat
+	return cut.replace(/[^\x20-\x7e…]/g, (ch) => {
+		const cp = ch.codePointAt(0)
+		return cp > 0xffff ? `\\u{${cp.toString(16)}}` : `\\u${cp.toString(16).padStart(4, '0')}`
+	})
+}
+
 // ── the arrival record ──────────────────────────────────────────────────────
 
 // github.com/org/repo, stripping a trailing .git/slash/query/fragment. Fresh
@@ -412,7 +440,10 @@ if (!existsSync(dir)) {
 			refuse(scanned.error.why, scanned.error.detail)
 		} else if (action === 'refuse') {
 			const first = scanned.blocking[0]
-			const finding = why ?? (first ? `${first.code} ${first.file}` : null)
+			// The code is this tool's word; the file is the artefact's, and is
+			// bounded as such. `--why` is the human's own sentence and is left
+			// as they wrote it — accented text should not come back as escapes.
+			const finding = why ?? (first ? `${first.code} ${fromArtefact(first.file)}` : null)
 			if (!finding) {
 				refuse('nothing blocks', 'the scan found no blocking finding — name the reason with --why, or decline instead')
 			} else {
