@@ -51,6 +51,7 @@ const out = at('--out')
 if (!out) { console.error('refused: --out needs a file path'); process.exit(2) }
 if (!existsSync(join(lib, 'skills'))) { console.error('refused: no skills/ directory in ' + lib + ' — qrntn acts on a library whose skills live in skills/'); process.exit(2) }
 if (existsSync(join(lib, 'THROW'))) throw new Error('export-graph: skills/broken has no ledger/broken.json — every held skill must have a ledger entry')
+if (existsSync(join(lib, 'GARBAGE'))) { mkdirSync(dirname(out), { recursive: true }); writeFileSync(out, 'not a graph at all'); console.log('stub: claimed success'); process.exit(0) }
 mkdirSync(dirname(out), { recursive: true })
 writeFileSync(out, JSON.stringify(${JSON.stringify(STUB_GRAPH)}) + '\\n')
 console.log('stub: wrote 2 nodes -> ' + out)
@@ -203,6 +204,21 @@ const get = (url, path, method = 'GET') =>
 	check('exporter throws: the message, not the trace', /^refused: the graph could not be exported — skills\/broken has no ledger/m.test(r.err), r.err)
 	check('exporter throws: points at check', /qrntn check/.test(r.err), r.err)
 	check('exporter throws: no stack trace', !/^\s+at .+\(.+:\d+:\d+\)$/m.test(r.raw), r.raw.slice(0, 300))
+}
+{
+	// The exporter says it succeeded and writes bytes that are not a snapshot.
+	// Nothing was learned about the library, so there is no answer to report:
+	// this is 2, could not run, and it is a fault in the tool rather than in
+	// anybody's library. Flagged by review as an exit path nothing exercised —
+	// and it exited 1, which would have sent the reader to look at their own
+	// library for a problem that is not there.
+	const script = sandbox('garbage')
+	const lib = library('garbage')
+	writeFileSync(join(lib, 'GARBAGE'), '')
+	const r = runSync(script, ['--library', lib])
+	check('exporter writes a non-graph: exit 2 — could not run', r.code === 2, `exit ${r.code} ${r.raw.slice(0, 200)}`)
+	check('exporter writes a non-graph: says so, and whose fault it is', /is not a graph/.test(r.err) && /fault in the tool/.test(r.err), r.err.slice(0, 200))
+	check('exporter writes a non-graph: no stack trace', !/^\s+at .+\(.+:\d+:\d+\)$/m.test(r.raw), r.raw.slice(0, 300))
 }
 
 // ── serving ─────────────────────────────────────────────────────────────────

@@ -20,10 +20,13 @@
 // LOCAL, ONLY. Bound to 127.0.0.1, no browser opened, nothing leaves the
 // machine. The URL is printed; opening it is the reader's act.
 //
-// Exit codes hold their meaning across a long-running process: 2 when it
-// could not start — no bundle, not a library, port in use — and 0 when it is
-// stopped. SIGINT is handled here so that Ctrl-C reads as a clean stop rather
-// than a signal death, which the dispatcher would otherwise report as 1.
+// Exit codes hold their meaning across a long-running process. 2 when it could
+// not start — no bundle, not a library, port in use, or an exporter that
+// claimed success and produced something that is not a graph. 1 when it ran and
+// the answer is no: the library is set up and something in it does not hold, so
+// there is no graph to serve. 0 when it is stopped. SIGINT is handled here so
+// that Ctrl-C reads as a clean stop rather than a signal death, which the
+// dispatcher would otherwise report as 1.
 //
 // Plain Node, no dependencies.
 
@@ -105,7 +108,8 @@ function synopsis() {
 Nothing leaves the machine. The viewer's own data is never served — only the
 graph exported here, for the library you named.
 
-Exit codes:  0 stopped · 2 could not start — no bundle, not a library, port in use
+Exit codes:  0 stopped · 1 the library is inconsistent, so there is no graph
+             2 could not start — no bundle, not a library, port in use
 `
 }
 
@@ -199,7 +203,16 @@ const cleanup = () => rmSync(scratch, { recursive: true, force: true })
 			.replace(/^export-graph: /, '')
 		console.error(refusalLine(`the graph could not be exported — ${message}`))
 		console.error(`  run \`qrntn check --library ${LIBRARY}\` for what is inconsistent`)
-		process.exit(r.status === null ? 1 : 1)
+		// 1: it ran, and the answer is no. The library is set up and something
+		// in it does not hold — a held skill with no ledger entry, say — which
+		// is the same distinction check-library.mjs draws between an
+		// inconsistent library and one that was never set up.
+		//
+		// This read `r.status === null ? 1 : 1` until an independent review of
+		// this branch pointed at it: both branches of a ternary the same, a
+		// leftover from an edit, doing nothing but implying a distinction that
+		// was not there.
+		process.exit(1)
 	}
 }
 
@@ -211,7 +224,12 @@ try {
 } catch {
 	cleanup()
 	console.error(refusalLine('the exporter wrote something that is not a graph'))
-	process.exit(1)
+	console.error('  This is a fault in the tool, not in your library — please report it.')
+	// 2, not 1, and the difference is which of the two the reader should go
+	// and look at. The exporter said it succeeded and then produced bytes that
+	// are not a snapshot: nothing was learned about the library, so there is no
+	// answer to report — this could not run.
+	process.exit(2)
 }
 
 // ── serve ───────────────────────────────────────────────────────────────────

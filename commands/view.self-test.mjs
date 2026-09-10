@@ -115,6 +115,15 @@ const MUTATIONS = [
 		replace: '\t\tif (false) {'
 	},
 	{
+		// The two failure exits say different things to whoever reads them: 1
+		// sends the reader to their own library, 2 says nothing was learned.
+		// Collapsing them is how a CI gate starts lying about which problem it
+		// found, which is the README's own words about this contract.
+		name: 'a non-graph from the exporter is reported as a library problem',
+		find: "\tconsole.error('  This is a fault in the tool, not in your library — please report it.')\n\t// 2, not 1,",
+		replace: "\tconsole.error('  This is a fault in the tool, not in your library — please report it.')\n\tprocess.exit(1)\n\t// 2, not 1,"
+	},
+	{
 		name: 'a port that is not a number is accepted',
 		find: "\t\tif (value === undefined || value.startsWith('--') || !/^\\d{1,5}$/.test(value) || Number(value) > 65535) {",
 		replace: '\t\tif (false) {'
