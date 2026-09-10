@@ -65,9 +65,16 @@ function sandbox(label, { bundle = true } = {}) {
 		writeFileSync(join(pkg, 'view', 'index.html'), '<!doctype html><title>stub</title><script type="module" src="/assets/app.js"></script>')
 		writeFileSync(join(pkg, 'view', 'assets', 'app.js'), 'console.log("stub")')
 		writeFileSync(join(pkg, 'view', 'export-graph.mjs'), STUB_EXPORTER)
-		// The fixture, planted on purpose: it must never be served.
+		// The fixture, planted on purpose: it must never be served. Two files,
+		// and the second is the one that matters. `data/graph.json` is caught
+		// by the rule that answers the exported graph, so a bundle carrying a
+		// fixture at that name is covered whatever happens to the rule below
+		// it. Any OTHER name under data/ is only ever refused by that second
+		// rule, and refusing a file that is not there proves nothing — so the
+		// fixture has to exist at a name nothing else answers.
 		mkdirSync(join(pkg, 'view', 'data'), { recursive: true })
 		writeFileSync(join(pkg, 'view', 'data', 'graph.json'), JSON.stringify({ nodes: [{ kind: 'origin', id: 'origin', title: 'FIXTURE' }], edges: [] }))
+		writeFileSync(join(pkg, 'view', 'data', 'snapshot.json'), JSON.stringify({ nodes: [{ kind: 'origin', id: 'origin', title: 'FIXTURE-SNAPSHOT' }], edges: [] }))
 	}
 	return join(pkg, 'commands', 'view.mjs')
 }
@@ -84,10 +91,35 @@ const runSync = (script, args) => {
 	return { code: r.status, raw: (r.stdout ?? '') + (r.stderr ?? ''), out: r.stdout ?? '', err: r.stderr ?? '' }
 }
 
+// EVERY SPAWNED SERVER IS REGISTERED, AND NONE OUTLIVES THIS FILE.
+//
+// The blocks below stop the process they started, but only on the path where
+// its startup line parsed — and under view.self-test.mjs a mutant's output is
+// exactly what does not parse. Each such run leaked a listening server, and
+// after a dozen mutations the leftovers were enough to fail the clean run at
+// the end and make the self-test report a defect in the suite that was really
+// a defect in this harness. Found by counting `view.mjs` in the process table
+// and seeing six, two of them minutes old.
+//
+// So: registered on spawn, and swept unconditionally at the end. The explicit
+// stops stay, because a test that asserts a clean exit has to ask for one.
+const spawned = []
+const sweep = () => {
+	for (const p of spawned) {
+		try {
+			p.kill('SIGKILL')
+		} catch {
+			/* already gone, which is the normal case */
+		}
+	}
+}
+process.on('exit', sweep)
+
 /** Start the server, resolve with its first stdout line parsed, or with its exit if it never serves. */
 function serve(script, args) {
 	return new Promise((resolveP) => {
 		const p = spawn(process.execPath, [script, ...args], { encoding: 'utf8' })
+		spawned.push(p)
 		let out = ''
 		let err = ''
 		let done = false
@@ -188,8 +220,13 @@ const get = (url, path, method = 'GET') =>
 		check('serves: /data/graph.json is the graph exported for this library', graph.status === 200 && JSON.parse(graph.body).nodes[0].title === 'stub', graph.body.slice(0, 200))
 		check('serves: as json, uncached', /application\/json/.test(graph.headers['content-type']) && graph.headers['cache-control'] === 'no-store', JSON.stringify(graph.headers))
 
-		const fixture = await get(url, '/data/other.json')
-		check('serves: nothing else under /data/ — the fixture never answers', fixture.status === 404, `${fixture.status}`)
+		const absent = await get(url, '/data/other.json')
+		check('serves: nothing else under /data/', absent.status === 404, `${absent.status}`)
+		// The one that has teeth: this file EXISTS in the bundle. Without the
+		// rule that refuses everything under /data/, it is found on disk and
+		// served, and a fixture answers as though it were this library.
+		const planted = await get(url, '/data/snapshot.json')
+		check('serves: a fixture that exists in the bundle is still refused', planted.status === 404 && !planted.body.includes('FIXTURE'), `${planted.status} ${planted.body.slice(0, 80)}`)
 		const fixtureByName = await get(url, '/data/../data/graph.json')
 		check('serves: the planted fixture is not reachable by any spelling', fixtureByName.status === 200 && !fixtureByName.body.includes('FIXTURE'), fixtureByName.body.slice(0, 100))
 
@@ -199,6 +236,14 @@ const get = (url, path, method = 'GET') =>
 		check('serves: an asset, with its type', asset.status === 200 && /text\/javascript/.test(asset.headers['content-type']), `${asset.status} ${asset.headers['content-type']}`)
 		const missing = await get(url, '/nope.js')
 		check('serves: 404 for what is not in the bundle', missing.status === 404, `${missing.status}`)
+		// A directory is not a file. Reading one throws EISDIR, which without
+		// this rule is an uncaught exception rather than an answer — the server
+		// dies mid-request and every later assertion fails for the wrong
+		// reason. Asked before the traversal cases for that reason.
+		const dir = await get(url, '/assets')
+		check('serves: a directory is refused, not read', dir.status === 404, `${dir.status}`)
+		const stillUp = await get(url, '/data/graph.json')
+		check('serves: and the server survived being asked', stillUp.status === 200, `${stillUp.status}`)
 
 		const doubled = await get(url, '//data/graph.json')
 		check('serves: a doubled slash is the same path, not a protocol-relative host', doubled.status === 200 && /"stub"/.test(doubled.body), `${doubled.status}`)
@@ -224,10 +269,20 @@ const get = (url, path, method = 'GET') =>
 	const script = sandbox('human')
 	const lib = library('human')
 	const p = spawn(process.execPath, [script, '--library', lib], { encoding: 'utf8' })
+	spawned.push(p)
 	let out = ''
 	await new Promise((resolveP) => {
-		p.stdout.on('data', (d) => { out += d; if (/http:\/\/127\.0\.0\.1/.test(out)) resolveP() })
-		p.on('exit', resolveP)
+		// Bounded: a mutant that prints nothing would otherwise stall the suite
+		// here rather than fail it, and a stalled suite reports nothing at all.
+		const timer = setTimeout(resolveP, 20000)
+		const done = () => { clearTimeout(timer); resolveP() }
+		// Waits for the LAST line of the block, not the URL. The URL is printed
+		// two lines before the end, and stdout arrives in chunks: resolving on
+		// it read the assertions below against a half-written report and failed
+		// roughly one run in six. A readiness test has to name the end of the
+		// thing it is waiting for.
+		p.stdout.on('data', (d) => { out += d; if (/nothing leaves this machine/.test(out)) done() })
+		p.on('exit', done)
 	})
 	check('human output: names the library, the counts and the url', /view · human-lib/.test(out) && /2 nodes · 1 edges/.test(out) && /http:\/\/127\.0\.0\.1:\d+\//.test(out), out)
 	check('human output: says how to stop and that nothing leaves', /Ctrl-C/.test(out) && /nothing leaves/.test(out), out)

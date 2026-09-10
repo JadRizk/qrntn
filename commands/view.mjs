@@ -252,9 +252,21 @@ function handle(req, res) {
 	if (pathname.startsWith('/data/')) return notFound()
 	if (pathname === '/' || pathname === '/index.html') return send(200, INDEX, CONTENT_TYPES['.html'])
 
-	// Inside the bundle, or nothing. `resolve` collapses every `..`, and the
-	// prefix check is against the bundle's root with a separator, so a path
-	// that resolves to a sibling of view/ is refused as firmly as one outside.
+	// Inside the bundle, or nothing.
+	//
+	// THE NORMALISATION ABOVE IS WHAT STOPS TRAVERSAL, not this line, and it
+	// is worth being exact about which is which. `posix.normalize` on a path
+	// that already begins with `/` drops every `..` that would climb past the
+	// root, so `/../package.json` is `/package.json` before it ever gets here
+	// and the prefix check below has nothing left to catch. Measured, not
+	// assumed: view.self-test.mjs mutates this line away and records that the
+	// suite cannot tell, because on this platform no request can reach it.
+	//
+	// It stays anyway, and not as decoration. It is the check that still holds
+	// if the normalisation above is ever changed or removed, and it is the one
+	// that matters on a platform where `\` separates — `posix.normalize`
+	// leaves `..\..\x` as a single segment, and `resolve` there would treat it
+	// as a climb. Belt and braces, with the belt named.
 	const file = resolve(VIEW, `.${pathname}`)
 	if (!file.startsWith(VIEW + sep)) return notFound()
 	let st
