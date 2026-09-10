@@ -186,16 +186,18 @@ tool happens to be installed.
 
 ## Status
 
-**`qrntn` is on npm**, first published 2026-09-09 on the `latest` tag: eleven
-verbs, zero dependencies, `node >= 20`. Every `npx` line above runs, and the
-badge above carries the current version rather than this paragraph. The name was
-chosen on 2026-09-07, changed to `qrntn` on 2026-09-08 when the first one could
-not be taken, and is recorded in SK-90.
+**`qrntn` is on npm**, first published 2026-09-09 on the `latest` tag. Every
+`npx` line above runs, and the badge above carries the current version rather
+than this paragraph. The name was chosen on 2026-09-07, changed to `qrntn` on
+2026-09-08 when the first one could not be taken, and is recorded in SK-90.
 
-`0.1.x` is a quiet release rather than a launch. `adopt` — the verb for the
-recorded decision the whole pitch rests on — and `view` are `0.2`, and until
-they land the decision is written by hand into `AUDIT.md` and `REJECTED.md`,
-which the lifecycle table above marks as such.
+`0.1.x` shipped nine verbs and was a quiet release rather than a launch: the
+decision itself was written by hand into `AUDIT.md` and `REJECTED.md`, and the
+graph viewer ran only from a checkout. `0.2` is the first version whose verb
+list matches the claim. `adopt` records the decision the whole pitch rests on,
+`view` serves the graph against any library, and the lifecycle table above
+therefore has no row naming a stage you do by hand. Eleven verbs, zero
+dependencies, `node >= 20`.
 
 From a checkout, `node check.mjs` runs every gate the project has: the suites,
 the mutation self-tests, and a smoke gate that packs the tarball, installs it
