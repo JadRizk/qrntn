@@ -58,6 +58,11 @@
   "scripts": {
     "test": "node check.mjs",
     "test:quick": "node check.mjs --quick",
+    "gates": "node check.mjs --list",
+    "smoke": "node smoke.mjs",
+    "build:view": "node nexus/scripts/build-view.mjs",
+    "dev:view": "npm run dev --prefix nexus",
+    "prepack": "node prepack.mjs",
     "prepublishOnly": "node check.mjs"
   }
 }
