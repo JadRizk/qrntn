@@ -54,7 +54,14 @@ const MUTATIONS = [
 		// Both were real, in that order, and `view` is the verb that showed it.
 		name: 'signals are not forwarded to the verb',
 		find: '\t\t\tchild.kill(signal)',
-		replace: '\t\t\tvoid signal'
+		replace: '\t\t\tvoid signal',
+		// Only askable where the viewer bundle exists: `view` is the one verb
+		// that runs until interrupted, so it is the only one whose exit code
+		// can prove a signal reached it, and without its bundle the suite
+		// skips those assertions. Declared rather than left to survive, which
+		// is what it did on CI's first run of this file — a mutation reported
+		// as uncaught when the truth was that nothing had asked.
+		needsViewBundle: true
 	},
 	{
 		// The command then cannot know which verb reached it, and every usage
@@ -115,7 +122,8 @@ cpSync(TEST, join(dir, 'commands', 'qrntn.test.mjs'))
 // on every mutation and on the inert control alike, making every "caught"
 // meaningless. Copied rather than skipped so those assertions are exercised
 // here too; the suite skips them by the same test when the tree has no build.
-if (existsSync(join(REPO, 'view', 'index.html'))) cpSync(join(REPO, 'view'), join(dir, 'view'), { recursive: true })
+const hasViewBundle = existsSync(join(REPO, 'view', 'index.html'))
+if (hasViewBundle) cpSync(join(REPO, 'view'), join(dir, 'view'), { recursive: true })
 const sandboxSrc = join(dir, 'bin', 'qrntn.mjs')
 const sandboxTest = join(dir, 'commands', 'qrntn.test.mjs')
 
@@ -125,6 +133,13 @@ let unexpected = 0
 try {
 	for (const m of MUTATIONS) {
 		const expectSurvival = m.expect === 'survives'
+		if (m.needsViewBundle && !hasViewBundle) {
+			// Named, not silent. A self-test that quietly drops a mutation
+			// reports a smaller number and looks like a pass.
+			console.log(`  skipped   ${m.name} — no viewer bundle in this tree, so the suite cannot ask`)
+			asExpected++
+			continue
+		}
 		const occurrences = original.split(m.find).length - 1
 		if (occurrences !== 1) {
 			console.error(

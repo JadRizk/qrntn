@@ -35,27 +35,38 @@ const tests = files.filter((f) => f.endsWith('.test.mjs'))
 const selfTests = files.filter((f) => f.endsWith('.self-test.mjs'))
 
 const gates = [
-	...tests.map((f) => ({ name: `test · ${f}`, slow: false, run: () => node(join(COMMANDS, f)) })),
-	...selfTests.map((f) => ({ name: `self-test · ${f}`, slow: true, run: () => node(join(COMMANDS, f)) })),
 	{
-		// `view` ships a bundle that is built, not committed, and the smoke gate
-		// below is the only thing that drives it. Built here first, so that a
-		// full run with the viewer's toolchain installed exercises the same
-		// tarball a release publishes. Without the toolchain the bundle is
-		// absent, the smoke gate asserts the verb says so, and this gate says
-		// why rather than passing quietly — the same rule as the two nexus
-		// gates at the end of this list.
+		// FIRST, AND THAT IS THE WHOLE POINT. `view` ships a bundle that is
+		// built rather than committed, and three suites change what they can
+		// ask depending on whether it is there: view.test.mjs drives the real
+		// bundle in its second half, qrntn.test.mjs needs a verb that runs
+		// until interrupted to check that signals reach it, and the smoke gate
+		// serves from the tarball. All three say so when it is absent.
+		//
+		// This gate sat after the suites, which meant a fresh checkout built
+		// the bundle in the same run that had already skipped everything
+		// needing it — every gate green, and eight assertions never asked. CI
+		// found it, because CI is the only place that starts without a
+		// previous build lying around. qrntn.self-test.mjs found the sharp
+		// edge: a mutation removing signal forwarding survived, because the
+		// assertion that catches it had been skipped an hour earlier.
+		//
+		// Not slow, so `--quick` builds it too. It costs seconds, and a --quick
+		// run that quietly covers less than a full one is the thing this file
+		// keeps finding everywhere else.
 		name: 'view · build the viewer bundle the tarball ships',
-		slow: true,
+		slow: false,
 		run: () => {
 			const dir = join(HERE, 'nexus')
 			if (!existsSync(join(dir, 'node_modules'))) {
-				return { status: 0, skipped: 'nexus/node_modules absent — run npm ci --prefix nexus; the smoke gate will assert view refuses' }
+				return { status: 0, skipped: 'nexus/node_modules absent — run npm ci --prefix nexus; the suites and the smoke gate will say what they skipped' }
 			}
 			const r = spawnSync(process.execPath, [join(dir, 'scripts', 'build-view.mjs')], { encoding: 'utf8' })
 			return { status: r.status, out: (r.stdout ?? '') + (r.stderr ?? '') }
 		}
 	},
+	...tests.map((f) => ({ name: `test · ${f}`, slow: false, run: () => node(join(COMMANDS, f)) })),
+	...selfTests.map((f) => ({ name: `self-test · ${f}`, slow: true, run: () => node(join(COMMANDS, f)) })),
 	{
 		// SK-97 §7. The only gate that reduces the tree to what `npm pack`
 		// produces and runs the tool from there. Everything above it runs out of
