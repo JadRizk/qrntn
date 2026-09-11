@@ -379,16 +379,45 @@ const VERBS = [...readFileSync(BIN, 'utf8').matchAll(/^\t\['([a-z-]+)', '([\w.-]
 	mkdirSync(join(lib, 'skills'), { recursive: true })
 	writeFileSync(join(lib, 'catalog.json'), JSON.stringify({ categories: [] }))
 
+	// THE DISPATCHER IS SPAWNED AS A GROUP LEADER, AND THE GROUP IS SWEPT.
+	//
+	// What this block asks is what happens to the verb when the dispatcher is
+	// signalled — so the verb is always a grandchild, one process further away
+	// than anything `p.kill` can reach. Every outcome this test exists to catch
+	// is one where the dispatcher ends and the verb does not: a hang, killed
+	// here after twenty seconds, leaves the verb's server listening with no
+	// parent; a signal death, where the dispatcher dies of the signal instead
+	// of forwarding it, leaves the same. Under qrntn.self-test.mjs those are
+	// not edge cases but the mutations, and each one leaked two `view` servers
+	// — SIGINT, then SIGTERM — reparented to init and holding a port until the
+	// machine was rebooted. Ten were found on one machine, in pairs twenty
+	// seconds apart, and this is the file that put them there.
+	//
+	// `detached: true` gives the dispatcher its own process group, which the
+	// verb inherits because the dispatcher spawns it with plain stdio. Sending
+	// the ready-signal to `p.pid` alone is unchanged — that is the thing under
+	// test, the dispatcher forwarding to a child it can see — and the sweep
+	// goes to `-p.pid`, the whole group, once the dispatcher has ended however
+	// it ended. A group nobody is left in answers ESRCH, which is the outcome
+	// wanted and not an error.
+	const sweep = (p) => {
+		try {
+			process.kill(-p.pid, 'SIGKILL')
+		} catch {
+			/* every member already gone */
+		}
+	}
+
 	/** Run a verb, signal the DISPATCHER once it is up, and report how it ended. */
 	const signalled = (args, signal, ready) =>
 		new Promise((resolveP) => {
-			const p = spawn(process.execPath, [BIN, ...args], { encoding: 'utf8' })
+			const p = spawn(process.execPath, [BIN, ...args], { encoding: 'utf8', detached: true })
 			let out = ''
 			// A hang is a real outcome here and one of the two defects this
 			// exists to catch, so it is bounded and named rather than left to
 			// stall the suite.
 			const timer = setTimeout(() => {
-				p.kill('SIGKILL')
+				sweep(p)
 				resolveP('HUNG')
 			}, 20000)
 			p.stdout.on('data', (d) => {
@@ -397,6 +426,7 @@ const VERBS = [...readFileSync(BIN, 'utf8').matchAll(/^\t\['([a-z-]+)', '([\w.-]
 			})
 			p.on('exit', (code, sig) => {
 				clearTimeout(timer)
+				sweep(p)
 				resolveP(code === null ? `signal ${sig}` : code)
 			})
 		})
@@ -427,13 +457,14 @@ const VERBS = [...readFileSync(BIN, 'utf8').matchAll(/^\t\['([a-z-]+)', '([\w.-]
 		// sleeps, reached through the dispatcher's own verb table is not
 		// available, so this asks the dispatcher directly with a signal sent
 		// before the child can finish.
-		const p = spawn(process.execPath, [BIN, 'check', '--library', lib], { encoding: 'utf8' })
+		const p = spawn(process.execPath, [BIN, 'check', '--library', lib], { encoding: 'utf8', detached: true })
 		const timer = setTimeout(() => {
-			p.kill('SIGKILL')
+			sweep(p)
 			resolveP('HUNG')
 		}, 20000)
 		p.on('exit', (code, sig) => {
 			clearTimeout(timer)
+			sweep(p)
 			resolveP(code === null ? `signal ${sig}` : code)
 		})
 		p.kill('SIGINT')
