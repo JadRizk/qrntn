@@ -14,11 +14,12 @@
 //
 //   node qrntn.self-test.mjs
 
-import { spawnSync } from 'node:child_process'
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+
+
+import { mutate } from './mutate.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const REPO = join(HERE, '..')
@@ -108,76 +109,33 @@ const MUTATIONS = [
 
 const original = readFileSync(SRC, 'utf8')
 
-const dir = mkdtempSync(join(tmpdir(), 'qrntn-bin-self-'))
-mkdirSync(join(dir, 'bin'), { recursive: true })
-mkdirSync(join(dir, 'commands'), { recursive: true })
-cpSync(join(REPO, 'package.json'), join(dir, 'package.json'))
-for (const f of readdirSync(join(REPO, 'commands'))) {
-	if (f.endsWith('.mjs') || f.endsWith('.md') || f.endsWith('.json')) cpSync(join(REPO, 'commands', f), join(dir, 'commands', f))
-}
-cpSync(TEST, join(dir, 'commands', 'qrntn.test.mjs'))
 // The viewer bundle, when the tree has one. The suite's signal assertions
 // drive `view`, the only verb that runs until interrupted, and without the
-// bundle here it refuses as a packaging fault instead — which failed the suite
-// on every mutation and on the inert control alike, making every "caught"
-// meaningless. Copied rather than skipped so those assertions are exercised
-// here too; the suite skips them by the same test when the tree has no build.
+// bundle they are skipped — so the mutation that needs them is skipped here
+// too, by name, rather than left to survive. Declared once, up front.
 const hasViewBundle = existsSync(join(REPO, 'view', 'index.html'))
-if (hasViewBundle) cpSync(join(REPO, 'view'), join(dir, 'view'), { recursive: true })
-const sandboxSrc = join(dir, 'bin', 'qrntn.mjs')
-const sandboxTest = join(dir, 'commands', 'qrntn.test.mjs')
-
-let asExpected = 0
-let unexpected = 0
-
-try {
-	for (const m of MUTATIONS) {
-		const expectSurvival = m.expect === 'survives'
-		if (m.needsViewBundle && !hasViewBundle) {
-			// Named, not silent. A self-test that quietly drops a mutation
-			// reports a smaller number and looks like a pass.
-			console.log(`  skipped   ${m.name} — no viewer bundle in this tree, so the suite cannot ask`)
-			asExpected++
-			continue
-		}
-		const occurrences = original.split(m.find).length - 1
-		if (occurrences !== 1) {
-			console.error(
-				`  ERROR     "${m.name}" — anchor found ${occurrences} times, expected exactly 1.\n` +
-					'            The source has drifted; update the mutation before trusting this run.'
-			)
-			unexpected++
-			continue
-		}
-		writeFileSync(sandboxSrc, original.replace(m.find, m.replace))
-		const r = spawnSync(process.execPath, [sandboxTest], { encoding: 'utf8' })
-		const survived = r.status === 0
-		if (survived === expectSurvival) {
-			asExpected++
-			const failed = (r.stdout.match(/(\d+) failed/) ?? [])[1] ?? '0'
-			console.log(`  ${expectSurvival ? 'survived  ' : 'caught    '}${m.name}${expectSurvival ? '' : `  (${failed} assertion(s))`}`)
-		} else {
-			unexpected++
-			console.error(
-				expectSurvival
-					? `  BROKE     ${m.name} — an inert change failed the suite, so the suite tests something it should not.`
-					: `  SURVIVED  ${m.name}`
-			)
-		}
-	}
-} finally {
-	rmSync(dir, { recursive: true, force: true })
+for (const m of MUTATIONS) {
+	if (m.needsViewBundle && !hasViewBundle) m.skip = 'no viewer bundle in this tree, so the suite cannot ask'
 }
 
-if (readFileSync(SRC, 'utf8') !== original) {
-	console.error('  ERROR     the shipped script changed during this run — it should never be written.')
-	unexpected++
-}
-
-const clean = spawnSync(process.execPath, [TEST], { encoding: 'utf8' })
-console.log(`\nclean run: ${clean.status === 0 ? 'PASS' : 'FAIL'}`)
-console.log(`self-test: ${asExpected} as expected, ${unexpected} not`)
-if (unexpected || clean.status !== 0) {
-	console.error('\nA surviving mutation means the suite is not checking what it appears to.\nAdd the assertion that would have caught it.')
-	process.exit(1)
-}
+await mutate({
+	name: 'qrntn-bin',
+	test: TEST,
+	sources: { 'bin/qrntn.mjs': SRC },
+	// A whole miniature tree — bin/, commands/, package.json — because two of
+	// the suite's gates are about what the tarball will contain, not about
+	// behaviour, and it reads the manifest and every command out of it.
+	build: (dir, files) => {
+		mkdirSync(join(dir, 'bin'), { recursive: true })
+		mkdirSync(join(dir, 'commands'), { recursive: true })
+		cpSync(join(REPO, 'package.json'), join(dir, 'package.json'))
+		for (const f of readdirSync(join(REPO, 'commands'))) {
+			if (f.endsWith('.mjs') || f.endsWith('.md') || f.endsWith('.json')) cpSync(join(REPO, 'commands', f), join(dir, 'commands', f))
+		}
+		cpSync(TEST, join(dir, 'commands', 'qrntn.test.mjs'))
+		if (hasViewBundle) cpSync(join(REPO, 'view'), join(dir, 'view'), { recursive: true })
+		writeFileSync(join(dir, 'bin', 'qrntn.mjs'), files['bin/qrntn.mjs'])
+		return join(dir, 'commands', 'qrntn.test.mjs')
+	},
+	mutations: MUTATIONS
+})

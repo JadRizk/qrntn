@@ -18,11 +18,12 @@
 //
 //   node scripts/usage.self-test.mjs
 
-import { spawnSync } from 'node:child_process'
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { cpSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+
+
+import { mutate } from './mutate.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const SRC = join(HERE, 'usage.mjs')
@@ -283,67 +284,22 @@ const MUTATIONS = [
 // Real bug, not a sandbox artefact — it was masked on macOS only by an
 // unrelated /var → /private/var symlink making the two paths compare as
 // different prefixes, and caught this on Linux, where nothing masks it.
-const dir = mkdtempSync(join(tmpdir(), 'usage-self-'))
-const scriptsDir = join(dir, 'scripts')
-mkdirSync(scriptsDir)
-const sandboxSrc = join(scriptsDir, 'usage.mjs')
-const sandboxTest = join(scriptsDir, 'usage.test.mjs')
-cpSync(TEST, sandboxTest)
-// The suite reads its fixtures relative to its own location, so they travel
-// with it. Copied rather than symlinked: a symlink would let a mutant that
-// writes reach the real ones.
-cpSync(FIXTURES, join(scriptsDir, 'fixtures'), { recursive: true })
-// The suite checks that the reference the ledger points at exists and answers
-// the question. It travels with the suite for the same reason the fixtures do.
-cpSync(join(HERE, 'TRANSCRIPTS.md'), join(scriptsDir, 'TRANSCRIPTS.md'))
-// usage.mjs imports scripts/ledger.mjs statically (SK-30) — without a copy
-// here every mutant crashes at import time, before any mutation is even
-// exercised, which is exactly the "0 assertion(s)" / broken-inert-control
-// failure mode this suite exists to catch in the tool it is testing.
-cpSync(join(HERE, 'ledger.mjs'), join(scriptsDir, 'ledger.mjs'))
-const original = readFileSync(SRC, 'utf8')
 
-let asExpected = 0
-let unexpected = 0
-
-try {
-	for (const m of MUTATIONS) {
-		const expectSurvival = m.expect === 'survives'
-		const occurrences = original.split(m.find).length - 1
-		if (occurrences !== 1) {
-			console.error(
-				`  ERROR     "${m.name}" — anchor found ${occurrences} times, expected exactly 1.\n` +
-					'            The source has drifted; update the mutation before trusting this run.'
-			)
-			unexpected++
-			continue
-		}
-		writeFileSync(sandboxSrc, original.replace(m.find, m.replace))
-		const r = spawnSync(process.execPath, [sandboxTest], { encoding: 'utf8' })
-		const survived = r.status === 0
-		if (survived === expectSurvival) {
-			asExpected++
-			const failed = (r.stdout.match(/(\d+) failed/) ?? [])[1] ?? '0'
-			console.log(
-				`  ${expectSurvival ? 'survived  ' : 'caught    '}${m.name}${expectSurvival ? '' : `  (${failed} assertion(s))`}`
-			)
-		} else {
-			unexpected++
-			console.error(
-				expectSurvival
-					? `  BROKE     ${m.name} — an inert change failed the suite, so the suite tests something it should not.`
-					: `  SURVIVED  ${m.name}`
-			)
-		}
-	}
-} finally {
-	rmSync(dir, { recursive: true, force: true })
-}
-
-if (readFileSync(SRC, 'utf8') !== original) {
-	console.error('  ERROR     the shipped script changed during this run — it should never be written.')
-	unexpected++
-}
-
-console.log(`\n  ${asExpected} as expected · ${unexpected} not\n`)
-process.exit(unexpected ? 1 : 0)
+await mutate({
+	name: 'usage',
+	test: TEST,
+	sources: { 'usage.mjs': SRC },
+	// Under scripts/, the depth the suite expects: it reaches its fixtures and
+	// TRANSCRIPTS.md relative to itself.
+	build: (dir, files) => {
+		const scriptsDir = join(dir, 'scripts')
+		mkdirSync(scriptsDir)
+		cpSync(TEST, join(scriptsDir, 'usage.test.mjs'))
+		cpSync(FIXTURES, join(scriptsDir, 'fixtures'), { recursive: true })
+		cpSync(join(HERE, 'TRANSCRIPTS.md'), join(scriptsDir, 'TRANSCRIPTS.md'))
+		cpSync(join(HERE, 'ledger.mjs'), join(scriptsDir, 'ledger.mjs'))
+		writeFileSync(join(scriptsDir, 'usage.mjs'), files['usage.mjs'])
+		return join(scriptsDir, 'usage.test.mjs')
+	},
+	mutations: MUTATIONS
+})

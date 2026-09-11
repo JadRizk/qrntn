@@ -16,11 +16,13 @@
 //
 //   node self-test.mjs
 
-import { spawnSync } from 'node:child_process'
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+
+
+import { mutate } from './mutate.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const SRC = join(HERE, 'promote.mjs')
@@ -229,75 +231,24 @@ const MUTATIONS = [
 	}
 ]
 
-const dir = mkdtempSync(join(tmpdir(), 'promote-self-'))
-const sandboxSrc = join(dir, 'promote.mjs')
-const sandboxTest = join(dir, 'promote.test.mjs')
-cpSync(TEST, sandboxTest)
-cpSync(CHECK_CATALOG, join(dir, 'check-catalog.mjs'))
-cpSync(LEDGER, join(dir, 'ledger.mjs'))
-// The suite imports the scanner's `fragment` to compare a refusal detail
-// against the bound it should carry — beside the test, as a sibling, which is
-// not where the fixture repos stage the scanner. Without this the import
-// failed in every run and the inert control reported the suite as broken,
-// which it was, for a reason that had nothing to do with any mutation.
-cpSync(join(HERE, 'audit-skill.mjs'), join(dir, 'audit-skill.mjs'))
-// The suite's fixture builder copies this from beside the source under test,
-// so a mutation naming `file: 'audit-record.mjs'` lands in every fixture.
 const RECORD = join(HERE, 'audit-record.mjs')
-const sandboxRecord = join(dir, 'audit-record.mjs')
-cpSync(RECORD, sandboxRecord)
-cpSync(SKILL_AUDIT, join(dir, 'skills', 'skill-audit'), { recursive: true })
-const original = readFileSync(SRC, 'utf8')
-const originalRecord = readFileSync(RECORD, 'utf8')
 
-let asExpected = 0
-let unexpected = 0
-
-try {
-	for (const m of MUTATIONS) {
-		const expectSurvival = m.expect === 'survives'
-		const inRecord = m.file === 'audit-record.mjs'
-		const source = inRecord ? originalRecord : original
-		const occurrences = source.split(m.find).length - 1
-		if (occurrences !== 1) {
-			console.error(
-				`  ERROR     "${m.name}" — anchor found ${occurrences} times, expected exactly 1.\n` +
-					'            The source has drifted; update the mutation before trusting this run.'
-			)
-			unexpected++
-			continue
-		}
-		// Both files written every time, so a mutation never outlives its turn.
-		writeFileSync(sandboxSrc, inRecord ? original : original.replace(m.find, m.replace))
-		writeFileSync(sandboxRecord, inRecord ? originalRecord.replace(m.find, m.replace) : originalRecord)
-		const r = spawnSync('node', [sandboxTest], { encoding: 'utf8' })
-		const survived = r.status === 0
-		if (survived === expectSurvival) {
-			asExpected++
-			const failed = (r.stdout.match(/(\d+) failed/) ?? [])[1] ?? '0'
-			console.log(`  ${expectSurvival ? 'survived  ' : 'caught    '}${m.name}${expectSurvival ? '' : `  (${failed} assertion(s))`}`)
-		} else {
-			unexpected++
-			console.error(
-				expectSurvival
-					? `  BROKE     ${m.name} — an inert change failed the suite, so the suite tests something it should not.`
-					: `  SURVIVED  ${m.name}`
-			)
-		}
-	}
-} finally {
-	rmSync(dir, { recursive: true, force: true })
-}
-
-if (readFileSync(SRC, 'utf8') !== original || readFileSync(RECORD, 'utf8') !== originalRecord) {
-	console.error('  ERROR     a shipped script changed during this run — it should never be written.')
-	unexpected++
-}
-
-const clean = spawnSync('node', [TEST], { encoding: 'utf8' })
-console.log(`\nclean run: ${clean.status === 0 ? 'PASS' : 'FAIL'}`)
-console.log(`self-test: ${asExpected} as expected, ${unexpected} not`)
-if (unexpected || clean.status !== 0) {
-	console.error('\nA surviving mutation means the suite is not checking what it appears to.\nAdd the assertion that would have caught it.')
-	process.exit(1)
-}
+await mutate({
+	name: 'promote',
+	test: TEST,
+	sources: { 'promote.mjs': SRC, 'audit-record.mjs': RECORD },
+	// The suite beside every sibling promote reaches for, the scanner staged
+	// under skills/skill-audit/ the way a library holds it, and the scanner
+	// again beside the suite for the `fragment` it imports to compare a
+	// refusal detail against.
+	build: (dir, files) => {
+		cpSync(TEST, join(dir, 'promote.test.mjs'))
+		cpSync(CHECK_CATALOG, join(dir, 'check-catalog.mjs'))
+		cpSync(LEDGER, join(dir, 'ledger.mjs'))
+		cpSync(join(HERE, 'audit-skill.mjs'), join(dir, 'audit-skill.mjs'))
+		cpSync(SKILL_AUDIT, join(dir, 'skills', 'skill-audit'), { recursive: true })
+		for (const [file, text] of Object.entries(files)) writeFileSync(join(dir, file), text)
+		return join(dir, 'promote.test.mjs')
+	},
+	mutations: MUTATIONS
+})

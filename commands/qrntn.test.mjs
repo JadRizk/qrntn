@@ -70,8 +70,8 @@ const VERBS = [...readFileSync(BIN, 'utf8').matchAll(/^\t\['([a-z-]+)', '([\w.-]
 	// The allowlist must not ship the suites. Nothing at runtime reads them, and
 	// a tarball carrying tests but not check.mjs — which is deliberately not
 	// shipped — is half a gesture.
-	const shippedTests = files.filter((f) => /\.test\.mjs$|\.self-test\.mjs$|^check\.mjs$|fixtures/.test(f))
-	check('the allowlist ships no tests, self-tests, fixtures or the gate runner', shippedTests.length === 0, JSON.stringify(shippedTests))
+	const shippedTests = files.filter((f) => /\.test\.mjs$|\.self-test\.mjs$|^check\.mjs$|fixtures|\/mutate\.mjs$/.test(f))
+	check('the allowlist ships no tests, self-tests, fixtures, the gate runner or the mutation harness', shippedTests.length === 0, JSON.stringify(shippedTests))
 }
 
 // ── asking what it does ─────────────────────────────────────────────────────
