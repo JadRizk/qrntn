@@ -157,6 +157,18 @@ line earlier already does the work — recorded rather than deleted, and rather
 than faking an assertion to make it "caught". A test documenting a real limit
 beats one taking credit for coverage nobody wrote.
 
+All four disciplines live in one place, `commands/mutate.mjs`, and every
+self-test is a `MUTATIONS` list plus a `build` callback that lays out its
+sandbox. The loop used to be typed out per file, and the eleven had begun to
+differ in small ways. **Mutations run in parallel**, each in its own sandbox
+and its own process group, swept on exit so a mutant's server cannot outlive
+its run. That is where the gate time went — 95% of a full run, measured —
+and it is the only part of a run that is embarrassingly parallel. `QRNTN_JOBS=1`
+makes it serial again, which is how to read output in mutation order or
+bisect a flake; the default is `min(cores, 8)`. The ceiling is not the CPU:
+the audit scanner's suite spawns fifty processes a run and tops out near 2.5×
+throughput however many run at once, and intake's is bound by git's fsyncs.
+
 **`smoke.mjs` — does it work for someone who installs it.** See below.
 
 **CI — was any of that passing on borrowed state.** `.github/workflows/check.yml`
@@ -194,9 +206,11 @@ something is worse than one that fails.
 
 Name the files and they are found: `commands/<verb>.test.mjs`, and
 `commands/<verb>.self-test.mjs` beside it. Copy the shape of a neighbour — a
-`check` accumulator, a sandbox under `mkdtempSync`, a `MUTATIONS` list with
-the four disciplines above — rather than a framework; there is none, and the
-zero-dependency claim is the reason.
+`check` accumulator in the suite; in the self-test, a `MUTATIONS` list and a
+`build` callback handed to `mutate()`, which carries the four disciplines
+above — rather than a framework; there is none, and the zero-dependency claim
+is the reason. The harness is the one piece of shared test machinery, and it
+is not shipped.
 
 One rule for a suite that spawns something long-running. `view` is the only
 verb that does not exit, and `qrntn.test.mjs` spawns the **dispatcher** and

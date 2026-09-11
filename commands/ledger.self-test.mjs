@@ -10,11 +10,12 @@
 //
 //   node scripts/ledger.self-test.mjs
 
-import { spawnSync } from 'node:child_process'
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { cpSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+
+
+import { mutate } from './mutate.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const SRC = join(HERE, 'ledger.mjs')
@@ -104,56 +105,14 @@ const MUTATIONS = [
 	}
 ]
 
-const dir = mkdtempSync(join(tmpdir(), 'ledger-self-'))
-const sandboxSrc = join(dir, 'ledger.mjs')
-const sandboxTest = join(dir, 'ledger.test.mjs')
-cpSync(TEST, sandboxTest)
-const original = readFileSync(SRC, 'utf8')
-
-let asExpected = 0
-let unexpected = 0
-
-try {
-	for (const m of MUTATIONS) {
-		const expectSurvival = m.expect === 'survives'
-		const occurrences = original.split(m.find).length - 1
-		if (occurrences !== 1) {
-			console.error(
-				`  ERROR     "${m.name}" — anchor found ${occurrences} times, expected exactly 1.\n` +
-					'            The source has drifted; update the mutation before trusting this run.'
-			)
-			unexpected++
-			continue
-		}
-		writeFileSync(sandboxSrc, original.replace(m.find, m.replace))
-		const r = spawnSync(process.execPath, [sandboxTest], { encoding: 'utf8' })
-		const survived = r.status === 0
-		if (survived === expectSurvival) {
-			asExpected++
-			const failed = (r.stdout.match(/(\d+) failed/) ?? [])[1] ?? '0'
-			console.log(`  ${expectSurvival ? 'survived  ' : 'caught    '}${m.name}${expectSurvival ? '' : `  (${failed} assertion(s))`}`)
-		} else {
-			unexpected++
-			console.error(
-				expectSurvival
-					? `  BROKE     ${m.name} — an inert change failed the suite, so the suite tests something it should not.`
-					: `  SURVIVED  ${m.name}`
-			)
-		}
-	}
-} finally {
-	rmSync(dir, { recursive: true, force: true })
-}
-
-if (readFileSync(SRC, 'utf8') !== original) {
-	console.error('  ERROR     the shipped script changed during this run — it should never be written.')
-	unexpected++
-}
-
-const clean = spawnSync(process.execPath, [TEST], { encoding: 'utf8' })
-console.log(`\nclean run: ${clean.status === 0 ? 'PASS' : 'FAIL'}`)
-console.log(`self-test: ${asExpected} as expected, ${unexpected} not`)
-if (unexpected || clean.status !== 0) {
-	console.error('\nA surviving mutation means the suite is not checking what it appears to.\nAdd the assertion that would have caught it.')
-	process.exit(1)
-}
+await mutate({
+	name: 'ledger',
+	test: TEST,
+	sources: { 'ledger.mjs': SRC },
+	build: (dir, files) => {
+		cpSync(TEST, join(dir, 'ledger.test.mjs'))
+		writeFileSync(join(dir, 'ledger.mjs'), files['ledger.mjs'])
+		return join(dir, 'ledger.test.mjs')
+	},
+	mutations: MUTATIONS
+})

@@ -13,11 +13,12 @@
 //
 //   node self-test.mjs
 
-import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+
+import { mutate } from './mutate.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SRC = join(HERE, 'audit-skill.mjs');
@@ -357,65 +358,18 @@ const originalTest = readFileSync(TEST, 'utf8');
 //
 // The test resolves the script it exercises from its OWN directory, so copying
 // both files into the sandbox is what points it at the mutant.
-const dir = mkdtempSync(join(tmpdir(), 'audit-selftest-'));
-const sandboxSrc = join(dir, 'audit-skill.mjs');
-const sandboxTest = join(dir, 'audit-skill.test.mjs');
-writeFileSync(sandboxTest, originalTest);
 
-let unexpected = 0;
-let asExpected = 0;
-
-try {
-  for (const m of MUTATIONS) {
-    const expectSurvival = m.expect === 'survives';
-    const occurrences = original.split(m.find).length - 1;
-    if (occurrences !== 1) {
-      console.error(
-        `  ERROR     "${m.name}" — anchor found ${occurrences} times, expected exactly 1.\n` +
-          '            The source has drifted; update the mutation before trusting this run.'
-      );
-      unexpected++;
-      continue;
-    }
-
-    writeFileSync(sandboxSrc, original.replace(m.find, m.replace));
-    const r = spawnSync('node', [sandboxTest], { encoding: 'utf8' });
-    const survived = r.status === 0;
-
-    if (survived === expectSurvival) {
-      asExpected++;
-      const label = expectSurvival ? 'survived  ' : 'caught    ';
-      const failed = (r.stdout.match(/(\d+) failed/) ?? [])[1] ?? '0';
-      console.log(`  ${label}${m.name}${expectSurvival ? '' : `  (${failed} assertion(s))`}`);
-    } else {
-      unexpected++;
-      console.error(
-        expectSurvival
-          ? `  BROKE     ${m.name} — an inert change failed the suite, so the suite is testing something it should not.`
-          : `  SURVIVED  ${m.name}`
-      );
-    }
-  }
-} finally {
-  rmSync(dir, { recursive: true, force: true });
-}
-
-// The sandbox must have been a faithful copy, or every "caught" above could be
-// an artefact of the copy rather than of the mutation.
-if (readFileSync(SRC, 'utf8') !== original) {
-  console.error('  ERROR     the shipped auditor changed during this run — it should never be written.');
-  unexpected++;
-}
-
-// The suite must also pass on the unmutated source, or "caught" means nothing.
-const clean = spawnSync('node', [TEST], { encoding: 'utf8' });
-console.log(`\nclean run: ${clean.status === 0 ? 'PASS' : 'FAIL'}`);
-
-console.log(`self-test: ${asExpected} as expected, ${unexpected} not`);
-if (unexpected || clean.status !== 0) {
-  console.error(
-    '\nA surviving mutation means the suite is not checking what it appears to.\n' +
-      'Add the assertion that would have caught it.'
-  );
-  process.exit(1);
-}
+await mutate({
+  name: 'audit-skill',
+  test: TEST,
+  sources: { 'audit-skill.mjs': SRC },
+  // The scanner and its suite, alone. The scanner's own siblings (tint, argv,
+  // invoked-as) are imported behind guards and fall back when absent, which is
+  // the deployed-alone mode this sandbox has always exercised.
+  build: (dir, files) => {
+    writeFileSync(join(dir, 'audit-skill.test.mjs'), originalTest);
+    writeFileSync(join(dir, 'audit-skill.mjs'), files['audit-skill.mjs']);
+    return join(dir, 'audit-skill.test.mjs');
+  },
+  mutations: MUTATIONS
+});
