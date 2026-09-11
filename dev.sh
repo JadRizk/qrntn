@@ -11,6 +11,7 @@
 #
 #   qrntn            the real binary, run from a symlinked install, so edits to
 #                    commands/*.mjs are live and nothing is ever re-packed
+#   qrntn-real       the same, against your real HOME rather than the sandbox's
 #   qrntn-lib-reset  a throwaway library, rebuilt from nothing in one word
 #   qrntn-env        what is currently set, and against what
 #   qrntn-off        put the shell back
@@ -21,8 +22,17 @@
 # only failed when that install disappeared mid-session. The same protection is
 # wanted here — but exporting HOME into an interactive shell breaks git, npm,
 # ssh and everything else that reads it. So it is overridden per invocation, by
-# the wrapper function, and nowhere else. `command qrntn` bypasses the wrapper
-# and runs against your real HOME, which is how you test the install path.
+# a shim, and nowhere else. `qrntn-real` is the same shim without the override,
+# for testing the install path against your actual HOME.
+#
+# A SHIM SCRIPT THAT EXECS, NOT A SHELL FUNCTION. The first version of this was
+# a function, and it broke the one verb that does not exit: `qrntn view &`
+# followed by `kill -INT $!` did nothing, and the server outlived the script.
+# A backgrounded function runs in a forked shell, `$!` names that fork, and a
+# background job in a non-interactive shell ignores SIGINT — so the signal
+# stopped one process short of the dispatcher. Ctrl-C at a prompt hides this,
+# because it hits the whole foreground group. The shim execs, so its PID is
+# the dispatcher's and a signal to `$!` reaches what it names.
 
 # ── sourced? ────────────────────────────────────────────────────────────────
 
@@ -52,9 +62,10 @@ QRNTN_REPO="${QRNTN_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]:-${(%):-%x}}")" && p
 QRNTN_DEV_ROOT="${QRNTN_DEV_ROOT:-${TMPDIR:-/tmp}/qrntn-dev}"
 QRNTN_DEV_APP="$QRNTN_DEV_ROOT/app"
 QRNTN_DEV_HOME="$QRNTN_DEV_ROOT/home"
+QRNTN_DEV_BIN="$QRNTN_DEV_ROOT/bin"
 export SKILL_LIBRARY="${SKILL_LIBRARY:-$QRNTN_DEV_ROOT/lib}"
 
-mkdir -p "$QRNTN_DEV_ROOT" "$QRNTN_DEV_HOME"
+mkdir -p "$QRNTN_DEV_ROOT" "$QRNTN_DEV_HOME" "$QRNTN_DEV_BIN"
 
 # ── the linked install ──────────────────────────────────────────────────────
 #
@@ -79,13 +90,26 @@ qrntn-relink() {
 
 [ -x "$QRNTN_DEV_APP/node_modules/.bin/qrntn" ] || qrntn-relink
 
-case ":$PATH:" in
-	*":$QRNTN_DEV_APP/node_modules/.bin:"*) ;;
-	*) PATH="$QRNTN_DEV_APP/node_modules/.bin:$PATH"; export PATH ;;
-esac
+# The shims. Rewritten on every source, because they embed paths that this
+# file's variables may have changed since last time; they are two lines each
+# and the cost of rewriting is nothing.
+cat > "$QRNTN_DEV_BIN/qrntn" <<SHIM
+#!/bin/sh
+HOME="$QRNTN_DEV_HOME" exec "$QRNTN_DEV_APP/node_modules/.bin/qrntn" "\$@"
+SHIM
+cat > "$QRNTN_DEV_BIN/qrntn-real" <<SHIM
+#!/bin/sh
+exec "$QRNTN_DEV_APP/node_modules/.bin/qrntn" "\$@"
+SHIM
+chmod +x "$QRNTN_DEV_BIN/qrntn" "$QRNTN_DEV_BIN/qrntn-real"
 
-# The wrapper, and the only place HOME is touched. `command qrntn` skips it.
-qrntn() { HOME="$QRNTN_DEV_HOME" command qrntn "$@"; }
+case ":$PATH:" in
+	*":$QRNTN_DEV_BIN:"*) ;;
+	*) PATH="$QRNTN_DEV_BIN:$PATH"; export PATH ;;
+esac
+# zsh caches command lookups; a shim that did not exist a moment ago is not
+# found until the cache is told. bash does not need this and does not mind it.
+hash -r 2>/dev/null
 
 # ── the throwaway library ───────────────────────────────────────────────────
 #
@@ -115,7 +139,7 @@ description: A throwaway skill for the development loop, named $n.
 Placeholder. Nothing here is a real skill.
 SKILLMD
 	done
-	( cd "$SKILL_LIBRARY" && HOME="$QRNTN_DEV_HOME" command qrntn init >/dev/null ) \
+	( cd "$SKILL_LIBRARY" && "$QRNTN_DEV_BIN/qrntn" init >/dev/null ) \
 		|| { echo "qrntn-lib-reset: init failed" >&2; return 1; }
 	echo "library $SKILL_LIBRARY — ${#names[@]} skill(s), catalog and ledger written"
 }
@@ -127,22 +151,23 @@ SKILLMD
 qrntn-env() {
 	echo "  repo     $QRNTN_REPO"
 	echo "  library  $SKILL_LIBRARY   (SKILL_LIBRARY — every verb reads it, so --library is optional)"
-	echo "  home     $QRNTN_DEV_HOME   (per invocation only; \`command qrntn\` uses your real HOME)"
-	# The path on disk, not the wrapper function's name, which is what
-	# `command -v` answers once the wrapper is defined and is no help at all.
+	echo "  home     $QRNTN_DEV_HOME   (per invocation only; \`qrntn-real\` uses your real HOME)"
 	echo "  binary   $QRNTN_DEV_APP/node_modules/.bin/qrntn"
+	echo "  shims    $QRNTN_DEV_BIN/{qrntn,qrntn-real}"
 	echo
-	echo "  qrntn <verb>       live against the checkout"
+	echo "  qrntn <verb>       live against the checkout, sandbox HOME"
+	echo "  qrntn-real <verb>  the same, your real HOME"
 	echo "  qrntn-lib-reset    throw the library away and build a new one"
 	echo "  qrntn-relink       rebuild the symlinked install"
 	echo "  qrntn-off          put the shell back"
 }
 
 qrntn-off() {
-	PATH="${PATH//$QRNTN_DEV_APP\/node_modules\/.bin:/}"
+	PATH="${PATH//$QRNTN_DEV_BIN:/}"
 	export PATH
+	hash -r 2>/dev/null
 	unset SKILL_LIBRARY
-	unset -f qrntn qrntn-lib-reset qrntn-relink qrntn-env qrntn-off 2>/dev/null
+	unset -f qrntn-lib-reset qrntn-relink qrntn-env qrntn-off 2>/dev/null
 	echo "dev.sh: off — PATH restored, SKILL_LIBRARY unset"
 }
 

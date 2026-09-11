@@ -19,6 +19,7 @@ What you get:
 | | |
 |---|---|
 | `qrntn <verb>` | the real binary, run from a symlinked install |
+| `qrntn-real <verb>` | the same, against your real `HOME` |
 | `qrntn-lib-reset [names…]` | throw the library away and build a new one |
 | `qrntn-relink` | rebuild the symlinked install |
 | `qrntn-env` | what is set, and against what |
@@ -40,9 +41,14 @@ because `promote.test.mjs` once passed twice on a borrowed
 `~/.claude/skills/skill-audit` that happened to be installed on the machine, and
 only failed when that install disappeared mid-session. The same protection is
 wanted in the loop, but exporting `HOME` into an interactive shell breaks git,
-npm and ssh. So the wrapper function overrides it per invocation and nothing
-else does. **`command qrntn` bypasses the wrapper** and runs against your real
-`HOME` — which is how you test the install path on purpose.
+npm and ssh. So a shim on `PATH` overrides it per invocation and nothing else
+does. **`qrntn-real` is the same shim without the override** — how you test the
+install path on purpose.
+
+The shim `exec`s rather than wrapping, and it is a script rather than a shell
+function, for the sake of the one verb that does not exit: `qrntn view &` then
+`kill -INT $!` has to reach the dispatcher, and through a backgrounded function
+it reaches a forked shell that ignores it instead.
 
 ### The viewer
 
