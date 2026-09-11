@@ -48,10 +48,11 @@ does not defend against, which is the more useful half.
 
 ## The lifecycle
 
-Every stage below is real and happens today. Two of them do not yet have a
-command, and are marked as such — a stage without a verb is a thing you do by
-hand, not a thing that does not exist, and deleting the row to make the command
-list look complete is precisely the move this tool exists to refuse.
+Every stage below is real and happens today, and every one has a command.
+`0.1.x` shipped two of them without one and said so in this table rather than
+deleting the rows — a stage without a verb is a thing you do by hand, not a
+thing that does not exist, and making the list look complete is precisely the
+move this tool exists to refuse. `0.2` is the version that gave them theirs.
 
 | Stage | What happens | Command |
 |---|---|---|
