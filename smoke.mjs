@@ -31,7 +31,7 @@
 // Requires npm and git on PATH; says so plainly if either is missing rather
 // than failing somewhere further in. Exit 0 when the package works, 1 otherwise.
 
-import { execFileSync, spawnSync } from 'node:child_process'
+import { execFileSync, spawn, spawnSync } from 'node:child_process'
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, relative } from 'node:path'
@@ -190,13 +190,40 @@ check('the installed dispatcher offers verbs', VERBS.length >= 9, `found ${VERBS
 
 // Pointed at a folder with nothing in it. Every verb must reach its own opinion
 // about that, and none may fail because a file it needed was not shipped.
+//
+// BOUNDED, because one verb does not exit. This loop drove every verb with a
+// plain spawnSync until `view` shipped, and `view` runs until it is
+// interrupted — so the loop waited for it forever. Worse, it is not even the
+// refusal it looks like: `init` comes first in the verb table and sets this
+// folder up, so by the time the loop reaches `view` the folder is a real
+// library and serving it is the correct answer.
+//
+// A verb that is still running when the clock runs out has run, which is the
+// only thing this section asks. SIGTERM rather than SIGKILL: the dispatcher
+// forwards it, the verb stops itself, and nothing is left orphaned holding a
+// port — a SIGKILL here would take the dispatcher and leave its child serving.
 const bare = join(SANDBOX, 'bare')
 mkdirSync(join(bare, 'skills'), { recursive: true })
 for (const verb of VERBS) {
-	const r = run([verb, '--library', bare])
-	check(`${verb}: runs from the tarball`, !/is missing its implementation/.test(r.raw), r.raw.slice(0, 200))
-	check(`${verb}: no module-resolution failure`, !/ERR_MODULE_NOT_FOUND|Cannot find module/.test(r.raw), r.raw.slice(0, 300))
-	check(`${verb}: no raw stack trace`, !/^\s+at .+\(.+:\d+:\d+\)$/m.test(r.raw), r.raw.slice(0, 400))
+	const r = spawnSync(QRNTN, [verb, '--library', bare], {
+		cwd: SANDBOX,
+		encoding: 'utf8',
+		env: { ...process.env, HOME },
+		timeout: 20000
+	})
+	const raw = (r.stdout ?? '') + (r.stderr ?? '')
+	// First, and the one that makes the other three mean anything. Every check
+	// below is a pattern NOT matching, so empty output passes all of them
+	// vacuously — which is exactly what a clock that fired too early would
+	// produce. A verb reached its own opinion or it did not.
+	check(`${verb}: said something`, raw.trim().length > 0, `exit ${r.status}, signal ${r.signal}, no output`)
+	check(`${verb}: runs from the tarball`, !/is missing its implementation/.test(raw), raw.slice(0, 200))
+	check(`${verb}: no module-resolution failure`, !/ERR_MODULE_NOT_FOUND|Cannot find module/.test(raw), raw.slice(0, 300))
+	check(`${verb}: no raw stack trace`, !/^\s+at .+\(.+:\d+:\d+\)$/m.test(raw), raw.slice(0, 400))
+	// A verb stopped by the clock is reported as such rather than counted as a
+	// pass in silence: if a verb that used to exit stops exiting, that is a
+	// change worth seeing here.
+	if (r.signal) console.log(`  (${verb} was still running after 20s and was stopped — it serves until interrupted)`)
 }
 
 // ── 2 · init on a bare folder of skills makes check pass ────────────────────
@@ -234,8 +261,62 @@ const unadjudicated = run(['promote', 'sort-inbox', '--library', LIB])
 check('promote: refuses an artefact nobody adjudicated', unadjudicated.code === 1, `exit ${unadjudicated.code} ${unadjudicated.raw.slice(0, 200)}`)
 check('promote: and refuses by name rather than by crash', /no AUDIT\.md|refused/.test(unadjudicated.raw), unadjudicated.raw.slice(0, 300))
 
+// The decision, recorded from the tarball: a decline writes the permanent row
+// and ends the quarantine. It runs the installed scanner with --no-evidence to
+// fill the scan cell, which is the one cross-command spawn adopt has, and the
+// one that only a packaged install can prove resolves.
+const declined = run(['adopt', 'sort-inbox', '--decline', '--why', 'smoke: declined on purpose', '--library', LIB])
+check('adopt: declined from the tarball', declined.code === 0, `exit ${declined.code} ${declined.raw.slice(0, 300)}`)
+check('adopt: wrote the row', existsSync(join(LIB, 'REJECTED.md')) && /`sort-inbox`/.test(readFileSync(join(LIB, 'REJECTED.md'), 'utf8')), 'no row for sort-inbox')
+check('adopt: ended the quarantine', !existsSync(join(LIB, 'inbox', 'sort-inbox')), 'inbox/sort-inbox survived a decline')
+
 const refresh = run(['refresh', '--library', LIB])
 check('refresh: ran against the pin intake wrote', refresh.code === 0 || /drift|clean|skill/i.test(refresh.raw), `exit ${refresh.code} ${refresh.raw.slice(0, 300)}`)
+
+// ── 3b · view, from the tarball ─────────────────────────────────────────────
+//
+// The bundle is built, not committed, so this is the only gate that can say
+// whether the tarball a release publishes actually serves. Two cases, and
+// which one runs is decided by the tree, not by a flag: with the bundle
+// present the verb must export the library's graph and serve it; without it
+// the verb must say it is missing, as a packaging fault, with exit 2 — never
+// serve something else, never crash.
+const BUNDLE = join(INSTALL, 'node_modules', ...PKG_PATH, 'view', 'index.html')
+if (existsSync(BUNDLE)) {
+	const served = await new Promise((resolveP) => {
+		const p = spawn(QRNTN, ['view', '--library', LIB, '--json'], { cwd: SANDBOX, env: { ...process.env, HOME } })
+		let out = ''
+		let err = ''
+		let done = false
+		p.stdout.on('data', (d) => {
+			out += d
+			if (!done && out.includes('\n')) {
+				done = true
+				let first = null
+				try { first = JSON.parse(out.split('\n')[0]) } catch { /* asserted below */ }
+				resolveP({ p, first, raw: () => out + err })
+			}
+		})
+		p.stderr.on('data', (d) => { err += d })
+		p.on('exit', (code) => { if (!done) { done = true; resolveP({ p, first: null, code, raw: () => out + err }) } })
+	})
+	check('view: served the library from the tarball', served.first !== null, `exit ${served.code} ${served.raw().slice(0, 300)}`)
+	if (served.first) {
+		const body = await fetch(new URL('/data/graph.json', served.first.url)).then((r) => r.text()).catch((e) => `fetch failed: ${e.message}`)
+		let graph = null
+		try { graph = JSON.parse(body) } catch { /* asserted below */ }
+		check('view: the graph it serves is the one it exported', graph?.nodes?.length === served.first.nodes && graph?.edges?.length === served.first.edges, body.slice(0, 200))
+		check('view: the graph is this library\'s, not the viewer\'s fixture', graph?.nodes?.length > 0 && graph.nodes.length < 20, `${graph?.nodes?.length} nodes`)
+		const index = await fetch(served.first.url).then((r) => r.text()).catch((e) => `fetch failed: ${e.message}`)
+		check('view: the viewer itself is served', /<div id="root">/.test(index), index.slice(0, 200))
+		const exit = await new Promise((resolveP) => { served.p.on('exit', (code) => resolveP(code)); served.p.kill('SIGINT') })
+		check('view: stops with 0 on Ctrl-C', exit === 0, `exit ${exit}`)
+	}
+} else {
+	const r = run(['view', '--library', LIB])
+	check('view: without the bundle, refuses as a packaging fault', r.code === 2 && /missing its viewer bundle/.test(r.raw), `exit ${r.code} ${r.raw.slice(0, 300)}`)
+	console.log('  (view/ is not built in this checkout — the tarball has no bundle, and view refused as it should; build it with `npm run build:cli --prefix nexus` to drive the real thing)')
+}
 
 // ── 4 · nothing written outside the install directory and the library ───────
 const homeFiles = []

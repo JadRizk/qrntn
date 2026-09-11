@@ -89,7 +89,7 @@ try {
 }
 
 const FLAGS = {
-  boolean: ['--json', '--quiet', '--help', '-h'],
+  boolean: ['--json', '--quiet', '--no-evidence', '--help', '-h'],
   valued: ['--exclude']
 };
 
@@ -489,6 +489,27 @@ function excerpt(text, index, length, max = 100) {
   return raw.length < length ? `${raw}…` : raw;
 }
 
+/**
+ * A fragment of the artefact quoted into a finding's `why` sentence — a
+ * frontmatter key, a referenced path, a directory name.
+ *
+ * `why` is written by this tool, but nine findings quote the artefact into it,
+ * and until this existed those quotes were unbounded: a frontmatter key can be
+ * any length and carry any character, and it reached the reader verbatim,
+ * outside the cap and the JSON.stringify that evidence goes through
+ * (THREATS.md, the evidence channel). Same bound as evidence, then: whitespace
+ * collapsed, capped, and anything that is not printable ASCII escaped so a
+ * terminal cannot be steered and an invisible character cannot vanish.
+ */
+export function fragment(text, max = 60) {
+  const flat = String(text).replace(/\s+/g, ' ').trim();
+  const cut = flat.length > max ? `${flat.slice(0, max)}…` : flat;
+  return cut.replace(/[^\x20-\x7e…]/g, (ch) => {
+    const cp = ch.codePointAt(0);
+    return cp > 0xffff ? `\\u{${cp.toString(16)}}` : `\\u${cp.toString(16).padStart(4, '0')}`;
+  });
+}
+
 function walk(root) {
   const files = [];
   const symlinks = [];
@@ -715,8 +736,16 @@ export function auditSkill(root, options = {}) {
   const excludeRes = (options.exclude ?? []).map(globToRe);
   const isExcluded = (rel) => excludeRes.some((re) => re.test(rel) || re.test(basename(rel)));
   const findings = [];
+  // `evidence: false` withholds the matched bytes — every finding's evidence is
+  // null, and the fragments `why` would quote from the artefact are replaced
+  // rather than bounded. Decided here, in the one function that builds
+  // findings, so the CLI's --no-evidence cannot withhold one channel and leak
+  // through the other. What it cannot withhold is `file`: a location cannot be
+  // withheld from a report about a location, and the artefact named its files.
+  const withhold = options.evidence === false;
+  const quote = (text) => (withhold ? '[withheld]' : fragment(text));
   const add = (sev, code, why, file, loc, evidence) =>
-    findings.push({ sev, code, why, file, line: loc?.line ?? null, col: loc?.col ?? null, evidence: evidence ?? null });
+    findings.push({ sev, code, why, file, line: loc?.line ?? null, col: loc?.col ?? null, evidence: withhold ? null : evidence ?? null });
 
   let stat;
   try {
@@ -743,12 +772,12 @@ export function auditSkill(root, options = {}) {
     }
     const top = f.rel.split('/')[0];
     if (CONFIG_DIRS.has(top)) {
-      add(SEV.BLOCK, 'CONFIG-OUTOFSCOPE', `Lives under ${top}/ — this is a plugin bundle, which this audit does not cover.`, f.rel, null, null);
+      add(SEV.BLOCK, 'CONFIG-OUTOFSCOPE', `Lives under ${quote(top)}/ — this is a plugin bundle, which this audit does not cover.`, f.rel, null, null);
     } else if (top === CROSS_HARNESS_DIR) {
       if (skillFile) {
         add(SEV.NOTE, 'CONFIG-CROSSHARNESS', `Cross-harness metadata for another agent runtime. Read and scanned like any other file, but the invocation policy it declares is not enforced by this harness — confirm it agrees with SKILL.md rather than assuming it does.`, f.rel, null, null);
       } else {
-        add(SEV.BLOCK, 'CONFIG-OUTOFSCOPE', `Lives under ${top}/ with no SKILL.md at the root — this is a plugin bundle, which this audit does not cover.`, f.rel, null, null);
+        add(SEV.BLOCK, 'CONFIG-OUTOFSCOPE', `Lives under ${quote(top)}/ with no SKILL.md at the root — this is a plugin bundle, which this audit does not cover.`, f.rel, null, null);
       }
     }
   }
@@ -809,16 +838,16 @@ export function auditSkill(root, options = {}) {
       add(SEV.BLOCK, 'STRUCT-NOFRONTMATTER', fm.error, 'SKILL.md', { line: 1, col: 1 }, null);
     } else {
       for (const dup of fm.duplicates) {
-        add(SEV.BLOCK, 'STRUCT-DUPKEY', `Duplicate frontmatter key "${dup}". Parsers take the last; a reader takes the first. That gap is exactly where a second description hides.`, 'SKILL.md', null, dup);
+        add(SEV.BLOCK, 'STRUCT-DUPKEY', `Duplicate frontmatter key "${quote(dup)}". Parsers take the last; a reader takes the first. That gap is exactly where a second description hides.`, 'SKILL.md', null, dup);
       }
       for (const [key, v] of fm.keys) {
         if (SPEC_FRONTMATTER_KEYS.has(key)) continue;
         if (HOOK_FRONTMATTER_KEYS.has(key)) {
-          add(SEV.BLOCK, 'CONFIG-HOOKFRONTMATTER', `Frontmatter key "${key}" registers hooks that run on tool events for the rest of the session, outside the agent's judgment — the same capability a hooks.json file is blocked for.`, 'SKILL.md', { line: v.line, col: 1 }, key);
+          add(SEV.BLOCK, 'CONFIG-HOOKFRONTMATTER', `Frontmatter key "${quote(key)}" registers hooks that run on tool events for the rest of the session, outside the agent's judgment — the same capability a hooks.json file is blocked for.`, 'SKILL.md', { line: v.line, col: 1 }, key);
         } else if (HARNESS_FRONTMATTER_KEYS.has(key)) {
-          add(SEV.NOTE, 'STRUCT-NONPORTABLE', `Frontmatter key "${key}" is a Claude Code extension, not part of the Agent Skills spec. It loads here, but claude.ai upload, the Skills API and package_skill.py reject it with a hard error, so this skill cannot travel to those.`, 'SKILL.md', { line: v.line, col: 1 }, key);
+          add(SEV.NOTE, 'STRUCT-NONPORTABLE', `Frontmatter key "${quote(key)}" is a Claude Code extension, not part of the Agent Skills spec. It loads here, but claude.ai upload, the Skills API and package_skill.py reject it with a hard error, so this skill cannot travel to those.`, 'SKILL.md', { line: v.line, col: 1 }, key);
         } else {
-          add(SEV.REVIEW, 'STRUCT-UNKNOWNKEY', `Frontmatter key "${key}" is recognised by neither the Agent Skills spec nor Claude Code. It will be ignored by the loader, which makes it a good hiding place.`, 'SKILL.md', { line: v.line, col: 1 }, key);
+          add(SEV.REVIEW, 'STRUCT-UNKNOWNKEY', `Frontmatter key "${quote(key)}" is recognised by neither the Agent Skills spec nor Claude Code. It will be ignored by the loader, which makes it a good hiding place.`, 'SKILL.md', { line: v.line, col: 1 }, key);
         }
       }
 
@@ -835,7 +864,7 @@ export function auditSkill(root, options = {}) {
           add(SEV.REVIEW, 'STRUCT-LONGNAME', `Name exceeds ${MAX_NAME_LENGTH} characters.`, 'SKILL.md', { line: nameEntry.line, col: 1 }, `${name.length} chars`);
         }
         if (name !== basename(root)) {
-          add(SEV.NOTE, 'STRUCT-NAMEMISMATCH', `Frontmatter name "${name}" differs from the directory name "${basename(root)}". Harmless, but it makes the skill hard to find by either name.`, 'SKILL.md', { line: nameEntry.line, col: 1 }, null);
+          add(SEV.NOTE, 'STRUCT-NAMEMISMATCH', `Frontmatter name "${quote(name)}" differs from the directory name "${basename(root)}". Harmless, but it makes the skill hard to find by either name.`, 'SKILL.md', { line: nameEntry.line, col: 1 }, null);
         }
       }
 
@@ -976,7 +1005,7 @@ export function auditSkill(root, options = {}) {
   // impossible to set aside.
   for (const [ref, referrer] of referenced) {
     if (!texts.has(ref) && !files.some((f) => f.rel === ref)) {
-      add(SEV.NOTE, 'STRUCT-DEADREF', `References ${ref}, which does not exist. Either the skill is incomplete, or it was trimmed without updating the spine.`, referrer, null, ref);
+      add(SEV.NOTE, 'STRUCT-DEADREF', `References ${quote(ref)}, which does not exist. Either the skill is incomplete, or it was trimmed without updating the spine.`, referrer, null, ref);
     }
   }
   // Graduated, because a spine that says "the templates in assets/" without
@@ -986,9 +1015,9 @@ export function auditSkill(root, options = {}) {
     const dir = f.rel.match(/^(references|scripts|assets|examples)\//)?.[1];
     if (!dir || mentioned.has(f.rel)) continue;
     if (mentionedDirs.has(dir)) {
-      add(SEV.NOTE, 'STRUCT-UNNAMED', `Not named individually, though ${dir}/ is referenced. Confirm it is one of the files the spine means.`, f.rel, null, null);
+      add(SEV.NOTE, 'STRUCT-UNNAMED', `Not named individually, though ${quote(dir)}/ is referenced. Confirm it is one of the files the spine means.`, f.rel, null, null);
     } else {
-      add(SEV.REVIEW, 'STRUCT-ORPHAN', `Nothing in this skill mentions ${dir}/ at all. A file nobody points at is either dead weight or a payload staged for something else to find.`, f.rel, null, null);
+      add(SEV.REVIEW, 'STRUCT-ORPHAN', `Nothing in this skill mentions ${quote(dir)}/ at all. A file nobody points at is either dead weight or a payload staged for something else to find.`, f.rel, null, null);
     }
   }
 
@@ -1202,10 +1231,28 @@ export function summarise(findings) {
 
 const USAGE = `audit-skill — static audit of an untrusted skill directory
 
-  ${invokedAs()} <skill-dir> [--json] [--quiet] [--exclude <glob>]…
+  ${invokedAs()} <skill-dir> [--json] [--quiet] [--no-evidence] [--exclude <glob>]…
 
   --json            machine-readable findings
   --quiet           suppress NOTE-level findings
+  --no-evidence     withhold the matched bytes. Each finding keeps its severity,
+                    code, file, location and reason; the excerpt of what
+                    matched is not printed, and a reason that would quote the
+                    artefact says [withheld] instead. Counts, verdict and exit
+                    code are unchanged — the flag changes what is shown, never
+                    what was found. Under --json every finding's evidence is
+                    null and the top level says "evidence": "withheld".
+
+                    For the reader that is an agent. An excerpt is text the
+                    artefact's author chose, and printing it into an agent's
+                    context is the thing intake kept out of it (THREATS.md).
+                    A flag, deliberately, and not a test of whether stdout is
+                    a terminal: a report must not mean different things
+                    depending on what it is piped into.
+
+                    What it cannot withhold is the file name — a location
+                    cannot be withheld from a report about a location, and the
+                    artefact named its own files.
   --exclude <glob>  attribute findings in matching files separately, and keep
                     them out of the exit code. Repeatable. Matches a relative
                     path or a bare filename; * and ** are supported.
@@ -1271,6 +1318,7 @@ if (invokedAsScript()) {
   }
   const json = args.includes('--json');
   const quiet = args.includes('--quiet');
+  const noEvidence = args.includes('--no-evidence');
   const exclude = [];
   const positional = [];
   for (let i = 0; i < args.length; i++) {
@@ -1291,7 +1339,7 @@ if (invokedAsScript()) {
     process.exit(0);
   }
 
-  const result = auditSkill(target, { exclude });
+  const result = auditSkill(target, { exclude, evidence: !noEvidence });
   if (result.fatal) {
     process.stderr.write(`error: ${result.fatal}\n`);
     process.exit(2);
@@ -1304,7 +1352,10 @@ if (invokedAsScript()) {
 
   if (json) {
     process.stdout.write(
-      `${JSON.stringify({ target, counts, excluded, verdict, exclude, excludedFiles: result.excludedFiles, findings: visible, files: result.files }, null, 2)}\n`
+      // `evidence` at the top level says whether the null on every finding
+      // below is a withheld excerpt or an absent one — a consumer that cannot
+      // tell those apart cannot tell a clean scan from a silenced one.
+      `${JSON.stringify({ target, counts, excluded, verdict, evidence: noEvidence ? 'withheld' : 'shown', exclude, excludedFiles: result.excludedFiles, findings: visible, files: result.files }, null, 2)}\n`
     );
     process.exit(exitCode);
   }
@@ -1322,7 +1373,10 @@ if (invokedAsScript()) {
     process.stdout.write(`         ${f.why}\n\n`);
   };
 
-  process.stdout.write(`\naudit-skill · ${basename(target)} · ${result.files.length} file(s)\n\n`);
+  // Said once, in the header, rather than once per finding: a report that
+  // withholds every excerpt and does not say so reads like a scan that found
+  // nothing worth quoting.
+  process.stdout.write(`\naudit-skill · ${basename(target)} · ${result.files.length} file(s)${noEvidence ? ' · evidence withheld' : ''}\n\n`);
   if (shown.length === 0) process.stdout.write('  no findings\n\n');
   for (const f of shown) line(f);
 

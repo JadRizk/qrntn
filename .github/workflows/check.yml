@@ -12,10 +12,12 @@
 # class, and it is the class this whole project exists to worry about. A
 # local-only gate cannot ask the question.
 #
-# `nexus/` is deliberately NOT installed. check.mjs skips its two gates when
-# `nexus/node_modules` is absent and says so rather than passing quietly — and
-# `view` is not in 0.1.0, so the viewer's toolchain must not be able to block
-# the pipeline's release. When `view` ships, add a job; do not add it here.
+# `nexus/` is deliberately NOT installed in the matrix. check.mjs skips its
+# gates when `nexus/node_modules` is absent and says so rather than passing
+# quietly, and the viewer's toolchain must not be able to block the pipeline's
+# release. `view` ships in 0.2, so it has its own job below — `viewer` — which
+# installs the toolchain, builds the bundle the tarball carries, and runs every
+# gate with it present, so the smoke gate drives the real thing.
 #
 # Publishing is not here, and is no longer deferred. The reason it was — a
 # publish pipeline debugged during the first publish is two problems at once —
@@ -111,10 +113,39 @@ jobs:
           process.exit(1)
           EOF
 
+  # The matrix above runs without the viewer's toolchain, so its smoke gate
+  # can only assert that `view` refuses when its bundle is absent. This job is
+  # the other half: the bundle built the way release.yml builds it, and every
+  # gate run with it present — the smoke gate then exports a library's graph
+  # through the bundled exporter and serves it from the tarball. One Node, not
+  # the matrix: the bundle is plain JS and the matrix already covers the
+  # runtime; what this proves is the build and the wiring.
+  viewer:
+    name: the viewer bundle builds, and view serves it from the tarball
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: the viewer's toolchain
+        run: npm ci --prefix nexus --no-audit --no-fund
+      - name: every gate, with the bundle
+        run: node check.mjs
+
   # The smoke gate runs inside check.mjs above, on every Node in the matrix.
   # This job asserts the thing a matrix cannot: that the tarball's own contents
   # are what the manifest says, printed where a human reviewing a release can
-  # read them without running anything.
+  # read them without running anything. A listing without view/ would be true
+  # of the checkout and false of the tarball, so the bundle has to exist before
+  # the listing is taken — but building it here explicitly stopped being the
+  # way that happens. `npm pack` runs `prepack`, and `--dry-run` is no
+  # exception: it builds the tarball and declines to write it, hooks included.
+  #
+  # The toolchain install stays, and is now the whole of what this job sets up:
+  # prepack SKIPS rather than refuses when nexus/node_modules is absent, so
+  # without this step the dry run would succeed and list a tarball with no
+  # view/ in it — the exact wrong answer, arrived at quietly.
   tarball:
     name: what the tarball contains
     runs-on: ubuntu-latest
@@ -123,5 +154,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: the viewer's toolchain, which prepack builds the bundle with
+        run: npm ci --prefix nexus --no-audit --no-fund
       - name: npm pack --dry-run
         run: npm pack --dry-run

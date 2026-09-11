@@ -82,23 +82,54 @@ const MUTATIONS = [
 		find: "refuse('no AUDIT.md', 'nothing has been adjudicated",
 		replace: "return null; refuse('no AUDIT.md', 'nothing has been adjudicated"
 	},
+	// Text the artefact chose, on its way into a refusal a human reads. Two
+	// sites quote file names from inside the artefact, and both halves of the
+	// bound need their own mutation: a name long enough to be truncated never
+	// reaches the escaping, and one short enough never reaches the cap.
+	{
+		name: 'the re-scan detail carries the artefact\'s file name unbounded',
+		find: '\t\t\tblocking.map((f) => `${f.code} ${fromArtefact(f.file)}`).slice(0, 5).join(\', \')',
+		replace: '\t\t\tblocking.map((f) => `${f.code} ${f.file}`).slice(0, 5).join(\', \')'
+	},
+	{
+		name: 'the divergence detail carries the artefact\'s file name unbounded',
+		find: '\t\t\t`changed: ${diverged.slice(0, 6).map((f) => fromArtefact(f)).join(\', \')}',
+		replace: '\t\t\t`changed: ${diverged.slice(0, 6).join(\', \')}'
+	},
+	{
+		name: 'a control character in a file name is carried, not escaped',
+		find: '\treturn cut.replace(/[^\\x20-\\x7e…]/g, (ch) => {',
+		replace: '\treturn cut.replace(/[^\\s\\S]/g, (ch) => {'
+	},
+	{
+		name: 'an over-long file name is no longer capped',
+		find: '\tconst cut = flat.length > max ? `${flat.slice(0, max)}…` : flat',
+		replace: '\tconst cut = flat'
+	},
+	// The next four mutate audit-record.mjs, not promote.mjs: the AUDIT.md
+	// contract moved there when `adopt` needed it too. The suite still has to
+	// catch each of them through promote, which is what `file` is for.
 	{
 		name: 'template placeholders no longer detected',
+		file: 'audit-record.mjs',
 		find: 'const PLACEHOLDERS = [',
 		replace: 'const PLACEHOLDERS = [];\nconst UNUSED_PLACEHOLDERS = ['
 	},
 	{
 		name: 'verdict parsing narrows back to a bare cell, refusing the house format',
+		file: 'audit-record.mjs',
 		find: "|[\\s*]*(ADOPT|REVISE|REJECT)\\b/i",
 		replace: "|\\s*(ADOPT|REVISE|REJECT)\\b/i"
 	},
 	{
 		name: 'a REJECT verdict promotes anyway',
+		file: 'audit-record.mjs',
 		find: "else if (verdict === 'REJECT')",
 		replace: 'else if (false)'
 	},
 	{
 		name: 'any disposition text accepted, including none',
+		file: 'audit-record.mjs',
 		find: 'const DISPOSITIONS = /^(real|accepted|false positive|fixed|removed|n\\/a)\\b/i',
 		replace: 'const DISPOSITIONS = /(?:)/'
 	},
@@ -204,8 +235,20 @@ const sandboxTest = join(dir, 'promote.test.mjs')
 cpSync(TEST, sandboxTest)
 cpSync(CHECK_CATALOG, join(dir, 'check-catalog.mjs'))
 cpSync(LEDGER, join(dir, 'ledger.mjs'))
+// The suite imports the scanner's `fragment` to compare a refusal detail
+// against the bound it should carry — beside the test, as a sibling, which is
+// not where the fixture repos stage the scanner. Without this the import
+// failed in every run and the inert control reported the suite as broken,
+// which it was, for a reason that had nothing to do with any mutation.
+cpSync(join(HERE, 'audit-skill.mjs'), join(dir, 'audit-skill.mjs'))
+// The suite's fixture builder copies this from beside the source under test,
+// so a mutation naming `file: 'audit-record.mjs'` lands in every fixture.
+const RECORD = join(HERE, 'audit-record.mjs')
+const sandboxRecord = join(dir, 'audit-record.mjs')
+cpSync(RECORD, sandboxRecord)
 cpSync(SKILL_AUDIT, join(dir, 'skills', 'skill-audit'), { recursive: true })
 const original = readFileSync(SRC, 'utf8')
+const originalRecord = readFileSync(RECORD, 'utf8')
 
 let asExpected = 0
 let unexpected = 0
@@ -213,7 +256,9 @@ let unexpected = 0
 try {
 	for (const m of MUTATIONS) {
 		const expectSurvival = m.expect === 'survives'
-		const occurrences = original.split(m.find).length - 1
+		const inRecord = m.file === 'audit-record.mjs'
+		const source = inRecord ? originalRecord : original
+		const occurrences = source.split(m.find).length - 1
 		if (occurrences !== 1) {
 			console.error(
 				`  ERROR     "${m.name}" — anchor found ${occurrences} times, expected exactly 1.\n` +
@@ -222,7 +267,9 @@ try {
 			unexpected++
 			continue
 		}
-		writeFileSync(sandboxSrc, original.replace(m.find, m.replace))
+		// Both files written every time, so a mutation never outlives its turn.
+		writeFileSync(sandboxSrc, inRecord ? original : original.replace(m.find, m.replace))
+		writeFileSync(sandboxRecord, inRecord ? originalRecord.replace(m.find, m.replace) : originalRecord)
 		const r = spawnSync('node', [sandboxTest], { encoding: 'utf8' })
 		const survived = r.status === 0
 		if (survived === expectSurvival) {
@@ -242,8 +289,8 @@ try {
 	rmSync(dir, { recursive: true, force: true })
 }
 
-if (readFileSync(SRC, 'utf8') !== original) {
-	console.error('  ERROR     the shipped script changed during this run — it should never be written.')
+if (readFileSync(SRC, 'utf8') !== original || readFileSync(RECORD, 'utf8') !== originalRecord) {
+	console.error('  ERROR     a shipped script changed during this run — it should never be written.')
 	unexpected++
 }
 

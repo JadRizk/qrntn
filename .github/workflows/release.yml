@@ -291,6 +291,16 @@ jobs:
             echo "  the step should be deleted rather than believed."
           fi
 
+      # `view` ships a bundle that is built, not committed: the viewer's own
+      # build plus its graph exporter bundled to plain Node, into view/, which
+      # `files` lists and .gitignore does not. Built here, before publish, so
+      # the tarball carries it and prepublishOnly's smoke gate drives it. A
+      # release that skipped this step would publish a `view` that refuses
+      # with a packaging fault — which is what the smoke gate exists to catch,
+      # and why this runs even when the publish itself does not.
+      - name: the viewer bundle the tarball ships
+        run: npm ci --prefix nexus --no-audit --no-fund && npm run build:cli --prefix nexus
+
       - name: publish
         if: github.event_name == 'push' || inputs.publish
         env:

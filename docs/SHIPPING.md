@@ -29,8 +29,8 @@ a working tool behind its two least-finished parts buys nothing.
 | `overlap` | `commands/overlap.mjs` | wrap |
 | `ledger` | `commands/ledger.mjs` | wrap |
 | `check` | **new — §2** | composition over `check-catalog.mjs` and `ledger --check` |
-| `adopt` | — | **0.2** |
-| `view` | — | **0.2** |
+| `adopt` | `commands/adopt.mjs` | **0.2 — landed**, §8 |
+| `view` | `commands/view.mjs` + `view/` | **0.2 — landed**, §8 |
 | `manifest` | — | does not ship, per `SURFACE.md` |
 
 **`0.2` also carries `--no-evidence`.** Not a verb, so not a row above — a flag
@@ -450,19 +450,36 @@ independent readers a writer has to satisfy: `check-catalog.mjs:209`
 `## Refused` is `` `name` `` | `[repo](url)` | date | blocking finding, and
 `## Declined` adds a scan and a why. And `promote.mjs:109` already refuses a
 `REJECT` with *"a rejected skill is deleted with a REJECTED.md row, never
-promoted"*, so the shape of the outcome is decided too. Two questions remain
+promoted"*, so the shape of the outcome is decided too. Two questions remained
 open and were deliberately not settled here: whether `--decline` keeps or
 deletes the bytes, and whether `adopt` moves the artefact or only records the
 decision and leaves the move to `promote`. Two verbs that both move things is
 how they drift.
 
+**Both answered, 2026-09-09, for `0.2`.** `--decline` deletes: declined and
+refused differ in what the row says, not in what happens to the bytes, and the
+row carries the source, the pinned commit, the scan and the reason, so the
+source is re-fetchable at the same bytes and quarantine is a state that ends.
+`adopt` records only: `promote` stays the one thing that moves bytes into
+`skills/`, and the one filesystem act `adopt` has beyond writing records is the
+removal of what it declined or refused. The `AUDIT.md` contract moved out of
+`promote.mjs` into `commands/audit-record.mjs` so both verbs read one
+statement of it — `promote.mjs` runs a promotion on import, so sharing by
+import was not available and typing it twice was the drift this section is
+about. **Landed.**
+
 **`view`** — three problems, none of them packaging:
 
-- `nexus/scripts/export-graph.mjs:26` resolves `REPO_ROOT` from
-  `import.meta.url`. That is precondition 2 of `SURFACE.md` — the finding that
-  shaped the entire split — still live in the viewer, untouched because SK-97
-  scoped itself to `commands/`. Until it takes a library root, `view` can only
-  graph the tree it was installed into.
+- `nexus/scripts/export-graph.mjs` used to resolve its root from
+  `import.meta.url` — precondition 2 of `SURFACE.md`, the finding that shaped
+  the entire split, still live in the viewer because SK-97 scoped itself to
+  `commands/`. **Landed** since: it resolves `--library`, then `SKILL_LIBRARY`,
+  then the working directory through `chooseLibrary` in
+  `nexus/src/data/integrity.ts`, unit-tested for the order and the refusal.
+  What it does *not* take is an output path. `graph.json` is still written
+  beside the viewer, resolved from the script's own URL, which is right for a
+  checkout and wrong for a bundle running from a tarball with no viewer beside
+  it. That is the remaining precondition for `view`, and it is smaller.
 - The exporter's dependency is **shallower than it first appears**.
   `integrity.ts` has *zero* zod references — 223 lines of pure logic. Only
   `types.ts` uses zod, and `export-graph.mjs` imports exactly one thing from it:
@@ -475,6 +492,20 @@ how they drift.
   extracted from. Fine as a fixture, and it must never ship as truth — `view`
   generates the graph for the library it is pointed at, when it is pointed
   there.
+
+**Landed, 2026-09-09.** All three, as recorded: the exporter takes `--out`;
+`nexus/scripts/build-view.mjs` builds the viewer and bundles the exporter to
+one plain-Node file into `view/`, gitignored, listed in `files`, made at
+publish time by `release.yml` and by `check.mjs` when the toolchain is
+installed; `commands/view.mjs` runs the bundle against the named library into
+a temporary directory and serves that on `127.0.0.1`, answering nothing under
+`/data/` but the graph it exported. The fixture is removed from the build and
+would not be served if it were not. The smoke gate drives the real tarball
+when the bundle is present and asserts the packaging-fault refusal when it is
+absent; CI's `viewer` job is the run where it is present. What was not
+foreseen: Ctrl-C is a signal death to the dispatcher, which reports it as
+`1`, so `view` handles `SIGINT` itself and exits `0` — a viewer someone closed
+is not a failed gate.
 
 ## The frozen contracts
 
@@ -516,8 +547,10 @@ lives here.
   `ledger.mjs:348` read `~/.claude/skills` by default. §4 makes the claim true;
   until §4 lands it is aspirational.
 - **`SURFACE.md`, precondition 2:** described as satisfied for the command
-  surface, which it is. It was never applied to `nexus/scripts/export-graph.mjs`,
-  which still resolves its root from `import.meta.url`.
+  surface, which it is. It was not applied to `nexus/scripts/export-graph.mjs`
+  in SK-97; it has been since (§8), and this entry said "still resolves its root
+  from `import.meta.url`" for a while after that stopped being true. The
+  exporter's *output* path still resolves from its own URL, by design.
 - **`PORTABILITY.md`, "What was not exercised":** intake's successful path in a
   foreign tree is now exercised, by `round-trip.test.mjs`.
 

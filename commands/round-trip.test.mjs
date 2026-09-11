@@ -182,7 +182,22 @@ try {
 	}
 
 	needs(join(lib, 'inbox', 'tidy-notes'), 'intake produced no inbox artefact — every later stage is unaskable')
-	writeFileSync(join(lib, 'inbox', 'tidy-notes', 'AUDIT.md'), AUDIT_MD)
+	// As a person leaves it: findings decided, the verdict cell still holding
+	// the template's menu. `adopt` is what turns that into a verdict.
+	writeFileSync(join(lib, 'inbox', 'tidy-notes', 'AUDIT.md'), AUDIT_MD.replace('| **Verdict** | ADOPT |', '| **Verdict** | ADOPT · REVISE · REJECT |'))
+
+	// ── adopt ────────────────────────────────────────────────────────────────
+	{
+		const before = run('promote.mjs', ['--library', lib, 'tidy-notes', '--json'])
+		check('promote: refuses the record before the decision is recorded', before.code === 1 && /verdict menu/.test(before.all), before.all.slice(0, 300))
+
+		const r = run('adopt.mjs', ['--library', lib, 'tidy-notes', '--json'])
+		let json = null
+		try { json = JSON.parse(r.out) } catch { /* asserted below */ }
+		check('adopt: recorded the decision intake and audit led to', r.code === 0 && json?.recorded === true, r.all.slice(0, 300))
+		check('adopt: wrote it into the record, not anywhere else', /\*\*ADOPT\*\*/.test(readFileSync(join(lib, 'inbox', 'tidy-notes', 'AUDIT.md'), 'utf8')) && !existsSync(join(lib, 'REJECTED.md')), '')
+		check('adopt: moved nothing', existsSync(join(lib, 'inbox', 'tidy-notes', 'SKILL.md')) && !existsSync(join(lib, 'skills', 'tidy-notes')), '')
+	}
 
 	// ── promote ──────────────────────────────────────────────────────────────
 	let json = null

@@ -32,7 +32,9 @@
   },
   "files": [
     "bin/qrntn.mjs",
+    "commands/adopt.mjs",
     "commands/argv.mjs",
+    "commands/audit-record.mjs",
     "commands/audit-skill.mjs",
     "commands/check-catalog.mjs",
     "commands/check-library.mjs",
@@ -44,8 +46,10 @@
     "commands/promote.mjs",
     "commands/refresh.mjs",
     "commands/usage.mjs",
+    "commands/view.mjs",
     "commands/tint.mjs",
     "commands/TRANSCRIPTS.md",
+    "view/",
     "README.md",
     "CHANGELOG.md",
     "LICENSE",
@@ -54,6 +58,11 @@
   "scripts": {
     "test": "node check.mjs",
     "test:quick": "node check.mjs --quick",
+    "gates": "node check.mjs --list",
+    "smoke": "node smoke.mjs",
+    "build:view": "node nexus/scripts/build-view.mjs",
+    "dev:view": "npm run dev --prefix nexus",
+    "prepack": "node prepack.mjs",
     "prepublishOnly": "node check.mjs"
   }
 }

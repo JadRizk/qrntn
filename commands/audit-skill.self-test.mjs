@@ -134,8 +134,8 @@ const MUTATIONS = [
   {
     // And the other direction: a bundle with no SKILL.md waved through.
     name: 'agents/ without a SKILL.md no longer blocks',
-    find: "        add(SEV.BLOCK, 'CONFIG-OUTOFSCOPE', `Lives under ${top}/ with no SKILL.md at the root",
-    replace: "        add(SEV.NOTE, 'CONFIG-OUTOFSCOPE', `Lives under ${top}/ with no SKILL.md at the root"
+    find: "        add(SEV.BLOCK, 'CONFIG-OUTOFSCOPE', `Lives under ${quote(top)}/ with no SKILL.md at the root",
+    replace: "        add(SEV.NOTE, 'CONFIG-OUTOFSCOPE', `Lives under ${quote(top)}/ with no SKILL.md at the root"
   },
   {
     name: 'spec frontmatter keys emptied (every key reads as unrecognised)',
@@ -224,8 +224,30 @@ const MUTATIONS = [
   },
   {
     name: 'dead references attributed to the missing path again',
-    find: '      add(SEV.NOTE, \'STRUCT-DEADREF\', `References ${ref}, which does not exist. Either the skill is incomplete, or it was trimmed without updating the spine.`, referrer, null, ref);',
+    find: '      add(SEV.NOTE, \'STRUCT-DEADREF\', `References ${quote(ref)}, which does not exist. Either the skill is incomplete, or it was trimmed without updating the spine.`, referrer, null, ref);',
     replace: "      add(SEV.NOTE, 'STRUCT-DEADREF', 'Referenced file does not exist.', ref, null, null);"
+  },
+  {
+    // --no-evidence withholding one channel and leaking through the other —
+    // the failure that looks like success (THREATS.md, the evidence channel).
+    name: '--no-evidence withholds the excerpt but the reason still quotes the artefact',
+    find: "  const quote = (text) => (withhold ? '[withheld]' : fragment(text));",
+    replace: '  const quote = (text) => fragment(text);'
+  },
+  {
+    name: '--no-evidence no longer withholds the excerpt',
+    find: '    findings.push({ sev, code, why, file, line: loc?.line ?? null, col: loc?.col ?? null, evidence: withhold ? null : evidence ?? null });',
+    replace: '    findings.push({ sev, code, why, file, line: loc?.line ?? null, col: loc?.col ?? null, evidence: evidence ?? null });'
+  },
+  {
+    name: 'a quoted fragment reaches the reason unbounded again',
+    find: '  const cut = flat.length > max ? `${flat.slice(0, max)}…` : flat;',
+    replace: '  const cut = flat;'
+  },
+  {
+    name: 'a quoted fragment reaches the reason unescaped again',
+    find: '  return cut.replace(/[^\\x20-\\x7e…]/g, (ch) => {',
+    replace: '  return cut.replace(/[^\\s\\S]/g, (ch) => {'
   },
   {
     // The record files become ordinary referrers again, which is the state that

@@ -35,7 +35,7 @@
 // caught it. The front door stays plain so that it still works when nothing
 // else does.
 
-import { spawnSync } from 'node:child_process'
+import { spawn } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -66,12 +66,14 @@ const VERBS = [
 	['init', 'init.mjs', 'make a folder of skills into a library — once, before anything else'],
 	['intake', 'intake.mjs', 'fetch a skill at a pinned commit into quarantine, without reading it'],
 	['audit', 'audit-skill.mjs', 'scan every file as data; report, never edit'],
+	['adopt', 'adopt.mjs', 'record the decision — adopted, declined or refused — before anything moves'],
 	['promote', 'promote.mjs', 're-scan and move it into the library, or refuse'],
 	['refresh', 'refresh.mjs', 're-diff the pin against upstream; report drift, never move the pin'],
 	['usage', 'usage.mjs', 'count what actually fired, from local transcripts'],
 	['overlap', 'overlap.mjs', 'which descriptions compete for the same request'],
 	['ledger', 'ledger.mjs', 'the record per held skill — regenerate and diff it'],
-	['check', 'check-library.mjs', 'is this library consistent — every skill filed, every entry matching']
+	['check', 'check-library.mjs', 'is this library consistent — every skill filed, every entry matching'],
+	['view', 'view.mjs', 'the graph, served locally against any library']
 ]
 
 const script = (verb) => VERBS.find(([v]) => v === verb)?.[1] ?? null
@@ -166,12 +168,61 @@ if (!existsSync(path)) {
 // could set, and the whole point is that this is not something a caller says.
 // commands/invoked-as.mjs is the only reader, and it validates rather than
 // trusts, because the value ends up in text a user reads.
-const r = spawnSync(process.execPath, [path, ...rest], {
+// ASYNC SPAWN, SO AN INTERRUPT REACHES THE VERB AND THE VERB'S ANSWER REACHES
+// THE SHELL.
+//
+// This was `spawnSync` while every verb was short-lived and none handled a
+// signal. `view` runs until interrupted — Ctrl-C is how it is *meant* to stop,
+// and it answers 0 — and `spawnSync` cannot carry that:
+//
+//   - this process has no handler, so it dies of SIGINT before the two lines
+//     after the spawn ever run. The verb's 0 is discarded and the shell sees
+//     this process's own signal death, which is 130 and not one of the three
+//     codes the README freezes;
+//   - and a no-op handler here is worse. Ctrl-C at a terminal signals the
+//     whole foreground group, so the verb gets its own copy and that case
+//     works — but `kill -INT` on this pid alone reaches only this process,
+//     the verb never hears it, and `spawnSync` blocks forever. A hang is a
+//     worse answer than a wrong exit code.
+//
+// So: keep a handle on the child, forward the signal to it, and let it decide
+// what an interrupt means. `view` exits 0 and that 0 is propagated below.
+// Every other verb is unchanged — none installs a handler, so each still dies
+// of the forwarded signal and still arrives below as `status === null`.
+//
+// Found by running `qrntn view` and pressing Ctrl-C. `commands/view.test.mjs`
+// could not see it: it spawns the script, as every suite here does, so the
+// dispatcher was not in the path. `commands/qrntn.test.mjs` is where the
+// assertion belongs, because the dispatcher is what it tests.
+const child = spawn(process.execPath, [path, ...rest], {
 	stdio: 'inherit',
 	env: { ...process.env, [VERB_ENV]: verb }
 })
 
-// Killed by a signal rather than exiting: there is no status to propagate, and
-// reporting 0 would say the gate passed. 1 is the honest answer.
-if (r.status === null) process.exit(1)
-process.exit(r.status)
+for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
+	process.on(signal, () => {
+		// Already gone is not a failure: at a terminal the group got the signal
+		// too, so the child may have exited before this handler ran.
+		try {
+			child.kill(signal)
+		} catch {
+			/* nothing to forward it to */
+		}
+	})
+}
+
+child.on('error', (e) => {
+	// The child never started. Same class as a missing script, and said the
+	// same way rather than as a raw trace.
+	refuse(
+		`${verb} could not be started`,
+		`  ${e.code ?? e.name}: ${e.message}\n  This is a packaging fault, not something you did — please report it.`
+	)
+})
+
+child.on('exit', (code, signal) => {
+	// Killed by a signal rather than exiting: there is no status to propagate,
+	// and reporting 0 would say the gate passed. 1 is the honest answer.
+	if (code === null) process.exit(1)
+	process.exit(code)
+})

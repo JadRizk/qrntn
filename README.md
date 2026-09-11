@@ -17,7 +17,7 @@ adding a dependency: the text becomes instructions before any code runs.
 auditing them, deciding about them, and keeping the decision. A browser-based
 graph viewer that shows the whole library at once — every skill, where it came
 from, what the audit found, whether it has ever fired, whether its upstream has
-moved — runs from a checkout today; `qrntn view` ships in `0.2`.
+moved — is served by `qrntn view`, locally, against any library you name.
 
 ## It is not a scanner
 
@@ -48,35 +48,38 @@ does not defend against, which is the more useful half.
 
 ## The lifecycle
 
-Every stage below is real and happens today. Two of them do not yet have a
-command, and are marked as such — a stage without a verb is a thing you do by
-hand, not a thing that does not exist, and deleting the row to make the command
-list look complete is precisely the move this tool exists to refuse.
+Every stage below is real and happens today, and every one has a command.
+`0.1.x` shipped two of them without one and said so in this table rather than
+deleting the rows — a stage without a verb is a thing you do by hand, not a
+thing that does not exist, and making the list look complete is precisely the
+move this tool exists to refuse. `0.2` is the version that gave them theirs.
 
 | Stage | What happens | Command |
 |---|---|---|
 | **intake** | fetch from a link at a pinned commit, *without reading it*, into quarantine | `qrntn intake` |
 | **audit** | scan every file as data; a human adjudicates every finding; report only, never edit | `qrntn audit` |
-| **adopt / decline / refuse** | the human decides. A declined or refused skill keeps a permanent row, so it is never re-audited from nothing | by hand, into `AUDIT.md` and `REJECTED.md`; `qrntn adopt` in `0.2` |
+| **adopt / decline / refuse** | the human decides. A declined or refused skill keeps a permanent row, so it is never re-audited from nothing | `qrntn adopt` |
 | **promote** | a script re-scans and moves it into the library — or refuses | `qrntn promote` |
 | **ledger** | one machine-written record per held skill: origin, hashes, audit verdict, contract, install, usage | `qrntn ledger` |
 | **refresh** | re-diff the pinned commit against upstream; report drift, never move the pin | `qrntn refresh` |
 | **usage** | count what actually fired, from local transcripts, reading no message text | `qrntn usage` |
-| **view** | the graph, served locally against any skill library | from a checkout; `qrntn view` in `0.2` |
+| **view** | the graph, served locally against any skill library | `qrntn view` |
 
 ```
 npx qrntn init                 # once, to make a folder of skills into a library
 npx qrntn intake https://github.com/someone/skills/tree/main/foo
 npx qrntn audit inbox/foo      # audit takes the path it landed at, not the name
-                               # read the report; write the decision into
-                               # AUDIT.md, or a REJECTED.md row, by hand
+                               # read the report; decide every finding in AUDIT.md
+npx qrntn adopt foo            # record the verdict — or --decline / --refuse,
+                               # which writes a permanent REJECTED.md row instead
 npx qrntn promote foo
 npx qrntn refresh
 npx qrntn check                # is every skill filed and every record still true
 ```
 
-Nine verbs: `init`, `intake`, `audit`, `promote`, `refresh`, `usage`, `overlap`,
-`ledger`, `check`. Run `qrntn` with no arguments for what each one does.
+Eleven verbs: `init`, `intake`, `audit`, `adopt`, `promote`, `refresh`,
+`usage`, `overlap`, `ledger`, `check`, `view`. Run `qrntn` with no arguments
+for what each one does.
 
 ## The principles it is built on
 
@@ -134,14 +137,34 @@ the terminal check. A script reading this output never has to know, and
 `qrntn audit > report.txt` writes a clean file while still colouring the
 refusal it prints to stderr.
 
+**What `--no-evidence` withholds.** `audit` prints an excerpt of what matched
+under each finding, and that excerpt is text the skill's author chose. When the
+reader is an agent rather than a person, `qrntn audit inbox/foo --no-evidence`
+keeps every finding's severity, code, file, location and reason and withholds
+the bytes: the excerpt, a decoded payload, and any fragment the reason would
+have quoted. Counts, verdict and exit code do not change. It is a flag and not a
+test of where stdout goes, for the reason [`docs/THREATS.md`](docs/THREATS.md)
+gives: a report must not mean different things depending on what it is piped
+into.
+
 **Explicitly not frozen:** the `--json` shapes. Most commands emit JSON and
 those shapes are still moving in `0.x`.
 
 ## Where the code lives
 
-`commands/` holds the pipeline — init, intake, audit, promote, overlap, ledger,
-refresh, usage and the catalog check — with every test and mutation self-test
-beside the script it covers. `nexus/` is the viewer. `brand/` is where the
+`commands/` holds the pipeline — init, intake, audit, adopt, promote, overlap,
+ledger, refresh, usage and the catalog check — with every test and mutation
+self-test beside the script it covers. `audit-record.mjs` is the one
+statement of what a filled-in `AUDIT.md` contains; `adopt` and `promote` both
+read it, so the record one accepts is never one the other refuses.
+
+`view/` in the published package is not source. It is the viewer's build,
+plus the graph exporter bundled to one plain-Node file, made at publish time
+by `nexus/scripts/build-view.mjs` from the one implementation in `nexus/` —
+never reimplemented, never committed. `package.json` declares no dependencies
+because none are resolved on your machine; that directory nonetheless carries
+three.js, React and zod compiled in, and `NOTICE` says so. A tool about what
+enters a library should be plain about what it brings with it. `nexus/` is the viewer. `brand/` is where the
 identity was decided — a thesis, and a palette whose every number prints the
 command that reproduces it — and `site/` is the page built from those tokens.
 `check.mjs` runs the lot,
@@ -164,21 +187,26 @@ tool happens to be installed.
 
 ## Status
 
-**`qrntn` is on npm**, first published 2026-09-09 on the `latest` tag: nine
-verbs, zero dependencies, `node >= 20`. Every `npx` line above runs, and the
-badge above carries the current version rather than this paragraph. The name was
-chosen on 2026-09-07, changed to `qrntn` on 2026-09-08 when the first one could
-not be taken, and is recorded in SK-90.
+**`qrntn` is on npm**, first published 2026-09-09 on the `latest` tag. Every
+`npx` line above runs, and the badge above carries the current version rather
+than this paragraph. The name was chosen on 2026-09-07, changed to `qrntn` on
+2026-09-08 when the first one could not be taken, and is recorded in SK-90.
 
-`0.1.x` is a quiet release rather than a launch. `adopt` — the verb for the
-recorded decision the whole pitch rests on — and `view` are `0.2`, and until
-they land the decision is written by hand into `AUDIT.md` and `REJECTED.md`,
-which the lifecycle table above marks as such.
+`0.1.x` shipped nine verbs and was a quiet release rather than a launch: the
+decision itself was written by hand into `AUDIT.md` and `REJECTED.md`, and the
+graph viewer ran only from a checkout. `0.2` is the first version whose verb
+list matches the claim. `adopt` records the decision the whole pitch rests on,
+`view` serves the graph against any library, and the lifecycle table above
+therefore has no row naming a stage you do by hand. Eleven verbs, zero
+dependencies, `node >= 20`.
 
 From a checkout, `node check.mjs` runs every gate the project has: the suites,
 the mutation self-tests, and a smoke gate that packs the tarball, installs it
-into a clean directory with `HOME` pointed somewhere empty, and drives all nine
-verbs from it. [`docs/SHIPPING.md`](docs/SHIPPING.md) is the plan and marks what
+into a clean directory with `HOME` pointed somewhere empty, and drives every
+verb from it. [`docs/DEVELOPING.md`](docs/DEVELOPING.md) is the development
+loop — `source dev.sh` for a live, symlinked install against a throwaway
+library, a clone of yours, or the real thing — the four layers of testing and
+what each can see, and how to reproduce a pull request's CI locally. [`docs/SHIPPING.md`](docs/SHIPPING.md) is the plan and marks what
 has landed against what has not; [`CHANGELOG.md`](CHANGELOG.md) records what
 each release actually contained.
 
