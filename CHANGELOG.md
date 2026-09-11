@@ -67,7 +67,18 @@ capped, anything outside printable ASCII written as its escape. Found by review
 before release rather than after: a skill carrying a 200-character file name
 with an ANSI escape in it put the whole thing into `REJECTED.md` and printed
 the live escape to the terminal, and a file name containing a newline could
-have written a second, forged row naming a skill nobody decided about.
+have written a second, forged row naming a skill nobody decided about. The
+same bound now applies in `adopt`'s `--json`, and in the two `promote`
+refusals that quote file names from the artefact — the re-scan's blocking
+findings and the files that diverged from `ORIGIN.md` — which had the same
+exposure since `0.1.0` and were found by the second review pass.
+
+**`adopt` reports a removal that fails rather than crashing on it.** The row
+is written first and is the decision; if `inbox/<name>` then will not go — a
+permission, another process holding it — the result is a recorded decision
+with a named leftover and exit `0`, not a stack trace, an empty `--json` and a
+library nobody can tell the state of. The output says what to remove by hand,
+because a second run refuses on the row that already exists.
 
 **The `AUDIT.md` contract has one home.** The placeholders, the disposition
 rule and the verdict row moved out of `promote.mjs` into

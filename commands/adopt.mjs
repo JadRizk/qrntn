@@ -215,7 +215,13 @@ function scan(dir) {
 	return {
 		counts,
 		summary: `${counts.BLOCK ?? 0} block · ${counts.REVIEW ?? 0} review · ${counts.NOTE ?? 0} note`,
-		blocking: blocking.map((f) => ({ code: f.code, file: f.file }))
+		// The file is the artefact's to name, and this array goes into --json
+		// for a reader that may be an agent. JSON.stringify neutralises a
+		// control character, so a live escape cannot reach a terminal this
+		// way — but nothing capped the length, and THREATS.md's rule is about
+		// an agent's context as much as a person's screen. Bounded here, at
+		// the source, so the row and the JSON say the same thing.
+		blocking: blocking.map((f) => ({ code: f.code, file: fromArtefact(f.file) }))
 	}
 }
 
@@ -387,6 +393,11 @@ const refuse = (why, detail) => refusals.push({ why, detail })
 let row = null
 let section = null
 let origin = null
+// Whether inbox/<name> was removed after the row was written, and why not.
+// null until a decline or refuse actually runs; false with a reason when the
+// row is written and the directory would not go.
+let removed = null
+let removeError = null
 let scanned = null
 let priorRow = false
 
@@ -440,10 +451,11 @@ if (!existsSync(dir)) {
 			refuse(scanned.error.why, scanned.error.detail)
 		} else if (action === 'refuse') {
 			const first = scanned.blocking[0]
-			// The code is this tool's word; the file is the artefact's, and is
-			// bounded as such. `--why` is the human's own sentence and is left
-			// as they wrote it — accented text should not come back as escapes.
-			const finding = why ?? (first ? `${first.code} ${fromArtefact(first.file)}` : null)
+			// The code is this tool's word; the file is the artefact's, and was
+			// bounded once, in scan(), so the row and --json carry the same
+			// text. `--why` is the human's own sentence and is left as they
+			// wrote it — accented text should not come back as escapes.
+			const finding = why ?? (first ? `${first.code} ${first.file}` : null)
 			if (!finding) {
 				refuse('nothing blocks', 'the scan found no blocking finding — name the reason with --why, or decline instead')
 			} else {
@@ -461,7 +473,21 @@ if (!existsSync(dir)) {
 			// neither.
 			const path = join(LIBRARY, 'REJECTED.md')
 			writeFileSync(path, insertRejectedRow(existsSync(path) ? readFileSync(path, 'utf8') : '', section, row))
-			rmSync(dir, { recursive: true, force: true })
+			// The removal is reported, not thrown. The decision is the row, and
+			// it is written by the time this runs; the removal is what the row
+			// implies, and a directory that cannot be removed — EACCES, EBUSY,
+			// another session holding it — must not turn a recorded decision
+			// into a stack trace, empty --json, and a library with a row and
+			// its bytes both present and nothing saying so. Same reasoning as
+			// promote's staging: the work is done, say what is left. A second
+			// run refuses on the existing row, so the message names the fix.
+			try {
+				rmSync(dir, { recursive: true, force: true })
+				removed = true
+			} catch (e) {
+				removed = false
+				removeError = `${e.code ?? e.name}: ${e.message.split('\n')[0]}`
+			}
 		}
 	}
 }
@@ -479,7 +505,8 @@ if (JSON_OUT) {
 				record: action === 'adopt' ? `inbox/${name}/AUDIT.md` : 'REJECTED.md',
 				section,
 				row,
-				removed: recorded && action !== 'adopt',
+				removed: action === 'adopt' ? null : DRY ? false : removed,
+				removeError,
 				scan: scanned && !scanned.error ? { counts: scanned.counts, blocking: scanned.blocking } : null,
 				priorRow,
 				refusals
@@ -506,7 +533,12 @@ if (JSON_OUT) {
 		const word = action === 'refuse' ? tint.alarm('refused') : tint.warn('declined')
 		console.log(`  ${word} — ${DRY ? 'would write' : 'wrote'} a row under ## ${section} in REJECTED.md`)
 		console.log(`  ${tint.dim(row)}`)
-		console.log(`  inbox/${name}${DRY ? ' would be' : ''} removed — re-fetchable at \`${origin.commit.slice(0, 7)}\`\n`)
+		if (removed === false && !DRY) {
+			console.log(`  ${tint.warn('not removed')} — inbox/${name} is still there: ${removeError}`)
+			console.log(`  The row is written. Remove the directory by hand; a second run refuses on the row.\n`)
+		} else {
+			console.log(`  inbox/${name}${DRY ? ' would be' : ''} removed — re-fetchable at \`${origin.commit.slice(0, 7)}\`\n`)
+		}
 	}
 }
 

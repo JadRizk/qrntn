@@ -62,14 +62,11 @@ const MUTATIONS = [
 	},
 	{
 		// Text the artefact chose, on its way into a row a human reads and onto
-		// a terminal. Both halves of the bound get a mutation, because a
-		// filename long enough to be truncated never reaches the escaping and
-		// one short enough never reaches the cap.
-		name: 'an artefact-chosen filename is no longer bounded at all',
-		find: "\t\t\tconst finding = why ?? (first ? `${first.code} ${fromArtefact(first.file)}` : null)",
-		replace: '\t\t\tconst finding = why ?? (first ? `${first.code} ${first.file}` : null)'
-	},
-	{
+		// a terminal. Bounded once, in scan(), so the row and --json say the
+		// same thing; the mutation below that strips it there is what covers
+		// the row. Both halves of the bound get their own, because a filename
+		// long enough to be truncated never reaches the escaping and one short
+		// enough never reaches the cap.
 		name: 'a control character in a filename is carried, not escaped',
 		find: "\treturn cut.replace(/[^\\x20-\\x7e…]/g, (ch) => {",
 		replace: '\treturn cut.replace(/[^\\s\\S]/g, (ch) => {'
@@ -78,6 +75,21 @@ const MUTATIONS = [
 		name: 'an over-long filename is no longer capped',
 		find: '\tconst cut = flat.length > max ? `${flat.slice(0, max)}…` : flat',
 		replace: '\tconst cut = flat'
+	},
+	{
+		// The one place the bound is applied. Removing it un-bounds the row,
+		// the terminal and --json together, and adopt.test.mjs asserts all
+		// three.
+		name: 'an artefact-chosen filename is no longer bounded at all',
+		find: '\t\tblocking: blocking.map((f) => ({ code: f.code, file: fromArtefact(f.file) }))',
+		replace: '\t\tblocking: blocking.map((f) => ({ code: f.code, file: f.file }))'
+	},
+	{
+		// The removal is reported, not thrown. Rethrowing turns a recorded
+		// decision into a stack trace and empty --json.
+		name: 'a removal that fails is thrown rather than reported',
+		find: '\t\t\t} catch (e) {\n\t\t\t\tremoved = false',
+		replace: '\t\t\t} catch (e) {\n\t\t\t\tthrow e\n\t\t\t\tremoved = false'
 	},
 	{
 		name: 'a second row for the same name is written',
