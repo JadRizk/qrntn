@@ -1,6 +1,10 @@
 # dev.sh — the development loop, in one place.
 #
-#   source dev.sh
+#   source dev.sh                      sandbox: a throwaway library, a sandbox HOME
+#   source dev.sh --library <dir>      real: that library and your real HOME — every
+#                                      write is a real write; git is the undo
+#   source dev.sh --clone <dir>        a disposable git clone of <dir>, sandbox HOME:
+#                                      real data, nothing at stake
 #
 # SOURCED, NEVER EXECUTED. The whole point is the environment it leaves behind
 # in the shell you are standing in, and a subprocess cannot do that: `./dev.sh`
@@ -11,10 +15,22 @@
 #
 #   qrntn            the real binary, run from a symlinked install, so edits to
 #                    commands/*.mjs are live and nothing is ever re-packed
-#   qrntn-real       the same, against your real HOME rather than the sandbox's
-#   qrntn-lib-reset  a throwaway library, rebuilt from nothing in one word
+#   qrntn-real       the same, always against your real HOME
+#   qrntn-lib-reset  the library back to its starting state, in one word —
+#                    rebuilt from nothing in sandbox mode, re-cloned in clone
+#                    mode, refused in real mode
 #   qrntn-env        what is currently set, and against what
 #   qrntn-off        put the shell back
+#
+# THREE MODES, NAMED, NEVER INFERRED. The library this tool acts on is the one
+# thing it must never guess at — SURFACE.md decided that for every verb, and
+# the loop that drives them is held to the same rule. Sandbox is the default
+# because it is the only mode in which nothing you own can be touched. Real is
+# for using the tool on your library, which is the thing it is for; the
+# mutating verbs — intake, adopt, promote — do there exactly what they say.
+# Nothing installs: qrntn records and checks, and never writes to where your
+# agent loads from; promote ends by telling you that step is yours. Clone is
+# for exercising those verbs on your real data with none of it being real.
 #
 # HOME IS NOT EXPORTED, and that is deliberate. The smoke gate points HOME at an
 # empty directory because promote.test.mjs once passed twice on a borrowed
@@ -22,8 +38,10 @@
 # only failed when that install disappeared mid-session. The same protection is
 # wanted here — but exporting HOME into an interactive shell breaks git, npm,
 # ssh and everything else that reads it. So it is overridden per invocation, by
-# a shim, and nowhere else. `qrntn-real` is the same shim without the override,
-# for testing the install path against your actual HOME.
+# a shim, and nowhere else. In real mode the shim does not override it at all:
+# `usage` reads transcripts from HOME and `ledger --check --install` compares
+# against HOME's ~/.claude/skills, and a sandbox HOME there would make the first
+# count nothing and the second report every held skill as not installed.
 #
 # A SHIM SCRIPT THAT EXECS, NOT A SHELL FUNCTION. The first version of this was
 # a function, and it broke the one verb that does not exit: `qrntn view &`
@@ -63,9 +81,82 @@ QRNTN_DEV_ROOT="${QRNTN_DEV_ROOT:-${TMPDIR:-/tmp}/qrntn-dev}"
 QRNTN_DEV_APP="$QRNTN_DEV_ROOT/app"
 QRNTN_DEV_HOME="$QRNTN_DEV_ROOT/home"
 QRNTN_DEV_BIN="$QRNTN_DEV_ROOT/bin"
-export SKILL_LIBRARY="${SKILL_LIBRARY:-$QRNTN_DEV_ROOT/lib}"
 
 mkdir -p "$QRNTN_DEV_ROOT" "$QRNTN_DEV_HOME" "$QRNTN_DEV_BIN"
+
+# ── which mode ──────────────────────────────────────────────────────────────
+#
+# Read from the arguments to `source`, which both shells pass through. No
+# `shift`: in a sourced file that would move the CALLER's positional
+# parameters. A SKILL_LIBRARY already in the environment counts as `--library`
+# on a first source — that is how a shell rc points the loop at a library —
+# but not on a re-source, where it is only what the last mode left behind.
+
+_qrntn_mode=''
+_qrntn_lib_arg=''
+_qrntn_next=''
+for _qrntn_a in "$@"; do
+	if [ -n "$_qrntn_next" ]; then
+		_qrntn_lib_arg="$_qrntn_a"
+		_qrntn_next=''
+		continue
+	fi
+	case "$_qrntn_a" in
+		--library) _qrntn_mode=real; _qrntn_next=1 ;;
+		--clone) _qrntn_mode=clone; _qrntn_next=1 ;;
+		--sandbox) _qrntn_mode=sandbox ;;
+		*) echo "dev.sh: ignoring \`$_qrntn_a\` — takes --library <dir>, --clone <dir>, or nothing" >&2 ;;
+	esac
+done
+if [ -n "$_qrntn_next" ]; then
+	echo "refused: $_qrntn_mode needs a directory" >&2
+	return 2
+fi
+if [ -z "$_qrntn_mode" ]; then
+	if [ -z "${QRNTN_DEV_MODE:-}" ] && [ -n "${SKILL_LIBRARY:-}" ]; then
+		_qrntn_mode=real
+		_qrntn_lib_arg="$SKILL_LIBRARY"
+	else
+		_qrntn_mode=sandbox
+	fi
+fi
+
+case "$_qrntn_mode" in
+	sandbox)
+		export SKILL_LIBRARY="$QRNTN_DEV_ROOT/lib"
+		QRNTN_LIB_ORIGIN=''
+		;;
+	real)
+		_qrntn_abs="$(cd "$_qrntn_lib_arg" 2>/dev/null && pwd)" || {
+			echo "refused: --library $_qrntn_lib_arg is not a directory" >&2
+			unset _qrntn_abs
+			return 2
+		}
+		_qrntn_lib_arg="$_qrntn_abs"; unset _qrntn_abs
+		if [ ! -d "$_qrntn_lib_arg/skills" ]; then
+			echo "refused: no skills/ directory in $_qrntn_lib_arg — qrntn acts on a library whose skills live in skills/" >&2
+			return 2
+		fi
+		export SKILL_LIBRARY="$_qrntn_lib_arg"
+		QRNTN_LIB_ORIGIN=''
+		;;
+	clone)
+		_qrntn_abs="$(cd "$_qrntn_lib_arg" 2>/dev/null && pwd)" || {
+			echo "refused: --clone $_qrntn_lib_arg is not a directory" >&2
+			unset _qrntn_abs
+			return 2
+		}
+		_qrntn_lib_arg="$_qrntn_abs"; unset _qrntn_abs
+		if [ ! -d "$_qrntn_lib_arg/.git" ]; then
+			echo "refused: --clone $_qrntn_lib_arg is not a git repository — a clone is the only copy this makes, so the source has to be one" >&2
+			return 2
+		fi
+		QRNTN_LIB_ORIGIN="$_qrntn_lib_arg"
+		export SKILL_LIBRARY="$QRNTN_DEV_ROOT/clone"
+		;;
+esac
+QRNTN_DEV_MODE="$_qrntn_mode"
+unset _qrntn_mode _qrntn_lib_arg _qrntn_next _qrntn_a
 
 # ── the linked install ──────────────────────────────────────────────────────
 #
@@ -90,13 +181,20 @@ qrntn-relink() {
 
 [ -x "$QRNTN_DEV_APP/node_modules/.bin/qrntn" ] || qrntn-relink
 
-# The shims. Rewritten on every source, because they embed paths that this
-# file's variables may have changed since last time; they are two lines each
-# and the cost of rewriting is nothing.
-cat > "$QRNTN_DEV_BIN/qrntn" <<SHIM
+# The shims. Rewritten on every source, because the mode decides what `qrntn`
+# does with HOME and the mode may have changed; they are two lines each and
+# the cost of rewriting is nothing.
+if [ "$QRNTN_DEV_MODE" = real ]; then
+	cat > "$QRNTN_DEV_BIN/qrntn" <<SHIM
+#!/bin/sh
+exec "$QRNTN_DEV_APP/node_modules/.bin/qrntn" "\$@"
+SHIM
+else
+	cat > "$QRNTN_DEV_BIN/qrntn" <<SHIM
 #!/bin/sh
 HOME="$QRNTN_DEV_HOME" exec "$QRNTN_DEV_APP/node_modules/.bin/qrntn" "\$@"
 SHIM
+fi
 cat > "$QRNTN_DEV_BIN/qrntn-real" <<SHIM
 #!/bin/sh
 exec "$QRNTN_DEV_APP/node_modules/.bin/qrntn" "\$@"
@@ -111,7 +209,7 @@ esac
 # found until the cache is told. bash does not need this and does not mind it.
 hash -r 2>/dev/null
 
-# ── the throwaway library ───────────────────────────────────────────────────
+# ── the library ─────────────────────────────────────────────────────────────
 #
 # Rebuilt rather than repaired. Half these verbs mutate the library on purpose
 # — promote moves a directory, adopt ends a quarantine — so the useful thing is
@@ -122,9 +220,34 @@ hash -r 2>/dev/null
 # before init runs, and not a step that can be dropped.
 
 qrntn-lib-reset() {
+	# ONLY EVER INSIDE THE SANDBOX. The first thing this does is delete the
+	# library, and in real mode that is yours. A real library is git-tracked
+	# and would come back, minus whatever was not yet committed; the rule is
+	# cheaper than the recovery. The mode is checked, and then the path is
+	# checked anyway, because a mode is a variable and a path is a fact.
+	if [ "$QRNTN_DEV_MODE" = real ]; then
+		echo "refused: the library is real ($SKILL_LIBRARY) — nothing here resets it; \`git -C \"$SKILL_LIBRARY\" status\` is where to look" >&2
+		return 2
+	fi
+	case "$SKILL_LIBRARY" in
+		"$QRNTN_DEV_ROOT"/*) ;;
+		*)
+			echo "refused: SKILL_LIBRARY is $SKILL_LIBRARY, outside $QRNTN_DEV_ROOT — this deletes it, and only sandbox libraries are deleted here" >&2
+			return 2
+			;;
+	esac
+	rm -rf "$SKILL_LIBRARY"
+	if [ "$QRNTN_DEV_MODE" = clone ]; then
+		# The committed state of the source, which is the state a clone has
+		# always meant. Uncommitted work in the source is not carried over,
+		# and that is the point: it is not this copy's to have.
+		git clone --quiet "$QRNTN_LIB_ORIGIN" "$SKILL_LIBRARY" \
+			|| { echo "qrntn-lib-reset: clone failed" >&2; return 1; }
+		echo "library $SKILL_LIBRARY — cloned from $QRNTN_LIB_ORIGIN at $(git -C "$SKILL_LIBRARY" log -1 --format=%h), $(ls "$SKILL_LIBRARY/skills" | wc -l | tr -d ' ') skill(s)"
+		return 0
+	fi
 	local names=("$@")
 	[ ${#names[@]} -eq 0 ] && names=(hello)
-	rm -rf "$SKILL_LIBRARY"
 	local n
 	for n in "${names[@]}"; do
 		mkdir -p "$SKILL_LIBRARY/skills/$n"
@@ -144,20 +267,33 @@ SKILLMD
 	echo "library $SKILL_LIBRARY — ${#names[@]} skill(s), catalog and ledger written"
 }
 
-[ -d "$SKILL_LIBRARY/skills" ] || qrntn-lib-reset >/dev/null
+# The library exists before the prompt comes back: built or cloned on a first
+# source, left alone on a re-source so an experiment in progress survives
+# switching modes and back.
+if [ "$QRNTN_DEV_MODE" != real ] && [ ! -d "$SKILL_LIBRARY/skills" ]; then
+	qrntn-lib-reset >/dev/null
+fi
 
 # ── saying where you are ────────────────────────────────────────────────────
 
 qrntn-env() {
+	echo "  mode     $QRNTN_DEV_MODE"
 	echo "  repo     $QRNTN_REPO"
-	echo "  library  $SKILL_LIBRARY   (SKILL_LIBRARY — every verb reads it, so --library is optional)"
-	echo "  home     $QRNTN_DEV_HOME   (per invocation only; \`qrntn-real\` uses your real HOME)"
+	case "$QRNTN_DEV_MODE" in
+		real)  echo "  library  $SKILL_LIBRARY   (REAL — every write is a real write; git is the undo)" ;;
+		clone) echo "  library  $SKILL_LIBRARY   (a clone of $QRNTN_LIB_ORIGIN — nothing at stake)" ;;
+		*)     echo "  library  $SKILL_LIBRARY   (throwaway)" ;;
+	esac
+	if [ "$QRNTN_DEV_MODE" = real ]; then
+		echo "  home     your real HOME   (usage reads your transcripts; ledger --check --install compares against ~/.claude/skills)"
+	else
+		echo "  home     $QRNTN_DEV_HOME   (per invocation only; \`qrntn-real\` uses your real HOME)"
+	fi
 	echo "  binary   $QRNTN_DEV_APP/node_modules/.bin/qrntn"
-	echo "  shims    $QRNTN_DEV_BIN/{qrntn,qrntn-real}"
 	echo
-	echo "  qrntn <verb>       live against the checkout, sandbox HOME"
-	echo "  qrntn-real <verb>  the same, your real HOME"
-	echo "  qrntn-lib-reset    throw the library away and build a new one"
+	echo "  qrntn <verb>       live against the checkout; --library is optional, SKILL_LIBRARY is set"
+	echo "  qrntn-real <verb>  the same, always your real HOME"
+	echo "  qrntn-lib-reset    the library back to its starting state"
 	echo "  qrntn-relink       rebuild the symlinked install"
 	echo "  qrntn-off          put the shell back"
 }
@@ -166,9 +302,13 @@ qrntn-off() {
 	PATH="${PATH//$QRNTN_DEV_BIN:/}"
 	export PATH
 	hash -r 2>/dev/null
-	unset SKILL_LIBRARY
+	unset SKILL_LIBRARY QRNTN_DEV_MODE QRNTN_LIB_ORIGIN
 	unset -f qrntn-lib-reset qrntn-relink qrntn-env qrntn-off 2>/dev/null
 	echo "dev.sh: off — PATH restored, SKILL_LIBRARY unset"
 }
 
-echo "dev.sh: ready · \`qrntn-env\` for what is set · \`qrntn --help\` for the tool"
+case "$QRNTN_DEV_MODE" in
+	real)  echo "dev.sh: REAL — $SKILL_LIBRARY, your HOME · every write is a real write · \`qrntn-env\` for the rest" ;;
+	clone) echo "dev.sh: clone of $QRNTN_LIB_ORIGIN · sandbox HOME · \`qrntn-lib-reset\` re-clones · \`qrntn-env\` for the rest" ;;
+	*)     echo "dev.sh: sandbox · \`qrntn-env\` for what is set · \`qrntn --help\` for the tool" ;;
+esac

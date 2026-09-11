@@ -203,8 +203,9 @@ From a checkout, `node check.mjs` runs every gate the project has: the suites,
 the mutation self-tests, and a smoke gate that packs the tarball, installs it
 into a clean directory with `HOME` pointed somewhere empty, and drives every
 verb from it. [`docs/DEVELOPING.md`](docs/DEVELOPING.md) is the development
-loop — `source dev.sh` for a live, symlinked install and a throwaway library —
-and the table of which gate answers which question. [`docs/SHIPPING.md`](docs/SHIPPING.md) is the plan and marks what
+loop — `source dev.sh` for a live, symlinked install against a throwaway
+library, a clone of yours, or the real thing — the four layers of testing and
+what each can see, and how to reproduce a pull request's CI locally. [`docs/SHIPPING.md`](docs/SHIPPING.md) is the plan and marks what
 has landed against what has not; [`CHANGELOG.md`](CHANGELOG.md) records what
 each release actually contained.
 
