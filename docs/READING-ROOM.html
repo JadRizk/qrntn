@@ -177,7 +177,7 @@ figure svg{max-width:100%;height:auto;display:block;color:var(--g600)}
   </ol>
   <p>What READING.md leaves open — and what this spec adds — is the <b>link grammar</b> (which strings in a file are links, and to which nodes), the <b>graph choreography</b> (what the canvas does when a file is opened, a link is followed, a finding is stepped through), the <b>schema delta</b> in zod, a <b>survey of what exists</b> to borrow from, and a rendered mock in the house style.</p>
   <div class="chips">
-    <span class="chip on">held · records first</span><span class="chip on">held · source rendering</span><span class="chip on">held · embed at export</span><span class="chip">open · quarantine kind</span><span class="chip">deferred · formatted toggle</span>
+    <span class="chip on">held · records first</span><span class="chip on">held · source rendering</span><span class="chip on">held · embed at export</span><span class="chip">next · quarantine kind</span><span class="chip">deferred · formatted toggle</span>
   </div>
 </section>
 
@@ -575,14 +575,17 @@ const PinnedFindingSchema = z.object({
 </section>
 
 <section id="open">
-  <div class="sec-head"><div class="eyebrow">open</div><h2>Questions the builder should not answer alone</h2></div>
+  <div class="sec-head"><div class="eyebrow">decided</div><h2>Questions that were open, and how they were settled</h2></div>
+  <p>Raised in the first draft, settled with the maintainer on 2026-09-11 before phase 1 began. None of them blocked phase 1; the first four shape phase 2.</p>
   <ol>
-    <li><b>AUDIT.md without AUDIT.json.</b> Most existing records are the markdown table only. Does the exporter parse the table (duplicating <code>commands/audit-record.mjs</code>'s regexes across the CLI/nexus boundary — the drift SHIPPING §8 rejects), or does phase 1 show the file and pin nothing until a JSON record exists? <i>Recommended: pin only from AUDIT.json; show AUDIT.md as a readable file; add a one-line <code>qrntn</code> command later that writes the JSON from the table, in the CLI where the parser already lives.</i></li>
-    <li><b>Which grey ramp.</b> The viewer renders <code>qrntn-hud</code> (immersive), where grey-300/400/500 fail 4.5:1 — PALETTE.md's own open decision. The reader is the first surface that is <em>read</em> rather than glanced at, so its body text must use grey-600 or paper regardless; the gutter and whitespace marks may use the failing greys, as non-text. Decide whether this is the moment the viewer moves to the AA ramp.</li>
-    <li><b>Nested folders.</b> The exporter walks one level of <code>references/</code>, <code>assets/</code>, <code>agents/</code>, <code>scripts/</code>. Real skills nest. Walk recursively (more leaves in the graph) or list-but-not-node (readable, not drawn)? <i>Recommended: readable, not drawn, in phase 2; the graph's shape is a separate decision.</i></li>
-    <li><b>Where AUDIT.md and ORIGIN.md sit in the graph.</b> Not nodes today, by design (provenance is not depth). The pane lists them under the skill; should they become a fourth <code>leafKind</code> so they are selectable on the canvas? <i>Recommended: no — readable from the skill, never drawn.</i></li>
-    <li><b>Findings from the scanner vs findings from the record.</b> The reader escapes characters by class on its own; the record pins what a human dispositioned. Should the exporter also run the scanner's rule table to pin <em>undispositioned</em> findings on held skills (drift since adoption)? That is <code>refresh</code>'s job today. <i>Recommended: no in v1; the escape classes already make the character-level cases visible without a verdict.</i></li>
+    <li><b>AUDIT.md without AUDIT.json.</b> Most existing records are the markdown table only. <b>Decided: pin from <code>AUDIT.json</code> only.</b> Phase 1 needs no parsing at all — <code>ledger/&lt;name&gt;.json</code> already carries <code>audit.verdict</code>, <code>audit.counts.findings</code> and <code>audit.dispositioned</code>, and the drawer reads those. Phase 2 pins to lines from <code>AUDIT.json</code> when it exists and shows <code>AUDIT.md</code> as a plain readable file otherwise. A later <code>qrntn</code> command writes the JSON from the table, in the CLI where the table parser (<code>commands/audit-record.mjs</code>) already lives — never a second parser on the nexus side.</li>
+    <li><b>Which grey ramp.</b> The viewer renders <code>qrntn-hud</code>, where grey-300/400/500 fail 4.5:1. <b>Decided: sidestep.</b> The pane's body text uses <code>paper</code> or <code>grey-600</code>, which clear the floor on either ramp; only gutter numbers and whitespace marks use the failing greys, as non-text. Whether the viewer moves to the AA ramp stays PALETTE.md's own decision and is not forced by this feature.</li>
+    <li><b>Nested folders.</b> The exporter walks one level of <code>references/</code>, <code>assets/</code>, <code>agents/</code>, <code>scripts/</code>; real skills nest. <b>Decided: readable, not drawn.</b> Phase 2 lists nested files recursively into <code>files</code> so they can be opened; the graph's node set does not change.</li>
+    <li><b>AUDIT.md and ORIGIN.md in the graph.</b> <b>Decided: never nodes.</b> Listed under the skill and readable from the pane; provenance is not depth.</li>
+    <li><b>Scanner findings vs record findings.</b> Should export re-run the scanner to pin undispositioned drift? <b>Decided: no.</b> That is <code>refresh</code>'s job; the escape classes already make every character-level case visible without a verdict.</li>
   </ol>
+  <h3>One builder-level choice</h3>
+  <p>Phase 1 needs the drawer to see record fields the engine's <code>GraphNodeSnapshot</code> does not carry. Rather than widen the vendored engine's type, <code>App.tsx</code> keeps a <code>Map&lt;id, GraphNode&gt;</code> built from the loaded snapshot and passes the full node to the drawer beside the engine's own. The engine stays untouched; one lookup.</p>
 </section>
 
 <section id="sources">
