@@ -126,6 +126,30 @@ const SKILLS = join(LIBRARY, 'skills')
 const refusals = []
 const refuse = (why, detail) => refusals.push({ why, detail })
 
+// TEXT THE ARTEFACT CHOSE, on its way into a refusal a human reads on a
+// terminal. Two details here quote file names from inside the artefact — the
+// re-scan's blocking findings, and the files that diverged from ORIGIN.md —
+// and a file name is the author's to pick: any length, any byte, on the
+// filesystems this runs on. Interpolated raw, a name can carry a live terminal
+// escape onto the reader's screen, which is what THREATS.md says the evidence
+// channel neutralises and what adopt.mjs was found doing one review earlier.
+// This is the gate that runs last, so the same bound applies here: whitespace
+// collapsed, capped, anything outside printable ASCII written as its escape.
+//
+// A second copy of audit-skill.mjs's `fragment` rather than an import, for the
+// reason every other sibling here is imported behind a guard: this file is
+// deployed alone into a sandbox by its own suite. promote.test.mjs asserts the
+// detail equals exactly what the scanner's `fragment` produces, so the copy
+// cannot drift silently — the arrangement bin/qrntn.mjs has with VERB_ENV.
+function fromArtefact(text, max = 60) {
+	const flat = String(text).replace(/\s+/g, ' ').trim()
+	const cut = flat.length > max ? `${flat.slice(0, max)}…` : flat
+	return cut.replace(/[^\x20-\x7e…]/g, (ch) => {
+		const cp = ch.codePointAt(0)
+		return cp > 0xffff ? `\\u{${cp.toString(16)}}` : `\\u${cp.toString(16).padStart(4, '0')}`
+	})
+}
+
 // ── spawning this program's own interpreter ─────────────────────────────
 //
 // `process.execPath`, never the bare string 'node'. A bare name is a PATH
@@ -253,7 +277,11 @@ function checkAdaptationLog(dir, inventory, audit) {
 	if (!/##\s*Changes applied/i.test(audit.text)) {
 		refuse(
 			`${diverged.length} file(s) differ from ORIGIN.md with no adaptation log`,
-			`changed: ${diverged.slice(0, 6).join(', ')}${diverged.length > 6 ? '…' : ''} — add a "## Changes applied" section to AUDIT.md`
+			// Explicit arrow, not `.map(fromArtefact)`: map hands the index as
+			// the second argument, which is `max`, and the first draft of this
+			// line bounded every name to zero characters. promote.test.mjs
+			// caught it, by comparing against the scanner's own function.
+			`changed: ${diverged.slice(0, 6).map((f) => fromArtefact(f)).join(', ')}${diverged.length > 6 ? '…' : ''} — add a "## Changes applied" section to AUDIT.md`
 		)
 	}
 }
@@ -306,7 +334,7 @@ function rescan(dir, extraBlocking = []) {
 	if (blocking.length) {
 		refuse(
 			`${blocking.length} blocking finding(s) in the adapted artefact`,
-			blocking.map((f) => `${f.code} ${f.file}`).slice(0, 5).join(', ')
+			blocking.map((f) => `${f.code} ${fromArtefact(f.file)}`).slice(0, 5).join(', ')
 		)
 	}
 }

@@ -82,6 +82,30 @@ const MUTATIONS = [
 		find: "refuse('no AUDIT.md', 'nothing has been adjudicated",
 		replace: "return null; refuse('no AUDIT.md', 'nothing has been adjudicated"
 	},
+	// Text the artefact chose, on its way into a refusal a human reads. Two
+	// sites quote file names from inside the artefact, and both halves of the
+	// bound need their own mutation: a name long enough to be truncated never
+	// reaches the escaping, and one short enough never reaches the cap.
+	{
+		name: 'the re-scan detail carries the artefact\'s file name unbounded',
+		find: '\t\t\tblocking.map((f) => `${f.code} ${fromArtefact(f.file)}`).slice(0, 5).join(\', \')',
+		replace: '\t\t\tblocking.map((f) => `${f.code} ${f.file}`).slice(0, 5).join(\', \')'
+	},
+	{
+		name: 'the divergence detail carries the artefact\'s file name unbounded',
+		find: '\t\t\t`changed: ${diverged.slice(0, 6).map((f) => fromArtefact(f)).join(\', \')}',
+		replace: '\t\t\t`changed: ${diverged.slice(0, 6).join(\', \')}'
+	},
+	{
+		name: 'a control character in a file name is carried, not escaped',
+		find: '\treturn cut.replace(/[^\\x20-\\x7e…]/g, (ch) => {',
+		replace: '\treturn cut.replace(/[^\\s\\S]/g, (ch) => {'
+	},
+	{
+		name: 'an over-long file name is no longer capped',
+		find: '\tconst cut = flat.length > max ? `${flat.slice(0, max)}…` : flat',
+		replace: '\tconst cut = flat'
+	},
 	// The next four mutate audit-record.mjs, not promote.mjs: the AUDIT.md
 	// contract moved there when `adopt` needed it too. The suite still has to
 	// catch each of them through promote, which is what `file` is for.
@@ -211,6 +235,12 @@ const sandboxTest = join(dir, 'promote.test.mjs')
 cpSync(TEST, sandboxTest)
 cpSync(CHECK_CATALOG, join(dir, 'check-catalog.mjs'))
 cpSync(LEDGER, join(dir, 'ledger.mjs'))
+// The suite imports the scanner's `fragment` to compare a refusal detail
+// against the bound it should carry — beside the test, as a sibling, which is
+// not where the fixture repos stage the scanner. Without this the import
+// failed in every run and the inert control reported the suite as broken,
+// which it was, for a reason that had nothing to do with any mutation.
+cpSync(join(HERE, 'audit-skill.mjs'), join(dir, 'audit-skill.mjs'))
 // The suite's fixture builder copies this from beside the source under test,
 // so a mutation naming `file: 'audit-record.mjs'` lands in every fixture.
 const RECORD = join(HERE, 'audit-record.mjs')
