@@ -23,8 +23,9 @@
 // bundle `qrntn view` runs has no public/data/ beside it.
 //
 // The ONLY place Nexus touches files outside its own directory, and it only
-// reads them: edges.json, catalog.json, ledger/*.json, skills/*/SKILL.md
-// (+ references/assets/scripts/agents listings), REJECTED.md.
+// reads them: edges.json, catalog.json, ledger/*.json, skills/*/SKILL.md,
+// AUDIT.md and ORIGIN.md, every file under references/assets/agents/scripts
+// (read in full, to hash against the ledger — see fileRecord), REJECTED.md.
 //
 // Hard rule (§5): does not import, port, or reuse code from
 // scripts/atlas-*.mjs, scripts/build-index.mjs, or scripts/ledger.mjs — not
@@ -34,8 +35,9 @@
 // (the REJECTED.md table parser, the §5 resolution order) live in
 // src/data/integrity.ts and are imported from there, not reimplemented.
 
+import { createHash } from 'node:crypto'
 import { existsSync, readFileSync, readdirSync, writeFileSync, mkdirSync } from 'node:fs'
-import { basename, dirname, join, resolve } from 'node:path'
+import { basename, dirname, join, posix, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { GraphSnapshotSchema } from '../src/data/types.ts'
@@ -98,6 +100,22 @@ function listFiles(dir) {
 
 function wordCount(text) {
   return text.trim().split(/\s+/).filter(Boolean).length
+}
+
+// One file, hashed and checked against the ledger. The ledger's key is the
+// path relative to the skill's directory with posix separators
+// (commands/ledger.mjs writes it that way on every platform), so the same
+// form is derived here rather than the absolute path being sliced. The hash
+// is over the raw bytes — never a decoded string — because the ledger's is,
+// and because a BOM or a CRLF is exactly the kind of byte a decision was
+// recorded against.
+function fileRecord(skillPath, absPath, role, ledgerFiles) {
+  const bytes = readFileSync(absPath)
+  const path = relative(skillPath, absPath).split(sep).join(posix.sep)
+  const sha256 = createHash('sha256').update(bytes).digest('hex')
+  const listed = ledgerFiles[path]
+  const verified = listed === undefined ? 'unlisted' : listed === sha256 ? 'matches' : 'drift'
+  return { path, role, bytes: bytes.length, sha256, verified }
 }
 
 // Minimal, single-line-value frontmatter reader — every SKILL.md in this
@@ -199,6 +217,36 @@ const skills = skillDirs.map((dir) => {
     throw new Error(`export-graph: ledger/${dir}.json — origin.kind must be "authored" or "acquired", got ${JSON.stringify(ledger.origin?.kind)}`)
   }
 
+  // Every file this exporter already lists, hashed against the ledger —
+  // spine first, then the two provenance files, then leaves and scripts in
+  // path order. This is the one place the comparison happens (SHIPPING.md
+  // §8: the exporter is the only place Nexus touches the library), and it
+  // still only reads. A path the ledger names that is not on disk cannot
+  // carry a per-file verdict, so it is reported on the record instead.
+  const ledgerFiles = ledger.integrity?.files ?? {}
+  const provenance = ['AUDIT.md', 'ORIGIN.md']
+    .filter((f) => existsSync(join(skillPath, f)))
+    .map((f) => fileRecord(skillPath, join(skillPath, f), f === 'AUDIT.md' ? 'audit' : 'origin', ledgerFiles))
+  const files = [
+    fileRecord(skillPath, join(skillPath, 'SKILL.md'), 'spine', ledgerFiles),
+    ...provenance,
+    ...[
+      ...leafFiles.map((l) => fileRecord(skillPath, l.path, l.leafKind, ledgerFiles)),
+      ...scriptFiles.map((f) => fileRecord(skillPath, join(skillPath, 'scripts', f), 'script', ledgerFiles)),
+    ].sort((a, b) => a.path.localeCompare(b.path)),
+  ]
+  const onDisk = new Set(files.map((f) => f.path))
+  const record = {
+    source: ledger.origin.source ?? null,
+    commit: ledger.origin.commit ?? null,
+    date: ledger.origin.date ?? null,
+    verdict: ledger.audit?.verdict ?? null,
+    findings: ledger.audit?.counts?.findings ?? null,
+    dispositioned: ledger.audit?.dispositioned ?? null,
+    reportPath: ledger.audit?.reportPath ?? null,
+    missing: Object.keys(ledgerFiles).filter((p) => !onDisk.has(p)).sort(),
+  }
+
   return {
     id: dir,
     name: fm.name ?? dir,
@@ -213,6 +261,8 @@ const skills = skillDirs.map((dir) => {
     calls: findCalls(fm.body),
     leaves: leafFiles,
     scripts: scriptFiles,
+    files,
+    record,
   }
 })
 
@@ -337,6 +387,8 @@ const nodes = [
     words: s.words,
     refWords: s.refWords,
     usage: s.usage,
+    files: s.files,
+    record: s.record,
   })),
   ...skills.flatMap((s) =>
     s.leaves.map((l) => ({

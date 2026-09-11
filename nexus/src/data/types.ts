@@ -79,6 +79,56 @@ const OriginNodeSchema = z.object({
 export const OriginKindSchema = z.enum(['authored', 'acquired'])
 export type OriginKind = z.infer<typeof OriginKindSchema>
 
+// The records, on the node (READING-ROOM.html, phase 1). A skill is a folder
+// of text that becomes instructions, and the library holds — per skill — a
+// sha256 for every file (ledger integrity.files) and the audit's verdict.
+// Until now the graph carried none of it, so the drawer could name a skill
+// and its degree and nothing about whether its bytes are still the bytes a
+// human decided on. This is that, without any artefact text: the reader that
+// shows the bytes themselves is phase 2, and a bigger threat surface.
+
+// Three states, and the two that are not "matches" are not the same. `drift`
+// is a file the ledger names whose bytes have changed since the ledger was
+// written; `unlisted` is a file the ledger never named — added after
+// promotion, or never hashed. Collapsing them would make a new file look
+// like a tampered one, or the reverse.
+export const HashVerdictSchema = z.enum(['matches', 'drift', 'unlisted'])
+export type HashVerdict = z.infer<typeof HashVerdictSchema>
+
+// Where a file sits in the skill: the spine, the two provenance files the
+// exporter names and does not draw (AUDIT.md, ORIGIN.md), the three leaf
+// kinds, and scripts. Provenance is not depth — these two are readable from
+// the skill and never become nodes (READING-ROOM.html, decided 4).
+export const FileRoleSchema = z.enum(['spine', 'audit', 'origin', 'ref', 'asset', 'agent', 'script'])
+export type FileRole = z.infer<typeof FileRoleSchema>
+
+export const SkillFileSchema = z.object({
+  path: z.string(), // relative to the skill's directory, posix separators — the ledger's own key
+  role: FileRoleSchema,
+  bytes: z.number().int().nonnegative(),
+  sha256: z.string().regex(/^[0-9a-f]{64}$/),
+  verified: HashVerdictSchema,
+})
+export type SkillFile = z.infer<typeof SkillFileSchema>
+
+// What ledger/<name>.json says, carried as it says it. Every field nullable
+// because the ledger writer leaves each null when nothing establishes it
+// (commands/ledger.mjs's shape comment), and a viewer that defaulted a null
+// commit to "" would be asserting a pin nobody recorded.
+export const SkillRecordSchema = z.object({
+  source: z.string().nullable(), // origin.source — URL, null for authored
+  commit: z.string().nullable(), // origin.commit — the resolved commit, or never recorded
+  date: z.string().nullable(), // origin.date — arrival or promotion, ISO
+  verdict: z.string().nullable(), // audit.verdict
+  findings: z.number().int().nonnegative().nullable(), // audit.counts.findings
+  dispositioned: z.boolean().nullable(), // audit.dispositioned
+  reportPath: z.string().nullable(), // audit.reportPath
+  // Paths the ledger hashes that are no longer on disk. The fourth state a
+  // per-file verdict cannot carry, because there is no file to carry it.
+  missing: z.array(z.string()),
+})
+export type SkillRecord = z.infer<typeof SkillRecordSchema>
+
 const SkillNodeSchema = z.object({
   kind: z.literal('skill'),
   id: z.string(),
@@ -90,6 +140,8 @@ const SkillNodeSchema = z.object({
   words: z.number().int().nonnegative(), // spine
   refWords: z.number().int().nonnegative(), // halo, additive to spine
   usage: UsageStatsSchema.nullable(),
+  files: z.array(SkillFileSchema), // every file on disk, spine first, then by path
+  record: SkillRecordSchema,
 })
 
 // ---------------------------------------------------------------- vendor

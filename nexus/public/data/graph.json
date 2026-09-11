@@ -57,7 +57,47 @@
       "manualOnly": false,
       "words": 1732,
       "refWords": 1156,
-      "usage": null
+      "usage": null,
+      "files": [
+        {
+          "path": "SKILL.md",
+          "role": "spine",
+          "bytes": 10392,
+          "sha256": "e92bae7f46c181b5896711f3056833cccaae291931e985b6a0344392ed6c8f06",
+          "verified": "matches"
+        },
+        {
+          "path": "AUDIT.md",
+          "role": "audit",
+          "bytes": 1200,
+          "sha256": "c865c52a461a111d423d52bd0efbb56643b1f8071c8f638d39aef24fd6e30e8d",
+          "verified": "matches"
+        },
+        {
+          "path": "ORIGIN.md",
+          "role": "origin",
+          "bytes": 400,
+          "sha256": "81c09b5fc27ea1ca6e81336aa86c57efb0e87bc48517803c7b6c157314224e47",
+          "verified": "matches"
+        },
+        {
+          "path": "references/RECIPES.md",
+          "role": "ref",
+          "bytes": 6936,
+          "sha256": "085135519b6f4228596c0a400c3482521a32dcdda7e8a1a706e033098c478334",
+          "verified": "matches"
+        }
+      ],
+      "record": {
+        "source": "https://github.com/example-org/skills",
+        "commit": "0513e97270d4eaeba36ea019cf96a20b071725bc",
+        "date": "2026-08-30",
+        "verdict": "ADOPT",
+        "findings": 0,
+        "dispositioned": null,
+        "reportPath": "skills/motion-basics/AUDIT.md",
+        "missing": []
+      }
     },
     {
       "kind": "skill",
@@ -69,7 +109,40 @@
       "manualOnly": false,
       "words": 3372,
       "refWords": 0,
-      "usage": null
+      "usage": null,
+      "files": [
+        {
+          "path": "SKILL.md",
+          "role": "spine",
+          "bytes": 20232,
+          "sha256": "df55d1e778ba4092c56c808a7471373b3148f91c598eed2381c174a76b49291e",
+          "verified": "matches"
+        },
+        {
+          "path": "AUDIT.md",
+          "role": "audit",
+          "bytes": 1200,
+          "sha256": "d9a19d5328f197ac3a1a802511a9658cdfbbcbb432f1e218061e6d821d1d0da0",
+          "verified": "matches"
+        },
+        {
+          "path": "ORIGIN.md",
+          "role": "origin",
+          "bytes": 400,
+          "sha256": "9b29b36af8e119938dfacdbac5b29b0a570cd3833b926da032608fb4a2cd935b",
+          "verified": "matches"
+        }
+      ],
+      "record": {
+        "source": "https://github.com/example-org/skills",
+        "commit": "4e9d6016098e5ebbfb2156d523503fd09db8ff99",
+        "date": "2026-08-30",
+        "verdict": "ADOPT",
+        "findings": 0,
+        "dispositioned": null,
+        "reportPath": "skills/platform-idiom/AUDIT.md",
+        "missing": []
+      }
     },
     {
       "kind": "skill",
@@ -81,7 +154,103 @@
       "manualOnly": false,
       "words": 1015,
       "refWords": 5993,
-      "usage": null
+      "usage": null,
+      "files": [
+        {
+          "path": "SKILL.md",
+          "role": "spine",
+          "bytes": 6090,
+          "sha256": "513b82d211bab0dc8e7393cb33da33f07134b144e2cf4f32b7b1c8245a0cb9f8",
+          "verified": "matches"
+        },
+        {
+          "path": "AUDIT.md",
+          "role": "audit",
+          "bytes": 1200,
+          "sha256": "4747dac6d4125343a51f72ee6db8d568ea232217a6bfa1cb1c706f42824cc3d7",
+          "verified": "matches"
+        },
+        {
+          "path": "assets/BRAND.template.md",
+          "role": "asset",
+          "bytes": 2418,
+          "sha256": "7b7fea11948cb49fc120fb2224449376996db639a71cbeb4bd879336d5fd4fab",
+          "verified": "matches"
+        },
+        {
+          "path": "assets/PALETTE.template.md",
+          "role": "asset",
+          "bytes": 5358,
+          "sha256": "6d445b182deca112b464c1d26a2a78ada0778cf1bae10d24f5c09c199485d449",
+          "verified": "matches"
+        },
+        {
+          "path": "references/palette.md",
+          "role": "ref",
+          "bytes": 15720,
+          "sha256": "ad08b48a05c21ec4e765cc5cdbe6f3f9a7ddc221994117af4a9f1e6d581ed40a",
+          "verified": "matches"
+        },
+        {
+          "path": "references/research.md",
+          "role": "ref",
+          "bytes": 2322,
+          "sha256": "79d4edbbe24ffc38ef6342cb88411a0ed68855c8e8306cc34dd2f3f8d8c3f975",
+          "verified": "matches"
+        },
+        {
+          "path": "references/thesis.md",
+          "role": "ref",
+          "bytes": 3414,
+          "sha256": "bf74e1e2ba3d42a8ed12090f8873aa2ac28b2f568a721f0effc6578a03e8eda2",
+          "verified": "matches"
+        },
+        {
+          "path": "references/type-and-form.md",
+          "role": "ref",
+          "bytes": 4002,
+          "sha256": "7e87310cee1ed8467f48c14e87bc8d6eace53419ebb249c237c2a6813f6077ab",
+          "verified": "matches"
+        },
+        {
+          "path": "references/voice.md",
+          "role": "ref",
+          "bytes": 2724,
+          "sha256": "e8d02022941dc18e57e3f943bb3f0885dfdbcfb0621acd62736f19a0ccabd718",
+          "verified": "matches"
+        },
+        {
+          "path": "scripts/self-test.mjs",
+          "role": "script",
+          "bytes": 900,
+          "sha256": "ab9c5491641fafb3313b5fcf80e38a07520d6b2b2b834ea6c5aac12ca95f0ef3",
+          "verified": "matches"
+        },
+        {
+          "path": "scripts/validate-palette.mjs",
+          "role": "script",
+          "bytes": 900,
+          "sha256": "eaccd0d08504e05593a644679481635df728eafcda462ab4e03aaeef29c87f1b",
+          "verified": "matches"
+        },
+        {
+          "path": "scripts/validate-palette.test.mjs",
+          "role": "script",
+          "bytes": 900,
+          "sha256": "45208aeaaefe99c9d3e3647e94401b82243822283382772a3748e75addaafdd5",
+          "verified": "matches"
+        }
+      ],
+      "record": {
+        "source": null,
+        "commit": null,
+        "date": null,
+        "verdict": "ADOPT",
+        "findings": 0,
+        "dispositioned": null,
+        "reportPath": "skills/design-direction/AUDIT.md",
+        "missing": []
+      }
     },
     {
       "kind": "skill",
@@ -93,7 +262,47 @@
       "manualOnly": false,
       "words": 289,
       "refWords": 13,
-      "usage": null
+      "usage": null,
+      "files": [
+        {
+          "path": "SKILL.md",
+          "role": "spine",
+          "bytes": 1734,
+          "sha256": "a0d288e8ed2501fbfd03cb76223988391655a44e37f19dd02131d0b13e523e4a",
+          "verified": "matches"
+        },
+        {
+          "path": "AUDIT.md",
+          "role": "audit",
+          "bytes": 1200,
+          "sha256": "e9c06e54f65bccc9983e6fe85cbdf184531fc931e7e29f1d77a6a5f0c92cac01",
+          "verified": "matches"
+        },
+        {
+          "path": "ORIGIN.md",
+          "role": "origin",
+          "bytes": 400,
+          "sha256": "0b3e663b9f0a26b1454f2233a26179a982d93aed05f5481829a6b3da30419c69",
+          "verified": "matches"
+        },
+        {
+          "path": "agents/openai.yaml",
+          "role": "agent",
+          "bytes": 78,
+          "sha256": "8d789f2e4289f32f63b901cf20e657a484efc435a7cee46286cba1dabdfe0a1b",
+          "verified": "matches"
+        }
+      ],
+      "record": {
+        "source": "https://github.com/example-dev/skills",
+        "commit": "1e89f37979ec192448e413ca775199dc65e06cd1",
+        "date": "2026-08-30",
+        "verdict": "ADOPT",
+        "findings": 0,
+        "dispositioned": null,
+        "reportPath": "skills/decision-review/AUDIT.md",
+        "missing": []
+      }
     },
     {
       "kind": "skill",
@@ -105,7 +314,47 @@
       "manualOnly": true,
       "words": 455,
       "refWords": 664,
-      "usage": null
+      "usage": null,
+      "files": [
+        {
+          "path": "SKILL.md",
+          "role": "spine",
+          "bytes": 2730,
+          "sha256": "a128f12a3b4f0043597a17ab83c8572be9dd8b71fc80cb18d17d298e62120e94",
+          "verified": "matches"
+        },
+        {
+          "path": "AUDIT.md",
+          "role": "audit",
+          "bytes": 1200,
+          "sha256": "80b8bcebad2f3b2f1b8078fd445d3a5ce58c61ae5bf0c6c6a6cc0170acd3c9c5",
+          "verified": "matches"
+        },
+        {
+          "path": "ORIGIN.md",
+          "role": "origin",
+          "bytes": 400,
+          "sha256": "8dc313e3a5382574eb1857a167e1789f047c825321c997f9794da427a719e6a1",
+          "verified": "matches"
+        },
+        {
+          "path": "references/libraries.md",
+          "role": "ref",
+          "bytes": 3984,
+          "sha256": "dc70eb663dc29525c17fbba1c934f56335c1652f69df99daa38128933ea3a08a",
+          "verified": "matches"
+        }
+      ],
+      "record": {
+        "source": "https://github.com/example-org/skills",
+        "commit": "6bfbdd2234a4c9cdad22f6748e6a1f439722bf5e",
+        "date": "2026-08-30",
+        "verdict": "ADOPT",
+        "findings": 0,
+        "dispositioned": null,
+        "reportPath": "skills/library-choice/AUDIT.md",
+        "missing": []
+      }
     },
     {
       "kind": "skill",
@@ -117,7 +366,47 @@
       "manualOnly": true,
       "words": 1171,
       "refWords": 940,
-      "usage": null
+      "usage": null,
+      "files": [
+        {
+          "path": "SKILL.md",
+          "role": "spine",
+          "bytes": 7026,
+          "sha256": "21162b1251fb0ebf1b3a88e89d567ebe18909d5ef9bdbd7ec5d5b2f380a88132",
+          "verified": "matches"
+        },
+        {
+          "path": "AUDIT.md",
+          "role": "audit",
+          "bytes": 1200,
+          "sha256": "0882eafc326e96821634740b2b31d44f6628d179e4cbc9edf68b9d5006d273bd",
+          "verified": "matches"
+        },
+        {
+          "path": "ORIGIN.md",
+          "role": "origin",
+          "bytes": 400,
+          "sha256": "306d4cf0f050ac222f5407c8007049214fa34bf3e146deba4d6c5fe4c52750b7",
+          "verified": "matches"
+        },
+        {
+          "path": "references/PICKER.md",
+          "role": "ref",
+          "bytes": 5640,
+          "sha256": "7aa7da0bc91ae570ef45ad6e50c436e66b6d1fda91d5ff15b2119220a43962ec",
+          "verified": "matches"
+        }
+      ],
+      "record": {
+        "source": "https://github.com/example-org/skills",
+        "commit": "3af1fa7f42e42dcf946dac16808d74ec8729309c",
+        "date": "2026-08-30",
+        "verdict": "ADOPT",
+        "findings": 0,
+        "dispositioned": null,
+        "reportPath": "skills/variant-explorer/AUDIT.md",
+        "missing": []
+      }
     },
     {
       "kind": "skill",
@@ -129,7 +418,47 @@
       "manualOnly": true,
       "words": 1090,
       "refWords": 1383,
-      "usage": null
+      "usage": null,
+      "files": [
+        {
+          "path": "SKILL.md",
+          "role": "spine",
+          "bytes": 6540,
+          "sha256": "031669974ff746b64b483fb273b3895c70c5531245a5ad503267323a0da69e51",
+          "verified": "matches"
+        },
+        {
+          "path": "AUDIT.md",
+          "role": "audit",
+          "bytes": 1200,
+          "sha256": "b65e42fd3d0799afd7b89a4955ebf936e40aba72999b2c9be21be5fc68b4c3dc",
+          "verified": "matches"
+        },
+        {
+          "path": "ORIGIN.md",
+          "role": "origin",
+          "bytes": 400,
+          "sha256": "dda222d43553feb2174d3be91d1b163834166009c276a16f6773f2f939547d41",
+          "verified": "matches"
+        },
+        {
+          "path": "references/STANDARDS.md",
+          "role": "ref",
+          "bytes": 8298,
+          "sha256": "1934b516dcc85694edcabfb7483a5b9a30ea5a3dc8b2fa5acf5ff2e3e2dfb924",
+          "verified": "matches"
+        }
+      ],
+      "record": {
+        "source": "https://github.com/example-org/skills",
+        "commit": "0dd9842f04c5e555ec77d4792332ac91fa4aec9f",
+        "date": "2026-08-30",
+        "verdict": "ADOPT",
+        "findings": 0,
+        "dispositioned": null,
+        "reportPath": "skills/motion-review/AUDIT.md",
+        "missing": []
+      }
     },
     {
       "kind": "skill",
@@ -141,7 +470,54 @@
       "manualOnly": true,
       "words": 1198,
       "refWords": 0,
-      "usage": null
+      "usage": null,
+      "files": [
+        {
+          "path": "SKILL.md",
+          "role": "spine",
+          "bytes": 7188,
+          "sha256": "a1c51003c402aca2ebca243aeccb8957f3ccfa7a00c76397c3feb184fd3c7e12",
+          "verified": "matches"
+        },
+        {
+          "path": "AUDIT.md",
+          "role": "audit",
+          "bytes": 1200,
+          "sha256": "429b6b3fed08e06c6268f41f0de47ab671e097d4e009694224fd943c0d2af0bf",
+          "verified": "matches"
+        },
+        {
+          "path": "scripts/promote.mjs",
+          "role": "script",
+          "bytes": 900,
+          "sha256": "0c90e57c098dfd6b98d6a70c09a02a8ece351cbf866a2865cfe0b6cd3a66833d",
+          "verified": "matches"
+        },
+        {
+          "path": "scripts/promote.test.mjs",
+          "role": "script",
+          "bytes": 900,
+          "sha256": "04b2c74e88108425f97e00c63a61978fe9a22f1be73b29cae84cfbe8f9df91cd",
+          "verified": "matches"
+        },
+        {
+          "path": "scripts/self-test.mjs",
+          "role": "script",
+          "bytes": 900,
+          "sha256": "da9ee50b1bab2dbcb97b384a60256b745f352e91441fc7e500d5e1ce491adb7f",
+          "verified": "matches"
+        }
+      ],
+      "record": {
+        "source": null,
+        "commit": null,
+        "date": null,
+        "verdict": "ADOPT",
+        "findings": 0,
+        "dispositioned": null,
+        "reportPath": "skills/skill-adopt/AUDIT.md",
+        "missing": []
+      }
     },
     {
       "kind": "skill",
@@ -153,7 +529,82 @@
       "manualOnly": false,
       "words": 1505,
       "refWords": 4927,
-      "usage": null
+      "usage": null,
+      "files": [
+        {
+          "path": "SKILL.md",
+          "role": "spine",
+          "bytes": 9030,
+          "sha256": "016b0efed3bf9cd188cac953d7bcf2f424019ce000da78576c958332a38b9ae4",
+          "verified": "matches"
+        },
+        {
+          "path": "AUDIT.md",
+          "role": "audit",
+          "bytes": 1200,
+          "sha256": "4854545a018539205612ebde4abe0850eab5fb69e11d6d4e615a51e57bde3a3e",
+          "verified": "matches"
+        },
+        {
+          "path": "assets/AUDIT.template.md",
+          "role": "asset",
+          "bytes": 4848,
+          "sha256": "a3daf37e6d5d474206ae18e44a32d98b9f30d8b90936acf3923697f6ea93934e",
+          "verified": "matches"
+        },
+        {
+          "path": "references/adjudication.md",
+          "role": "ref",
+          "bytes": 7764,
+          "sha256": "77c7a406fdf6aaaa216b3f4ed63b29fd42b687b2cbb2c2dfe1002b6ab53ee15f",
+          "verified": "matches"
+        },
+        {
+          "path": "references/house-style.md",
+          "role": "ref",
+          "bytes": 4422,
+          "sha256": "4eb540311ea12fed532f012d950a0c532eed8cf5d4b973d38931cd993ac09bf6",
+          "verified": "matches"
+        },
+        {
+          "path": "references/threat-model.md",
+          "role": "ref",
+          "bytes": 12528,
+          "sha256": "dc8ada45a8125a0fe2ca1dc3dab06384301bd411c208760d444c52c18c04d4bb",
+          "verified": "matches"
+        },
+        {
+          "path": "scripts/audit-skill.mjs",
+          "role": "script",
+          "bytes": 900,
+          "sha256": "5d7bcb8533c7965fc8a0ed9f4ecd9c541d1aaf39673a4a60d4d7eb4667029e77",
+          "verified": "matches"
+        },
+        {
+          "path": "scripts/audit-skill.test.mjs",
+          "role": "script",
+          "bytes": 900,
+          "sha256": "ebeed28e249a1eabe7c6029ae2c553a8b1d204fdae3309de514c06e8ac28dd88",
+          "verified": "matches"
+        },
+        {
+          "path": "scripts/self-test.mjs",
+          "role": "script",
+          "bytes": 900,
+          "sha256": "c4dc517aa261103fc75af54e30261de78bd8e8a5e138bc24d7429f522e637438",
+          "verified": "matches"
+        }
+      ],
+      "record": {
+        "source": null,
+        "commit": null,
+        "date": null,
+        "verdict": "ADOPT",
+        "findings": 0,
+        "dispositioned": null,
+        "reportPath": "skills/skill-audit/AUDIT.md",
+        "missing": []
+      }
     },
     {
       "kind": "skill",
@@ -165,7 +616,54 @@
       "manualOnly": true,
       "words": 736,
       "refWords": 0,
-      "usage": null
+      "usage": null,
+      "files": [
+        {
+          "path": "SKILL.md",
+          "role": "spine",
+          "bytes": 4416,
+          "sha256": "a125d0d4ef0c92d3cc65209c06cd5ef8560c76a4323013489abc6a7dbf07c7c4",
+          "verified": "matches"
+        },
+        {
+          "path": "AUDIT.md",
+          "role": "audit",
+          "bytes": 1200,
+          "sha256": "2a56f3d1436bb42dcb01faad163efeff6a86d9ecec1f3c77fffc7bc40ffe0abb",
+          "verified": "matches"
+        },
+        {
+          "path": "scripts/intake.mjs",
+          "role": "script",
+          "bytes": 900,
+          "sha256": "6227a9941f978cfd9fc719927dafe367d5fe1f1222668ff52ceb43a436540c0b",
+          "verified": "matches"
+        },
+        {
+          "path": "scripts/intake.test.mjs",
+          "role": "script",
+          "bytes": 900,
+          "sha256": "87b3c13e82c67e8e5cb3b2b0abbe55c8322902c28407f1fe3d4c11e06473a686",
+          "verified": "matches"
+        },
+        {
+          "path": "scripts/self-test.mjs",
+          "role": "script",
+          "bytes": 900,
+          "sha256": "b005bc659e94a569ae22904a244eb6798f104a58ec466c881751795eaf0499d8",
+          "verified": "matches"
+        }
+      ],
+      "record": {
+        "source": null,
+        "commit": null,
+        "date": null,
+        "verdict": "ADOPT",
+        "findings": 0,
+        "dispositioned": null,
+        "reportPath": "skills/skill-intake/AUDIT.md",
+        "missing": []
+      }
     },
     {
       "kind": "skill",
@@ -177,7 +675,33 @@
       "manualOnly": true,
       "words": 1197,
       "refWords": 0,
-      "usage": null
+      "usage": null,
+      "files": [
+        {
+          "path": "SKILL.md",
+          "role": "spine",
+          "bytes": 7182,
+          "sha256": "e26c76c33b4581d7b0248aecb977a06359037098e59db5b8b466423ce8cd1ced",
+          "verified": "matches"
+        },
+        {
+          "path": "AUDIT.md",
+          "role": "audit",
+          "bytes": 1200,
+          "sha256": "c2ace47d9ba8594afa29f40925b58a71c5a74ef0a336dff56183b77a0106a1c8",
+          "verified": "matches"
+        }
+      ],
+      "record": {
+        "source": null,
+        "commit": null,
+        "date": null,
+        "verdict": "ADOPT",
+        "findings": 0,
+        "dispositioned": null,
+        "reportPath": "skills/skill-new/AUDIT.md",
+        "missing": []
+      }
     },
     {
       "kind": "skill",
@@ -189,7 +713,47 @@
       "manualOnly": true,
       "words": 1954,
       "refWords": 14,
-      "usage": null
+      "usage": null,
+      "files": [
+        {
+          "path": "SKILL.md",
+          "role": "spine",
+          "bytes": 11724,
+          "sha256": "01cce295a68eaf1e226e835154b5cdb287346c11f9bd52546689adaba047202a",
+          "verified": "matches"
+        },
+        {
+          "path": "AUDIT.md",
+          "role": "audit",
+          "bytes": 1200,
+          "sha256": "26d7148a47f24da471b1aa8e578259a44e2b5e265a2fd86a77a16587b83ac43e",
+          "verified": "matches"
+        },
+        {
+          "path": "ORIGIN.md",
+          "role": "origin",
+          "bytes": 400,
+          "sha256": "25d06e6bbb07c02c52a0e74d80c03c7c4ebc7d9dcac575824becd836e0ac00eb",
+          "verified": "matches"
+        },
+        {
+          "path": "agents/openai.yaml",
+          "role": "agent",
+          "bytes": 84,
+          "sha256": "318551df92b8e602d349597cfbcdbef44c1d5bc3c2ad6b59bd4330484ce167b5",
+          "verified": "matches"
+        }
+      ],
+      "record": {
+        "source": "https://github.com/example-dev/skills",
+        "commit": "50ca34bb4b3a8b3be060c9b01d458f7fc311001e",
+        "date": "2026-08-30",
+        "verdict": "ADOPT",
+        "findings": 0,
+        "dispositioned": null,
+        "reportPath": "skills/route-planner/AUDIT.md",
+        "missing": []
+      }
     },
     {
       "kind": "leaf",

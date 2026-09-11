@@ -128,3 +128,66 @@ describe('a row qrntn adopt wrote', () => {
     expect(snapshot.nodes.some((n) => n.kind === 'declined')).toBe(false)
   })
 })
+
+describe('a held skill, hashed against the ledger qrntn wrote', () => {
+  it('carries a verdict per file and the ledger\'s record, and names what the ledger hashes that is gone', () => {
+    const lib = library('held')
+    const dir = join(lib, 'skills', 'thin-one')
+    mkdirSync(join(dir, 'references'), { recursive: true })
+    mkdirSync(join(dir, 'scripts'), { recursive: true })
+    writeFileSync(join(dir, 'SKILL.md'), SKILL_MD)
+    writeFileSync(join(dir, 'AUDIT.md'), '# Audit\n\n| | |\n|---|---|\n| **Verdict** | **ADOPT** — no findings |\n')
+    writeFileSync(join(dir, 'references', 'kept.md'), 'kept\n')
+    writeFileSync(join(dir, 'references', 'edited.md'), 'before\n')
+    writeFileSync(join(dir, 'scripts', 'run.sh'), 'echo hi\n')
+
+    // The ledger's own writer, on the tree as it stands — one shape, one
+    // writer, and this exporter reads what it wrote rather than a hand-made
+    // row that could carry a key form the writer never produces.
+    const backfill = node([join(COMMANDS, 'ledger.mjs'), '--backfill', '--library', lib])
+    expect(backfill.status, backfill.stdout + backfill.stderr).toBe(0)
+
+    // Then the library moves on without the ledger: one file edited, one
+    // added, one the ledger names deleted.
+    writeFileSync(join(dir, 'references', 'edited.md'), 'after\n')
+    writeFileSync(join(dir, 'references', 'added.md'), 'new\n')
+    const ledgerPath = join(lib, 'ledger', 'thin-one.json')
+    const ledger = JSON.parse(readFileSync(ledgerPath, 'utf8'))
+    ledger.integrity.files['references/gone.md'] = '0'.repeat(64)
+    writeFileSync(ledgerPath, JSON.stringify(ledger, null, 2))
+
+    const out = join(lib, '.graph', 'graph.json')
+    const r = exporter(['--library', lib, '--out', out])
+    expect(r.status, r.stdout + r.stderr).toBe(0)
+    const snapshot = GraphSnapshotSchema.parse(JSON.parse(readFileSync(out, 'utf8')))
+
+    const held = snapshot.nodes.find((n) => n.kind === 'skill')
+    expect(held).toBeDefined()
+    if (held?.kind !== 'skill') return
+
+    // Spine first, provenance next, then the rest by path.
+    expect(held.files.map((f) => [f.path, f.role, f.verified])).toEqual([
+      ['SKILL.md', 'spine', 'matches'],
+      ['AUDIT.md', 'audit', 'matches'],
+      ['references/added.md', 'ref', 'unlisted'],
+      ['references/edited.md', 'ref', 'drift'],
+      ['references/kept.md', 'ref', 'matches'],
+      ['scripts/run.sh', 'script', 'matches'],
+    ])
+    // The hash is the ledger's hash, byte for byte, where the bytes match.
+    const kept = held.files.find((f) => f.path === 'references/kept.md')
+    expect(kept?.sha256).toBe(ledger.integrity.files['references/kept.md'])
+    expect(kept?.bytes).toBe(5)
+
+    expect(held.record).toEqual({
+      source: null,
+      commit: null,
+      date: null,
+      verdict: 'ADOPT',
+      findings: null,
+      dispositioned: null,
+      reportPath: 'skills/thin-one/AUDIT.md',
+      missing: ['references/gone.md'],
+    })
+  })
+})

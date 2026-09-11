@@ -81,6 +81,13 @@ export function App() {
 
   const canvasProps = useMemo(() => (snapshot ? toGraphCanvasProps(snapshot) : null), [snapshot])
 
+  // The full node by id, for the drawer's record sections. The engine's own
+  // GraphNodeSnapshot carries none of a skill's fields (description, files,
+  // record), and widening the vendored engine's type for them would be the
+  // wrong seam — one Map over the loaded snapshot instead (READING-ROOM.html).
+  const nodesById = useMemo(() => new Map(snapshot?.nodes.map((n) => [n.id, n]) ?? []), [snapshot])
+  const lookupNode = useCallback((id: string) => nodesById.get(id), [nodesById])
+
   const idsByKind = useMemo(() => (snapshot ? categoryIdsByKind(snapshot) : null), [snapshot])
   const kindCounts = useMemo(() => {
     const counts: Record<NodeKind, number> = { origin: 0, category: 0, skill: 0, leaf: 0, scriptFold: 0, vendor: 0, declined: 0, refused: 0, ghost: 0 }
@@ -312,6 +319,8 @@ export function App() {
         <DetailsDrawer
           open={selectedId !== null}
           node={selectedNode}
+          record={selectedId === null ? null : (nodesById.get(selectedId) ?? null)}
+          lookup={lookupNode}
           linkCategories={canvasProps.linkCategories}
           onClose={() => setSelectedId(null)}
         />

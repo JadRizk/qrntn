@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { checkDanglingEdges, checkDuplicateIds, checkManualOnlyOperative, chooseLibrary, originTitle, parseRejectedTable, resolveEntityKind } from './integrity.ts'
+import { checkDanglingEdges, checkDuplicateFilePaths, checkDuplicateIds, checkManualOnlyOperative, chooseLibrary, originTitle, parseRejectedTable, resolveEntityKind } from './integrity.ts'
 import type { EdgeRecord, GraphNode, GraphSnapshot } from './types.ts'
 
 function skill(id: string, manualOnly = false): GraphNode {
@@ -14,6 +14,8 @@ function skill(id: string, manualOnly = false): GraphNode {
     words: 10,
     refWords: 0,
     usage: null,
+    files: [],
+    record: { source: null, commit: null, date: null, verdict: null, findings: null, dispositioned: null, reportPath: null, missing: [] },
   }
 }
 
@@ -88,6 +90,23 @@ describe('checkDuplicateIds', () => {
       edges: [],
     }
     expect(checkDuplicateIds(snapshot)).toEqual([])
+  })
+})
+
+describe('checkDuplicateFilePaths', () => {
+  const file = (path: string) => ({ path, role: 'ref' as const, bytes: 1, sha256: 'a'.repeat(64), verified: 'matches' as const })
+
+  it('warns when a skill lists one path twice', () => {
+    const node = { ...skill('animate'), files: [file('references/a.md'), file('references/a.md')] } as GraphNode
+    const warnings = checkDuplicateFilePaths({ nodes: [node], edges: [] })
+    expect(warnings).toHaveLength(1)
+    expect(warnings[0]?.code).toBe('duplicate-file-path')
+    expect(warnings[0]?.message).toContain('references/a.md')
+  })
+
+  it('stays quiet when every path is listed once', () => {
+    const node = { ...skill('animate'), files: [file('SKILL.md'), file('references/a.md')] } as GraphNode
+    expect(checkDuplicateFilePaths({ nodes: [node], edges: [] })).toEqual([])
   })
 })
 

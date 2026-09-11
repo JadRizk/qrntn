@@ -140,6 +140,8 @@ function skill(words: number, refWords: number, origin: 'authored' | 'acquired' 
     words,
     refWords,
     usage: null,
+    files: [],
+    record: { source: null, commit: null, date: null, verdict: null, findings: null, dispositioned: null, reportPath: null, missing: [] },
   }
 }
 
