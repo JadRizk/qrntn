@@ -13,7 +13,7 @@ appears in a release.
 A version that only refuses better still gets an entry. Declining is a success,
 and a release that made a refusal clearer shipped something.
 
-## 0.2.0 — unreleased
+## 0.2.0 — 2026-09-11
 
 **`view`.** The eleventh verb: the graph, served locally against any skill
 library. `qrntn view --library <dir>` exports the graph for that library,
