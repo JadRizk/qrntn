@@ -10,7 +10,7 @@
 
 import type { ReactNode } from 'react'
 
-export type ActionIconName = 'home' | 'crt' | 'fit' | 'reseed' | 'filter'
+export type ActionIconName = 'home' | 'crt' | 'fit' | 'reseed' | 'filter' | 'read'
 
 // Every path below draws unfilled (the <g> in ActionIcon carries fill="none"
 // once, rather than each path repeating it) — the one exception, `fit`'s
@@ -36,6 +36,13 @@ const PATH: Record<ActionIconName, ReactNode> = {
   ),
   filter: (
     <path d="M2.2 3H11.8L8.1 7.4V11L5.9 12V7.4Z" strokeLinejoin="round" />
+  ),
+  // A page with lines on it — the reading room's verb.
+  read: (
+    <>
+      <path d="M3.4 2.2H8.6L11 4.6V11.8H3.4Z" strokeLinejoin="round" />
+      <path d="M5.2 6.4H9.2 M5.2 8.4H9.2 M5.2 10.2H7.6" strokeLinecap="round" />
+    </>
   ),
 }
 

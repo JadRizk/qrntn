@@ -26,6 +26,7 @@ export interface DetailsDrawerProps {
   /** The same node from the loaded snapshot — the skill's own fields, which the engine's snapshot does not carry. */
   record: GraphNode | null
   lookup: (id: string) => GraphNode | undefined
+  onRead?: ((skillId: string, path: string) => void) | undefined
   linkCategories: Record<string, LinkCategory>
   onClose: () => void
 }
@@ -37,14 +38,14 @@ function kindOf(categoryId: string): string {
 }
 
 export function DetailsDrawer(props: DetailsDrawerProps) {
-  const { open, node, record, lookup, linkCategories, onClose } = props
+  const { open, node, record, lookup, onRead, linkCategories, onClose } = props
 
   return (
     <Drawer open={open} onClose={onClose} title={node?.label ?? ''} subtitle={node ? `${kindOf(node.categoryId)} · degree ${node.degree}` : undefined}>
       {/* Records first, edges after: what a skill is and whether its bytes
           still match the ledger is what a reader opened the drawer for;
           the edge list is what the canvas already shows. */}
-      <RecordSections node={record} lookup={lookup} />
+      <RecordSections node={record} lookup={lookup} onRead={onRead} />
       {node && node.groups.length === 0 && (
         <div style={{ color: 'var(--nx-fg-tertiary)', letterSpacing: 'var(--nx-track-wide)' }}>No connections</div>
       )}

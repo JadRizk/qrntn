@@ -190,7 +190,14 @@ characters this view does not show* — so the toggle itself says what it costs.
 2. **The reader.** `content` in the graph; the reading pane; source
    rendering with invisibles shown; findings pinned to lines. The CSP and the
    `THREATS.md` row land in the same change, because they are the same
-   decision.
+   decision. *Landed 2026-09-12:* every text file ships its bytes, its
+   resolved `links[]` and `anchors[]` (`nexus/src/data/reading.ts`, the one
+   resolver); findings from `AUDIT.json` are pinned with `excerptMatches`;
+   `ui/ReadingPane.tsx` renders the source through `reading/tokenise.ts`,
+   whose character classes are the scanner's and whose confusables table is
+   asserted equal to the scanner's by test; the policy is one string in
+   `view.mjs` and `nexus/index.html`, asserted equal by `view.test.mjs`. A
+   line is an address: `#<skill>/<path>:L<n>`.
 3. **Then, if wanted:** quarantine in the graph; a formatted toggle.
 
 ## Related

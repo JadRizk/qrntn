@@ -8,7 +8,7 @@ import type { GraphNode, GraphSnapshot } from '../data/types.ts'
 // than reinventing a third set of fixtures.
 const NODES: GraphNode[] = [
   { kind: 'category', id: 'c', title: 'Category title', blurb: '' },
-  { kind: 'skill', id: 's', name: 'skill-name', description: '', category: 'c', origin: 'authored', manualOnly: false, words: 10, refWords: 0, usage: null, files: [], record: { source: null, commit: null, date: null, verdict: null, findings: null, dispositioned: null, reportPath: null, missing: [] } },
+  { kind: 'skill', id: 's', name: 'skill-name', description: '', category: 'c', origin: 'authored', manualOnly: false, words: 10, refWords: 0, usage: null, files: [], record: { source: null, commit: null, date: null, verdict: null, findings: null, dispositioned: null, reportPath: null, missing: [] }, findings: [] },
   { kind: 'leaf', id: 'l', owner: 's', file: 'f.md', leafKind: 'ref', words: 10 },
   { kind: 'scriptFold', id: 'f', owner: 's', scripts: ['a.sh'] },
   { kind: 'vendor', id: 'v', repo: 'v/repo', url: 'https://example.com', adopted: [] },

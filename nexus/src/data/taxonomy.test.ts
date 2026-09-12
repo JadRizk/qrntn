@@ -141,7 +141,7 @@ function skill(words: number, refWords: number, origin: 'authored' | 'acquired' 
     refWords,
     usage: null,
     files: [],
-    record: { source: null, commit: null, date: null, verdict: null, findings: null, dispositioned: null, reportPath: null, missing: [] },
+    record: { source: null, commit: null, date: null, verdict: null, findings: null, dispositioned: null, reportPath: null, missing: [] }, findings: [],
   }
 }
 

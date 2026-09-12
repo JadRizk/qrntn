@@ -22,6 +22,8 @@ export interface RecordSectionsProps {
   node: GraphNode | null
   /** Full node by id — the loaded snapshot, not the engine's. A leaf reads its owner's file row through this. */
   lookup: (id: string) => GraphNode | undefined
+  /** Open a file of the selected skill in the reading pane (phase 2). Absent: rows are not buttons. */
+  onRead?: ((skillId: string, path: string) => void) | undefined
 }
 
 // BRAND.md: commits at seven characters, digests truncated with their
@@ -60,7 +62,7 @@ function BreakablePath({ path }: { path: string }) {
   )
 }
 
-function FileRow({ file, missing = false }: { file: Pick<SkillFile, 'path' | 'bytes' | 'sha256'> & { verified?: HashVerdict }; missing?: boolean }) {
+function FileRow({ file, missing = false, onOpen }: { file: Pick<SkillFile, 'path' | 'bytes' | 'sha256'> & { verified?: HashVerdict }; missing?: boolean; onOpen?: (() => void) | undefined }) {
   const verified = file.verified ?? 'unlisted'
   const colour = missing ? 'var(--nx-fg-critical)' : VERDICT_COLOUR[verified]
   const label = missing ? 'missing' : VERDICT_LABEL[verified]
@@ -77,7 +79,14 @@ function FileRow({ file, missing = false }: { file: Pick<SkillFile, 'path' | 'by
       style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--nx-space-3)', padding: 'var(--nx-space-1) 0' }}
     >
       <span aria-hidden="true" style={{ color: colour, flexShrink: 0 }}>{missing ? '✕' : verified === 'drift' ? '▲' : verified === 'unlisted' ? '□' : '■'}</span>
-      <span style={{ color: 'var(--nx-fg-default)', flex: 1, minWidth: 0 }}><BreakablePath path={file.path} /></span>
+      {onOpen
+        ? (
+          <button type="button" onClick={onOpen} title={`read ${file.path}`}
+            style={{ font: 'inherit', background: 'none', border: 0, padding: 0, margin: 0, textAlign: 'left', cursor: 'pointer', color: 'var(--nx-fg-default)', flex: 1, minWidth: 0, borderBottom: 'var(--nx-hairline) dotted var(--nx-border-default)' }}>
+            <BreakablePath path={file.path} />
+          </button>
+        )
+        : <span style={{ color: 'var(--nx-fg-default)', flex: 1, minWidth: 0 }}><BreakablePath path={file.path} /></span>}
       {spelled && (
         <span aria-hidden="true" style={{ color: colour, letterSpacing: 'var(--nx-track-wide)', fontSize: 'var(--nx-text-2xs)', textTransform: 'uppercase', flexShrink: 0 }}>{label}</span>
       )}
@@ -97,7 +106,7 @@ function RecordSection({ record, origin, description }: { record: SkillRecord; o
     <div style={{ marginBottom: 'var(--nx-space-4)' }}>
       <SectionHeading>Record</SectionHeading>
       {description && (
-        <p style={{ margin: '0 0 var(--nx-space-3)', color: 'var(--nx-fg-secondary)', lineHeight: 1.5 }}>{description}</p>
+        <p style={{ margin: '0 0 var(--nx-space-3)', color: 'var(--nx-fg-muted)', lineHeight: 1.5 }}>{description}</p>
       )}
       <KeyValue style={rowStyle} label="origin" value={origin} />
       {record.source && <KeyValue style={rowStyle} label="source" value={<span style={{ overflowWrap: 'anywhere', textAlign: 'right' }}>{record.source}</span>} />}
@@ -120,7 +129,7 @@ function RecordSection({ record, origin, description }: { record: SkillRecord; o
   )
 }
 
-export function RecordSections({ node, lookup }: RecordSectionsProps) {
+export function RecordSections({ node, lookup, onRead }: RecordSectionsProps) {
   if (!node) return null
 
   if (node.kind === 'skill') {
@@ -132,7 +141,7 @@ export function RecordSections({ node, lookup }: RecordSectionsProps) {
           <div aria-hidden="true" style={{ color: 'var(--nx-fg-tertiary)', fontSize: 'var(--nx-text-2xs)', letterSpacing: 'var(--nx-track-wide)', marginBottom: 'var(--nx-space-2)' }}>
             <span style={{ color: 'var(--nx-fg-accent)' }}>■</span> matches · <span style={{ color: 'var(--nx-fg-critical)' }}>▲</span> drift · □ unlisted
           </div>
-          {node.files.map((f) => <FileRow key={f.path} file={f} />)}
+          {node.files.map((f) => <FileRow key={f.path} file={f} onOpen={onRead ? () => onRead(node.id, f.path) : undefined} />)}
           {node.record.missing.map((path) => (
             <FileRow key={`missing:${path}`} file={{ path, bytes: 0, sha256: '' }} missing />
           ))}
@@ -153,7 +162,7 @@ export function RecordSections({ node, lookup }: RecordSectionsProps) {
     return (
       <div style={{ marginBottom: 'var(--nx-space-4)' }}>
         <SectionHeading>File</SectionHeading>
-        <FileRow file={file} />
+        <FileRow file={file} onOpen={onRead ? () => onRead(owner.id, file.path) : undefined} />
         <div style={{ color: 'var(--nx-fg-tertiary)', fontVariantNumeric: 'tabular-nums', marginTop: 'var(--nx-space-1)' }}>{shortDigest(file.sha256)}</div>
       </div>
     )

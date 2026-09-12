@@ -15,7 +15,7 @@ function skill(id: string, manualOnly = false): GraphNode {
     refWords: 0,
     usage: null,
     files: [],
-    record: { source: null, commit: null, date: null, verdict: null, findings: null, dispositioned: null, reportPath: null, missing: [] },
+    record: { source: null, commit: null, date: null, verdict: null, findings: null, dispositioned: null, reportPath: null, missing: [] }, findings: [],
   }
 }
 
