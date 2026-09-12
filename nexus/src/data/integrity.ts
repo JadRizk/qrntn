@@ -90,8 +90,39 @@ export function checkDuplicateIds(snapshot: GraphSnapshot): IntegrityWarning[] {
   return warnings
 }
 
+// ------------------------------------------------------- file records
+
+// A skill's `files` is keyed by path in everything that reads it — the
+// drawer's rows, phase 2's reader — so a path listed twice is the same
+// collision checkDuplicateIds catches for nodes: one row reachable, one
+// silently shadowed. export-graph.mjs lists a root companion .md once and
+// a references/ file once, but the invariant is checked here rather than
+// trusted to stay that way as the walk grows (READING-ROOM.html, decided 3).
+export function checkDuplicateFilePaths(snapshot: GraphSnapshot): IntegrityWarning[] {
+  const warnings: IntegrityWarning[] = []
+  for (const node of snapshot.nodes) {
+    if (node.kind !== 'skill') continue
+    const seen = new Map<string, number>()
+    for (const f of node.files) seen.set(f.path, (seen.get(f.path) ?? 0) + 1)
+    for (const [path, count] of seen) {
+      if (count > 1) {
+        warnings.push({
+          code: 'duplicate-file-path',
+          message: `skill "${node.id}" lists "${path}" ${count} times — only one row is reachable by path`,
+        })
+      }
+    }
+  }
+  return warnings
+}
+
 export function checkIntegrity(snapshot: GraphSnapshot): IntegrityWarning[] {
-  return [...checkDanglingEdges(snapshot), ...checkDuplicateIds(snapshot), ...checkManualOnlyOperative(snapshot)]
+  return [
+    ...checkDanglingEdges(snapshot),
+    ...checkDuplicateIds(snapshot),
+    ...checkManualOnlyOperative(snapshot),
+    ...checkDuplicateFilePaths(snapshot),
+  ]
 }
 
 // -------------------------------------------------------- rejected table

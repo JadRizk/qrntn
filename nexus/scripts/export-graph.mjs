@@ -23,8 +23,9 @@
 // bundle `qrntn view` runs has no public/data/ beside it.
 //
 // The ONLY place Nexus touches files outside its own directory, and it only
-// reads them: edges.json, catalog.json, ledger/*.json, skills/*/SKILL.md
-// (+ references/assets/scripts/agents listings), REJECTED.md.
+// reads them: edges.json, catalog.json, ledger/*.json, skills/*/SKILL.md,
+// AUDIT.md and ORIGIN.md, every file under references/assets/agents/scripts
+// (read in full, to hash against the ledger — see fileRecord), REJECTED.md.
 //
 // Hard rule (§5): does not import, port, or reuse code from
 // scripts/atlas-*.mjs, scripts/build-index.mjs, or scripts/ledger.mjs — not
@@ -34,12 +35,15 @@
 // (the REJECTED.md table parser, the §5 resolution order) live in
 // src/data/integrity.ts and are imported from there, not reimplemented.
 
-import { existsSync, readFileSync, readdirSync, writeFileSync, mkdirSync } from 'node:fs'
-import { basename, dirname, join, resolve } from 'node:path'
+import { createHash } from 'node:crypto'
+import { existsSync, lstatSync, readFileSync, readdirSync, writeFileSync, mkdirSync } from 'node:fs'
+import { basename, dirname, join, posix, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { GraphSnapshotSchema } from '../src/data/types.ts'
 import { chooseLibrary, originTitle, parseRejectedTable, resolveEntityKind } from '../src/data/integrity.ts'
+import { findAnchors, findLinks, pinFinding } from '../src/data/reading.ts'
+import { FindingSchema } from '../packages/record/schema.ts'
 
 function refuse(message) {
   console.error(`refused: ${message}`)
@@ -99,6 +103,74 @@ function listFiles(dir) {
 function wordCount(text) {
   return text.trim().split(/\s+/).filter(Boolean).length
 }
+
+// One file, hashed and checked against the ledger. The ledger's key is the
+// path relative to the skill's directory with posix separators
+// (commands/ledger.mjs writes it that way on every platform), so the same
+// form is derived here rather than the absolute path being sliced. The hash
+// is over the raw bytes — never a decoded string — because the ledger's is,
+// and because a BOM or a CRLF is exactly the kind of byte a decision was
+// recorded against.
+//
+// The bytes ride along, decoded as UTF-8 and nothing else. A file that does
+// not decode is `binary`: size and hash, no guessing at an encoding. Links
+// and anchors are filled in later, once every node the library resolves to
+// is known (see resolveLinks below).
+const utf8 = new TextDecoder('utf-8', { fatal: true })
+
+function fileRecord(skillPath, absPath, role, ledgerFiles) {
+  const bytes = readFileSync(absPath)
+  const path = relative(skillPath, absPath).split(sep).join(posix.sep)
+  const sha256 = createHash('sha256').update(bytes).digest('hex')
+  const listed = ledgerFiles[path]
+  const verified = listed === undefined ? 'unlisted' : listed === sha256 ? 'matches' : 'drift'
+  const base = { path, role, bytes: bytes.length, sha256, verified }
+  let content
+  try {
+    content = utf8.decode(bytes)
+  } catch {
+    return { kind: 'binary', ...base }
+  }
+  return { kind: 'text', ...base, content, links: [], anchors: [] }
+}
+
+// Where a file sits in the skill, from its path alone. The spine and the
+// two provenance files by name; the four conventional folders by prefix; a
+// root companion .md is a reference (the same reading export-graph's leaf
+// walk makes of it); anything else is `other` — a LICENSE, a dotfile — and
+// is listed because the ledger hashes it, so leaving it out would report it
+// missing.
+function roleOf(path) {
+  if (path === 'SKILL.md') return 'spine'
+  if (path === 'AUDIT.md') return 'audit'
+  if (path === 'ORIGIN.md') return 'origin'
+  const [head] = path.split('/')
+  if (head === 'references') return 'ref'
+  if (head === 'assets') return 'asset'
+  if (head === 'agents') return 'agent'
+  if (head === 'scripts') return 'script'
+  if (!path.includes('/') && path.endsWith('.md')) return 'ref'
+  return 'other'
+}
+
+// The ledger's own walk (commands/ledger.mjs): every regular file, at any
+// depth, symlinks skipped — a symlink's target is not this artefact's bytes.
+// Dotfiles included, because the ledger includes them. Restated rather than
+// imported: the CLI's modules run as scripts and are not importable, and
+// the two walks are held together by export.test.ts, which hashes a tree the
+// ledger wrote and expects every path to match.
+function walkAll(dir, root = dir, acc = []) {
+  for (const e of readdirSync(dir).sort()) {
+    const abs = join(dir, e)
+    const st = lstatSync(abs)
+    if (st.isSymbolicLink()) continue
+    if (st.isDirectory()) walkAll(abs, root, acc)
+    else acc.push(abs)
+  }
+  return acc
+}
+
+const ROLE_ORDER = ['spine', 'audit', 'origin']
 
 // Minimal, single-line-value frontmatter reader — every SKILL.md in this
 // repo writes `key: value` on one line each, never block scalars. Good
@@ -199,6 +271,66 @@ const skills = skillDirs.map((dir) => {
     throw new Error(`export-graph: ledger/${dir}.json — origin.kind must be "authored" or "acquired", got ${JSON.stringify(ledger.origin?.kind)}`)
   }
 
+  // Every file on disk, hashed against the ledger — spine first, then the
+  // two provenance files, then everything else in path order. This is the
+  // one place the comparison happens (SHIPPING.md §8: the exporter is the
+  // only place Nexus touches the library), and it still only reads. A path
+  // the ledger names that is not on disk cannot carry a per-file verdict, so
+  // it is reported on the record instead.
+  const ledgerFiles = ledger.integrity?.files ?? {}
+  const files = walkAll(skillPath)
+    .map((abs) => fileRecord(skillPath, abs, roleOf(relative(skillPath, abs).split(sep).join(posix.sep)), ledgerFiles))
+    .sort((a, b) => {
+      const ra = ROLE_ORDER.indexOf(a.role)
+      const rb = ROLE_ORDER.indexOf(b.role)
+      if (ra !== rb) return (ra === -1 ? ROLE_ORDER.length : ra) - (rb === -1 ? ROLE_ORDER.length : rb)
+      return a.path.localeCompare(b.path)
+    })
+  const onDisk = new Set(files.map((f) => f.path))
+  const record = {
+    source: ledger.origin.source ?? null,
+    commit: ledger.origin.commit ?? null,
+    date: ledger.origin.date ?? null,
+    verdict: ledger.audit?.verdict ?? null,
+    findings: ledger.audit?.counts?.findings ?? null,
+    dispositioned: ledger.audit?.dispositioned ?? null,
+    reportPath: ledger.audit?.reportPath ?? null,
+    missing: Object.keys(ledgerFiles).filter((p) => !onDisk.has(p)).sort(),
+  }
+
+  // The structured record, when the skill has one (READING-ROOM.html,
+  // decided 1: pins come from AUDIT.json only; AUDIT.md is a readable file).
+  // Read for its findings, which pin to lines below; its shape is the
+  // record package's and is validated by `validate-record`, not here.
+  // Its findings are checked against the record package's own schema before
+  // anything is pinned: a hand-converted record that spells a severity the
+  // scanner's way (`BLOCK`) or drops an `excerpt` is refused by file, field
+  // and index — not a stack trace from the pinner or the snapshot parse.
+  const auditJsonPath = join(skillPath, 'AUDIT.json')
+  let auditJson = null
+  if (existsSync(auditJsonPath)) {
+    try {
+      auditJson = readJSON(auditJsonPath)
+    } catch (err) {
+      refuse(`skills/${dir}/AUDIT.json is not JSON — ${err.message}`)
+    }
+  }
+  const rawFindings = []
+  if (auditJson !== null) {
+    if (auditJson.findings !== undefined && !Array.isArray(auditJson.findings)) {
+      refuse(`skills/${dir}/AUDIT.json — findings must be an array`)
+    }
+    for (const [i, finding] of (auditJson.findings ?? []).entries()) {
+      const parsed = FindingSchema.safeParse(finding)
+      if (!parsed.success) {
+        const issue = parsed.error.issues[0]
+        refuse(`skills/${dir}/AUDIT.json — findings[${i}]${issue?.path?.length ? '.' + issue.path.join('.') : ''}: ${issue?.message ?? 'invalid'}\n  check it with: node validate-record.mjs skills/${dir}/AUDIT.json`)
+      }
+      rawFindings.push(parsed.data)
+    }
+    if (record.findings === null) record.findings = rawFindings.length
+  }
+
   return {
     id: dir,
     name: fm.name ?? dir,
@@ -213,6 +345,9 @@ const skills = skillDirs.map((dir) => {
     calls: findCalls(fm.body),
     leaves: leafFiles,
     scripts: scriptFiles,
+    files,
+    record,
+    rawFindings,
   }
 })
 
@@ -257,6 +392,37 @@ for (const [name, referencedBy] of referenced) {
   }
 }
 ghosts.sort((a, b) => a.name.localeCompare(b.name))
+
+// ---------------------------------------------------------------- reading
+
+// Links resolve last, once every node that can be a target exists — the
+// skills, the REJECTED.md rows, and the ghosts minted above. A link never
+// mints anything: a name the library does not know stays text.
+const ghostNames = new Set(ghosts.map((g) => g.name))
+for (const s of skills) {
+  const paths = new Set(s.files.map((f) => f.path))
+  const leafIdByPath = new Map(s.leaves.map((l) => [relative(join(skillsRoot, s.id), l.path).split(sep).join(posix.sep), `${s.id}/${l.file}`]))
+  const scriptFoldId = s.scripts.length > 0 ? `${s.id}//scripts` : null
+  const linesByFile = new Map()
+  for (const f of s.files) {
+    if (f.kind !== 'text') continue
+    const lines = f.content.split(/\r?\n/)
+    linesByFile.set(f.path, lines)
+    f.anchors = findAnchors(lines)
+    f.links = findLinks(lines, {
+      skill: s.id,
+      file: f.path,
+      files: paths,
+      leafIdByPath,
+      scriptFoldId,
+      skillIds,
+      refusedNames,
+      declinedNames,
+      ghostNames,
+    })
+  }
+  s.findings = s.rawFindings.map((finding) => pinFinding(finding, linesByFile))
+}
 
 // ---------------------------------------------------------------- vendor
 
@@ -337,6 +503,9 @@ const nodes = [
     words: s.words,
     refWords: s.refWords,
     usage: s.usage,
+    files: s.files,
+    record: s.record,
+    findings: s.findings,
   })),
   ...skills.flatMap((s) =>
     s.leaves.map((l) => ({

@@ -9,6 +9,10 @@
 
 import { z } from 'zod'
 
+// The record's own enums, not restated: a finding in the graph is a finding
+// from AUDIT.json, and two lists of the same six dispositions would drift.
+import { DispositionSchema, SeveritySchema } from '../../packages/record/schema.ts'
+
 // ---------------------------------------------------------------- usage
 
 // The 3-state usage tick (§6): `null` is the real, distinct "not yet
@@ -79,6 +83,117 @@ const OriginNodeSchema = z.object({
 export const OriginKindSchema = z.enum(['authored', 'acquired'])
 export type OriginKind = z.infer<typeof OriginKindSchema>
 
+// The records, on the node (READING-ROOM.html, phase 1). A skill is a folder
+// of text that becomes instructions, and the library holds — per skill — a
+// sha256 for every file (ledger integrity.files) and the audit's verdict.
+// Until now the graph carried none of it, so the drawer could name a skill
+// and its degree and nothing about whether its bytes are still the bytes a
+// human decided on. This is that, without any artefact text: the reader that
+// shows the bytes themselves is phase 2, and a bigger threat surface.
+
+// Three states, and the two that are not "matches" are not the same. `drift`
+// is a file the ledger names whose bytes have changed since the ledger was
+// written; `unlisted` is a file the ledger never named — added after
+// promotion, or never hashed. Collapsing them would make a new file look
+// like a tampered one, or the reverse.
+export const HashVerdictSchema = z.enum(['matches', 'drift', 'unlisted'])
+export type HashVerdict = z.infer<typeof HashVerdictSchema>
+
+// Where a file sits in the skill: the spine, the two provenance files the
+// exporter names and does not draw (AUDIT.md, ORIGIN.md), the three leaf
+// kinds, scripts, and `other` — a LICENSE, a dotfile, AUDIT.json — which
+// the ledger hashes and so must be listed. Provenance is not depth — AUDIT.md
+// and ORIGIN.md are readable from the skill and never become nodes
+// (READING-ROOM.html, decided 4).
+export const FileRoleSchema = z.enum(['spine', 'audit', 'origin', 'ref', 'asset', 'agent', 'script', 'other'])
+export type FileRole = z.infer<typeof FileRoleSchema>
+
+// A link found in a file, as offsets the viewer colours and never re-derives.
+// `node` points at a node id; `file` at a path in the same skill that is
+// readable but not drawn (AUDIT.md, ORIGIN.md, a nested reference —
+// READING-ROOM.html, decided 3 and 4); `anchor` at a heading slug in this
+// file; `external` carries only the host, because nothing navigates off the
+// page; `unresolved` is a link to nothing this export knows, and stays text.
+export const LinkKindSchema = z.enum(['node', 'file', 'anchor', 'external', 'unresolved'])
+export type LinkKind = z.infer<typeof LinkKindSchema>
+
+export const FileLinkSchema = z.object({
+  line: z.number().int().positive(), // 1-based, like a finding's `at`
+  col: z.number().int().nonnegative(), // 0-based UTF-16 offset into the line
+  len: z.number().int().positive(),
+  raw: z.string(), // the target as written
+  kind: LinkKindSchema,
+  to: z.string().nullable(),
+})
+export type FileLink = z.infer<typeof FileLinkSchema>
+
+export const AnchorSchema = z.object({ slug: z.string(), line: z.number().int().positive() })
+
+const fileBase = {
+  path: z.string(), // relative to the skill's directory, posix separators — the ledger's own key
+  role: FileRoleSchema,
+  bytes: z.number().int().nonnegative(),
+  sha256: z.string().regex(/^[0-9a-f]{64}$/),
+  verified: HashVerdictSchema,
+}
+
+// The bytes a decision was recorded against. `content` is the file decoded
+// as UTF-8 and nothing else — no normalisation, no CRLF folding, no BOM
+// stripped; a file that does not decode is `binary` and the reader never
+// guesses an encoding. Never truncated: a hundred thousand newlines is a
+// fact about the file, and the header states the count.
+const TextFileSchema = z.object({
+  kind: z.literal('text'),
+  ...fileBase,
+  content: z.string(),
+  links: z.array(FileLinkSchema),
+  anchors: z.array(AnchorSchema),
+})
+const BinaryFileSchema = z.object({
+  kind: z.literal('binary'),
+  ...fileBase,
+})
+export const SkillFileSchema = z.discriminatedUnion('kind', [TextFileSchema, BinaryFileSchema])
+export type SkillFile = z.infer<typeof SkillFileSchema>
+export type TextFile = z.infer<typeof TextFileSchema>
+
+// A finding from AUDIT.json, pinned to the line its `at` names. The record's
+// own fields, unchanged, plus where the exporter found that line to be —
+// `line: null` when the file no longer has it, `excerptMatches: false` when
+// the line is there but no longer says what the record quoted. The reader
+// shows the pin where it lands and says when it did not.
+export const PinnedFindingSchema = z.object({
+  code: z.string(),
+  severity: SeveritySchema,
+  at: z.string(),
+  file: z.string(),
+  line: z.number().int().positive().nullable(),
+  col: z.number().int().nonnegative().nullable(),
+  excerpt: z.string(),
+  excerptMatches: z.boolean(),
+  disposition: DispositionSchema,
+  why: z.string(),
+})
+export type PinnedFinding = z.infer<typeof PinnedFindingSchema>
+
+// What ledger/<name>.json says, carried as it says it. Every field nullable
+// because the ledger writer leaves each null when nothing establishes it
+// (commands/ledger.mjs's shape comment), and a viewer that defaulted a null
+// commit to "" would be asserting a pin nobody recorded.
+export const SkillRecordSchema = z.object({
+  source: z.string().nullable(), // origin.source — URL, null for authored
+  commit: z.string().nullable(), // origin.commit — the resolved commit, or never recorded
+  date: z.string().nullable(), // origin.date — arrival or promotion, ISO
+  verdict: z.string().nullable(), // audit.verdict
+  findings: z.number().int().nonnegative().nullable(), // audit.counts.findings
+  dispositioned: z.boolean().nullable(), // audit.dispositioned
+  reportPath: z.string().nullable(), // audit.reportPath
+  // Paths the ledger hashes that are no longer on disk. The fourth state a
+  // per-file verdict cannot carry, because there is no file to carry it.
+  missing: z.array(z.string()),
+})
+export type SkillRecord = z.infer<typeof SkillRecordSchema>
+
 const SkillNodeSchema = z.object({
   kind: z.literal('skill'),
   id: z.string(),
@@ -90,6 +205,9 @@ const SkillNodeSchema = z.object({
   words: z.number().int().nonnegative(), // spine
   refWords: z.number().int().nonnegative(), // halo, additive to spine
   usage: UsageStatsSchema.nullable(),
+  files: z.array(SkillFileSchema), // every file on disk — the ledger's own walk — spine first, provenance next, then by path
+  record: SkillRecordSchema,
+  findings: z.array(PinnedFindingSchema), // from AUDIT.json when the skill has one; else empty
 })
 
 // ---------------------------------------------------------------- vendor

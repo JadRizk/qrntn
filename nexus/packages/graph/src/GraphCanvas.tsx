@@ -796,6 +796,14 @@ export const GraphCanvas = forwardRef<GraphController, GraphCanvasProps>(functio
         }
         return any ? [x0, y0, x1, y1] : null;
       }
+      // The world-space offset that puts a target in the middle of the box
+      // the consumer's chrome leaves free rather than the middle of the
+      // canvas; applyFit derives the same numbers inline. dy flips sign
+      // because screen +y is down and world +y is up (camera.ts's project()).
+      function insetOffset(zoom: number): [number, number] {
+        const ins = fitInsetRef.current;
+        return [((ins.left - ins.right) / 2) / zoom, ((ins.top - ins.bottom) / 2) / zoom];
+      }
       function applyFit(x0: number, y0: number, x1: number, y1: number) {
         const gw = Math.max(1, x1 - x0), gh = Math.max(1, y1 - y0);
         // Fit into the box the consumer's floating chrome leaves free, not
@@ -856,8 +864,13 @@ export const GraphCanvas = forwardRef<GraphController, GraphCanvasProps>(functio
         // left. Track it per frame instead (see frame()) until it settles
         // or the reader takes the camera by hand.
         follow = i;
-        camT.x = pos[i * 2]!; camT.y = pos[i * 2 + 1]!;
         camT.zoom = Math.max(camT.zoom, 2.6);
+        // Land the node in the middle of the free box, not the canvas —
+        // the same backing-off applyFit does for the whole graph. Without
+        // it a wide right-hand panel (the reading pane) leaves the focused
+        // node at the panel's edge.
+        const [ox, oy] = insetOffset(camT.zoom);
+        camT.x = pos[i * 2]! - ox; camT.y = pos[i * 2 + 1]! + oy;
       };
       // hiddenNodeCategories/hiddenLinkCategories/isolateId are already
       // reflected by the unconditional refilter() call above (the refs it
@@ -990,7 +1003,10 @@ export const GraphCanvas = forwardRef<GraphController, GraphCanvasProps>(functio
         // hands without needing them to click anything to break out).
         if (follow >= 0) {
           if (sim.isSettled()) follow = -1;
-          else if (didStep) { camT.x = pos[follow * 2]!; camT.y = pos[follow * 2 + 1]!; }
+          else if (didStep) {
+            const [ox, oy] = insetOffset(camT.zoom);
+            camT.x = pos[follow * 2]! - ox; camT.y = pos[follow * 2 + 1]! + oy;
+          }
         }
 
         if (autoFit && didStep && !sim.isSettled()) {

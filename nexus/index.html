@@ -18,6 +18,15 @@
     <meta name="color-scheme" content="dark" />
     <meta name="theme-color" content="#08090A" />
 
+    <!-- The reader renders held skills' full artefact text (docs/READING.md),
+         so the page is held to a policy that admits no remote source: an
+         <img src="https://…"> in a README is a broken image here, never a
+         beacon. `qrntn view` sets the same string as a header
+         (commands/view.mjs, CSP) — that is the belt; this <meta> is the
+         braces, so `vite dev` is held to the same rule as the bundle.
+         view.test.mjs asserts the two agree. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'" />
+
     <!-- Signal flag Q, served as a FILE rather than inlined as a data: URI.
          Two reasons, and the second is the one that matters: Safari does not
          reliably render an SVG favicon from a data URI, and the percent-encoded

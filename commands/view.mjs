@@ -113,6 +113,17 @@ Exit codes:  0 stopped · 1 the library is inconsistent, so there is no graph
 `
 }
 
+// The one policy, written once here and once as the <meta> in
+// nexus/index.html; view.test.mjs asserts the served header carries it and
+// that the two strings agree. `connect-src 'self'` is the line that makes
+// an <img src=https://…> in a README a broken image rather than a beacon;
+// `img-src` admits data: for the viewer's own inline glyphs and nothing
+// remote. `style-src` admits inline styles because index.html carries a
+// <style> block and vite dev injects them — and a stylesheet cannot reach
+// out on its own: every url() it names is governed by img-src / font-src,
+// both 'self'. Scripts are never inline, so script-src is 'self' alone.
+const CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"
+
 const CONTENT_TYPES = {
 	'.html': 'text/html; charset=utf-8',
 	'.js': 'text/javascript; charset=utf-8',
@@ -256,8 +267,25 @@ function handle(req, res) {
 		return res.end()
 	}
 
+	// Every response, whatever it carries: never sniffed into another type,
+	// never a referrer. And on the page, the policy that makes the reader
+	// safe to ship (READING.md, READING-ROOM.html): the viewer renders held
+	// skills' full artefact text as source, and a policy that admits no
+	// remote fetch is what keeps "nothing leaves the machine" true if any of
+	// that text is ever rendered as more than text. Mirrored as a <meta> in
+	// nexus/index.html so `vite dev` is held to the same rule. Belt and
+	// braces, with the belt named — the same phrase as the traversal check
+	// below, for the same reason.
 	const send = (status, body, type) => {
-		res.writeHead(status, { 'Content-Type': type, 'Content-Length': body.length, 'Cache-Control': 'no-store' })
+		const headers = {
+			'Content-Type': type,
+			'Content-Length': body.length,
+			'Cache-Control': 'no-store',
+			'X-Content-Type-Options': 'nosniff',
+			'Referrer-Policy': 'no-referrer',
+		}
+		if (type === CONTENT_TYPES['.html']) headers['Content-Security-Policy'] = CSP
+		res.writeHead(status, headers)
 		res.end(req.method === 'HEAD' ? undefined : body)
 	}
 	const notFound = () => send(404, Buffer.from('not found\n'), CONTENT_TYPES['.txt'])

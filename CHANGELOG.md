@@ -13,6 +13,51 @@ appears in a release.
 A version that only refuses better still gets an entry. Declining is a success,
 and a release that made a refusal clearer shipped something.
 
+## 0.3.0 — unreleased
+
+**`view` reads.** Select a skill and the drawer now says what the records
+say: origin, pinned commit, verdict, and every file in the skill with its
+sha256 checked against the ledger — `matches`, `drift`, or `not in ledger`,
+and a path the ledger hashes that is no longer on disk named as `missing`.
+Open a file and a reading pane replaces the drawer with the **source**:
+line-numbered, never wrapped, every control, invisible, bidirectional and tag
+character rendered as a named chip (`U+202E`), a bidirectional run underlined
+to its terminator, a confusable shown with the letter it imitates, HTML
+comments present and dimmed, tabs and trailing spaces marked. The character
+classes are the scanner's own, and the confusables table is asserted equal to
+the scanner's by test. Findings from a skill's `AUDIT.json` are pinned to the
+lines their `at` names, with the human's disposition beside each; a finding
+whose line is gone says so instead of pointing at the wrong one.
+
+Links in a file resolve once, at export, to nodes in the graph — a reference,
+a script, a sibling skill through the same order that resolves everything
+else — or to a readable file, an anchor, an external host, or nothing. A link
+never mints a node or an edge. Following one selects the target and opens its
+bytes; `[` and `]` step the findings; `alt+←` walks back; a line is an
+address, `#<skill>/<path>:L<n>`. An external link is text with its host and
+is never navigable.
+
+**Why source and not markdown**, since a "README viewer" is what this looks
+like from a distance: a rendered view hides an HTML comment addressed to the
+model, a right-to-left override, a zero-width space and a Cyrillic `а` — the
+concealments `docs/THREATS.md` names and the scanner exists to catch. The
+reader renders what `cat` renders, and more. `docs/READING.md` decided this;
+`docs/READING-ROOM.html` specified it.
+
+**What leaves the machine.** Nothing, still — and now under a policy rather
+than a promise. The viewer renders held skills' full artefact text, so the
+page ships under one `Content-Security-Policy` that admits no remote source,
+set as a header by `view` and carried as a `<meta>` by the page, asserted
+identical by test; every response carries `X-Content-Type-Options: nosniff`
+and `Referrer-Policy: no-referrer`. The `view` row in `docs/THREATS.md` is
+rewritten accordingly.
+
+**The graph carries the bytes.** `graph.json` gains, per skill, `files[]`,
+`record`, `findings[]`, and per text file its `content`, `links[]` and
+`anchors[]`. The fixture grows from 28 KB to under 100 KB; `check-graph`
+warns past 4 MB and names the files that got it there. Not a change to any
+of the four contracts.
+
 ## 0.2.0 — 2026-09-11
 
 **`view`.** The eleventh verb: the graph, served locally against any skill
