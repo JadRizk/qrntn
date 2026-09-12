@@ -13,6 +13,22 @@ appears in a release.
 A version that only refuses better still gets an entry. Declining is a success,
 and a release that made a refusal clearer shipped something.
 
+## Unreleased
+
+**`install` can say "in place".** The ledger's install section was written
+for one layout — the library somewhere of its own, `<install-root>/<name>` a
+symlink into it — and `{ symlinked: false, path: null }` meant not installed.
+The first library made outside the one this was written in sits at `~/.claude`
+itself, so its skills load from exactly where they are held, and `ledger
+--check --install` called all twenty of them not installed. The section now
+carries `inPlace: boolean`: true when the install root *is* the library's
+`skills/` directory, compared by realpath and as a property of the two
+directories rather than of where an entry points, so a link into the library
+from a root of its own stays what it was. Always written, never implied by
+absence. A record from before the key made no claim about it, so `--check
+--install` does not fail such a record for a fresh `false` — and does fail it
+for a fresh `true`, which is the layout having changed under it.
+
 ## 0.4.0 — 2026-09-13
 
 **`view` has an address.** `qrntn view` serves at `http://localhost:7768/`

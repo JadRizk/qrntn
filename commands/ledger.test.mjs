@@ -435,6 +435,83 @@ Pinned to \`deadbee\`. The repository was committed to on this date.
 	check('install: not-installed is distinguishable from never-looked', entry.install !== null, JSON.stringify(entry.install))
 }
 {
+	// ── in place: the install root IS skills/ ───────────────────────────────
+	//
+	// The layout this section was not written for, and the first one anyone
+	// made outside the library it was written in: the library at ~/.claude
+	// itself, so that ~/.claude/skills is both where skills are held and where
+	// they load from. Every skill there is installed by being where it is, and
+	// the first look at it recorded twenty of twenty as not installed.
+	const repo = mkRepo('install-in-place', { 'tidy-notes': { 'SKILL.md': SKILL_MD } })
+	const skillsDir = join(repo, 'skills')
+
+	run(repo, ['--backfill', '--install', '--install-root', skillsDir])
+	const held = readLedger(repo, 'tidy-notes')
+	check('in place: a root that is skills/ itself records inPlace true', held.install?.inPlace === true, JSON.stringify(held.install))
+	check('in place: and is not called a symlink, because it is not one', held.install?.symlinked === false && held.install?.path === null, JSON.stringify(held.install))
+	check('in place: --check --install passes on that record', run(repo, ['--check', '--install', '--install-root', skillsDir]).code === 0, run(repo, ['--check', '--install', '--install-root', skillsDir]).raw.slice(0, 300))
+
+	// A root reached through a link to skills/ is still skills/. Realpaths.
+	const viaLink = join(ROOT, 'install-in-place-via-link')
+	symlinkSync(skillsDir, viaLink)
+	run(repo, ['--backfill', '--force', '--install', '--install-root', viaLink])
+	check('in place: a root that is a link to skills/ is in place too', readLedger(repo, 'tidy-notes').install?.inPlace === true, JSON.stringify(readLedger(repo, 'tidy-notes').install))
+
+	// The old layout, for contrast: a root of its own with a link into the
+	// library is NOT in place, however the link resolves — the property is of
+	// the directories, not of where an entry points.
+	const elsewhere = join(ROOT, 'install-in-place-elsewhere')
+	mkdirSync(elsewhere, { recursive: true })
+	symlinkSync(join(repo, 'skills', 'tidy-notes'), join(elsewhere, 'tidy-notes'))
+	run(repo, ['--backfill', '--force', '--install', '--install-root', elsewhere])
+	const linked = readLedger(repo, 'tidy-notes')
+	check('in place: a link into the library from a root of its own is symlinked, not in place', linked.install?.symlinked === true && linked.install?.inPlace === false, JSON.stringify(linked.install))
+	check('in place: the key is written when false, never implied by absence', 'inPlace' in (linked.install ?? {}), JSON.stringify(linked.install))
+}
+{
+	// ── records from before the key existed ─────────────────────────────────
+	//
+	// Every ledger written by an earlier version has an install section with
+	// no inPlace at all. Such a record made no claim about it, and a fresh look
+	// that says false is not news against it: --check --install must not fail
+	// every library on the planet for a key it never had. A fresh look that
+	// says TRUE is news — the layout changed, or the record was written blind
+	// to it — and must fail, or the rule above is a hole rather than a rule.
+	//
+	// The record is of a look that found NOTHING at a root of its own — so
+	// that against skills/ as the root, inPlace is the only thing a fresh look
+	// says differently. The first version of this case used a symlinked record
+	// and passed for the wrong reason: symlinked differed too, so the failure
+	// it asserted was never about inPlace at all, and a self-test mutation that
+	// widened the forgiveness to swallow true survived it.
+	const repo = mkRepo('install-pre-key', { 'tidy-notes': { 'SKILL.md': SKILL_MD } })
+	const emptyRoot = join(ROOT, 'install-pre-key-root')
+	mkdirSync(emptyRoot, { recursive: true })
+	run(repo, ['--backfill', '--install', '--install-root', emptyRoot])
+
+	// Strip the key by hand, as a record written last month would look.
+	const path = join(repo, 'ledger', 'tidy-notes.json')
+	const entry = JSON.parse(readFileSync(path, 'utf8'))
+	check('pre-key: the fixture is a not-installed record', entry.install?.symlinked === false && entry.install?.inPlace === false, JSON.stringify(entry.install))
+	delete entry.install.inPlace
+	writeFileSync(path, JSON.stringify(entry, null, 2) + '\n')
+
+	const stillNothing = run(repo, ['--check', '--install', '--install-root', emptyRoot])
+	check('pre-key: a record without inPlace passes when a fresh look says false', stillNothing.code === 0, stillNothing.raw.slice(0, 300))
+
+	// Same old record, but the root named now IS skills/. symlinked and path
+	// agree — false, null, both times — and inPlace is the one word that
+	// differs. It must be enough.
+	const nowInPlace = run(repo, ['--check', '--install', '--install-root', join(repo, 'skills')])
+	check('pre-key: and fails when a fresh look says true — that is news', nowInPlace.code === 1 && (nowInPlace.json?.errors ?? []).some((e) => /\.install/.test(e)), nowInPlace.raw.slice(0, 300))
+
+	// The forgiveness is one key wide. Put a link at the root the record
+	// looked at: the record still lacks inPlace, and now lies about the link.
+	symlinkSync(join(repo, 'skills', 'tidy-notes'), join(emptyRoot, 'tidy-notes'))
+	const lie = run(repo, ['--check', '--install', '--install-root', emptyRoot])
+	check('pre-key: forgiving the missing key does not forgive the rest of the section', lie.code === 1, lie.raw.slice(0, 300))
+}
+{
 	// Naming a location without asking for the look is refused rather than
 	// ignored — and rather than silently enabling the look, which is the
 	// opt-out default returning through a side door.

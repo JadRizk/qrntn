@@ -98,6 +98,21 @@ const MUTATIONS = [
 		replace: 'return 0'
 	},
 	{
+		// The install root IS skills/, and nothing says so: every held skill is
+		// "not installed" again, which is the finding that made the key exist.
+		name: 'in place is never detected — the root and skills/ are not compared',
+		find: '\t\tinPlace = realpathSync(root) === realpathSync(skillsDir)',
+		replace: '\t\tinPlace = false'
+	},
+	{
+		// The rule for records that predate the key, widened by one condition:
+		// now a fresh TRUE is forgiven too, and a library whose layout changed
+		// under an old record passes its install check.
+		name: 'the pre-key forgiveness swallows a fresh inPlace true as well',
+		find: "if (section === 'install' && onDiskValue.inPlace === undefined && freshValue.inPlace === false) {",
+		replace: "if (section === 'install' && onDiskValue.inPlace === undefined) {"
+	},
+	{
 		name: 'INERT CONTROL — a comment reworded, nothing else',
 		find: '// ------------------------------------------------------------------------ check',
 		replace: '// ------------------------------------------------------------------------ the check pass',

@@ -907,7 +907,10 @@ function main(argv) {
 			const sections = {
 				usage: entry ? { invocations: entry.invocations, lastInvoked: entry.lastInvoked } : null
 			}
-			if (installRoot) sections.install = computeInstall(s.dir, installRoot)
+			// The library's own skills/, named — computeInstall defaults to
+			// ledger.mjs's, which resolves from the same argv and environment,
+			// but this script resolved `library` itself and should say so.
+			if (installRoot) sections.install = computeInstall(s.dir, installRoot, join(library, 'skills'))
 			writeLedgerSections(s.dir, sections, library)
 		}
 	}

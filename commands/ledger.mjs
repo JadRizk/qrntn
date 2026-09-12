@@ -59,9 +59,12 @@
 //               stages: number,
 //               gated: boolean | null,          // null if there are no stages to gate
 //               tests: { files: number, hasSelfTest: boolean } | null }  // null: no scripts/
-//   install:  { symlinked: boolean, path: string | null } | null
+//   install:  { symlinked: boolean, path: string | null, inPlace: boolean } | null
 //                                     // <install-root>/<name>, when a run was
-//                                     // asked to look; null means not looked at
+//                                     // asked to look; null means not looked at.
+//                                     // inPlace: the install root IS skills/,
+//                                     // so the skill is loaded from where it
+//                                     // is held — see computeInstall
 //   usage:    { invocations: { d7, d30, d90, all }, lastInvoked: string | null } | null
 // }
 //
@@ -419,16 +422,44 @@ function computeAudit(skillDir) {
 // `root` is required and has no default. A default here is what made the
 // ~/.claude assumption invisible for as long as it was — the caller decides
 // whether anyone looked, and null is how it says nobody did.
-export function computeInstall(name, root) {
+// IN PLACE. This section was written for one layout: the library somewhere of
+// its own, and <install-root>/<name> a symlink into it. `symlinked` and `path`
+// describe that link, and { symlinked: false, path: null } means the install
+// root has nothing for this skill — "not installed", a finding. Then a library
+// was made at ~/.claude itself: skills/ is ~/.claude/skills, the catalog and
+// the ledger beside it, and the install root and the library's skills
+// directory are the same directory. Every held skill there is loaded from
+// exactly where it is held, and this function said of each one: not installed.
+// Twenty of twenty, on the first library whose layout is the simplest one.
+//
+// `inPlace` is that fact, recorded. It is a property of the two DIRECTORIES —
+// is the install root the library's skills directory — and never of the entry:
+// an entry that is a symlink into the library resolves to the held directory
+// too, and comparing entries would call the old layout in-place as well.
+// Realpaths, so that a root reached through a link still counts. `symlinked`
+// and `path` keep describing what the entry is, because in place does not
+// mean not a link: a held skill may itself be a link out to somewhere else,
+// and that is worth a row saying so.
+//
+// Always written, never implied by absence. The comparison in checkAll knows
+// what to do with a record from before the key existed.
+export function computeInstall(name, root, skillsDir = SKILLS_DIR) {
 	if (!root) return null
+	let inPlace = false
+	try {
+		inPlace = realpathSync(root) === realpathSync(skillsDir)
+	} catch {
+		// One of the two does not exist. Not in place, and not an error: the
+		// look proceeds and records what it finds at the root.
+	}
 	const linkPath = join(root, name)
-	if (!existsSync(linkPath)) return { symlinked: false, path: null }
+	if (!existsSync(linkPath)) return { symlinked: false, path: null, inPlace }
 	try {
 		const st = lstatSync(linkPath)
-		if (!st.isSymbolicLink()) return { symlinked: false, path: null }
-		return { symlinked: true, path: readlinkSync(linkPath) }
+		if (!st.isSymbolicLink()) return { symlinked: false, path: null, inPlace }
+		return { symlinked: true, path: readlinkSync(linkPath), inPlace }
 	} catch {
-		return { symlinked: false, path: null }
+		return { symlinked: false, path: null, inPlace }
 	}
 }
 
@@ -462,7 +493,7 @@ export function computeStructural(skillDir, name, installRoot = null) {
 		integrity: computeIntegrity(skillDir),
 		audit: computeAudit(skillDir),
 		contract: computeContract(skillDir),
-		install: computeInstall(name, installRoot)
+		install: computeInstall(name, installRoot, dirname(skillDir))
 	}
 }
 
@@ -567,6 +598,15 @@ export function checkAll({ install = false, installRoot = null } = {}) {
 				freshValue.upstreamHead = onDiskValue.upstreamHead
 			}
 			if (section === 'integrity') freshValue.lastVerified = onDiskValue.lastVerified
+			// A record written before `inPlace` existed made no claim about it.
+			// A fresh look that says false is not news against that record and
+			// is not compared; one that says true is — the layout changed, or
+			// the record was written blind to it — and fails, as it should.
+			// Confined to the one key, so nothing else in the section is
+			// forgiven with it.
+			if (section === 'install' && onDiskValue.inPlace === undefined && freshValue.inPlace === false) {
+				delete freshValue.inPlace
+			}
 			if (stableStringify(onDiskValue) !== stableStringify(freshValue)) {
 				errors.push(`${name}: ledger .${section} does not match what is on disk now`)
 			}
