@@ -115,11 +115,12 @@ function spansOf(line: string): Span[] {
     spans.push({ col: m.index + 2, len: name.length, raw: name, form: 'name' })
   }
   // Earliest wins; a bare URL inside a markdown link is the same span twice.
+  // An empty destination — `[x](<>)`, legal CommonMark — is no span at all.
   spans.sort((a, b) => a.col - b.col || b.len - a.len)
   const kept: Span[] = []
   let end = -1
   for (const s of spans) {
-    if (s.col < end) continue
+    if (s.len === 0 || s.col < end) continue
     kept.push(s)
     end = s.col + s.len
   }

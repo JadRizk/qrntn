@@ -201,39 +201,55 @@ export function ReadingPane(props: ReadingPaneProps) {
   // flex item, and two scrollers fighting is worse than one reached by
   // parentElement.
   const scrollRef = useRef<HTMLElement | null>(null)
+  const rowsRef = useRef<HTMLDivElement | null>(null)
   const [scrollTop, setScrollTop] = useState(0)
   const [viewH, setViewH] = useState(600)
+  // Where the rows begin inside the scroller: the unpinned-findings block
+  // above them has a height the row arithmetic cannot know, so it is
+  // measured, and every offset below is taken from here.
+  const [rowsTop, setRowsTop] = useState(0)
   const bodyRef = useCallback((el: HTMLDivElement | null) => { scrollRef.current = el?.parentElement ?? null }, [])
   useLayoutEffect(() => {
     const el = scrollRef.current
     if (!el || !open) return
     const onScroll = () => setScrollTop(el.scrollTop)
-    const ro = new ResizeObserver(() => setViewH(el.clientHeight))
+    const measure = () => {
+      setViewH(el.clientHeight)
+      setRowsTop(rowsRef.current?.offsetTop ?? 0)
+    }
+    const ro = new ResizeObserver(measure)
     ro.observe(el)
-    setViewH(el.clientHeight)
+    if (rowsRef.current) ro.observe(rowsRef.current)
+    measure()
     el.addEventListener('scroll', onScroll, { passive: true })
     return () => { ro.disconnect(); el.removeEventListener('scroll', onScroll) }
-  }, [open])
+  }, [open, reading])
 
   const [first, last] = useMemo(() => {
     if (rows.length === 0) return [0, 0]
+    const top = Math.max(0, scrollTop - rowsTop)
     let lo = 0, hi = rows.length
-    while (lo < hi) { const mid = (lo + hi) >> 1; if ((offsets[mid + 1] ?? 0) < scrollTop) lo = mid + 1; else hi = mid }
+    while (lo < hi) { const mid = (lo + hi) >> 1; if ((offsets[mid + 1] ?? 0) < top) lo = mid + 1; else hi = mid }
     const start = Math.max(0, lo - 20)
     let end = start
-    while (end < rows.length && (offsets[end] ?? 0) < scrollTop + viewH) end++
+    while (end < rows.length && (offsets[end] ?? 0) < top + viewH) end++
     return [start, Math.min(rows.length, end + 20)]
-  }, [rows, offsets, scrollTop, viewH])
+  }, [rows, offsets, scrollTop, viewH, rowsTop])
 
-  // Scroll to the asked-for line: on open, on a finding step, on an anchor.
+  // Scroll to the asked-for line: on open, on a finding step, on an anchor —
+  // and only then. The request is the file and the line; a resize or a
+  // re-measure must not move a reader who has scrolled away from it.
+  const request = reading ? `${reading.nodeId}/${reading.path}:${reading.line ?? ''}` : ''
+  const requestRef = useRef('')
   useEffect(() => {
     const el = scrollRef.current
-    if (!el || !reading) return
-    if (reading.line === null) { el.scrollTop = 0; return }
+    if (!el || !reading || request === requestRef.current) return
+    if (reading.line === null) { requestRef.current = request; el.scrollTop = 0; return }
     const idx = rows.findIndex((r) => r.kind === 'line' && r.line.n === reading.line)
     if (idx === -1) return
-    el.scrollTop = Math.max(0, (offsets[idx] ?? 0) - viewH / 3)
-  }, [reading, rows, offsets, viewH])
+    requestRef.current = request
+    el.scrollTop = Math.max(0, rowsTop + (offsets[idx] ?? 0) - viewH / 3)
+  }, [request, reading, rows, offsets, viewH, rowsTop])
 
   // ---- header
 
@@ -306,7 +322,7 @@ export function ReadingPane(props: ReadingPaneProps) {
           {unpinned.map((f, i) => <div key={i} style={{ marginLeft: -GUTTER }}><PinRow finding={f} /></div>)}
         </div>
       )}
-      <div style={{ height: total, position: 'relative' }}>
+      <div ref={rowsRef} style={{ height: total, position: 'relative' }}>
         <div style={{ position: 'absolute', top: offsets[first] ?? 0, left: 0, right: 0 }}>
           {rows.slice(first, last).map((r) =>
             r.kind === 'line'

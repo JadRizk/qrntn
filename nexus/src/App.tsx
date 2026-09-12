@@ -76,7 +76,15 @@ function readingFor(node: GraphNode, lookup: (id: string) => GraphNode | undefin
 // `#<skill>/<path>:L<n>` — a line is an address on this machine. Read once
 // on load, written on every change; the browser's history is not used.
 function readHash(hash: string): Reading | null {
-  const m = /^#([^/]+)\/(.+?)(?::L(\d+))?$/.exec(decodeURIComponent(hash))
+  // A malformed address is no address: a stray `%` must not take the
+  // whole viewer down with a URIError thrown from the load effect.
+  let decoded: string
+  try {
+    decoded = decodeURIComponent(hash)
+  } catch {
+    return null
+  }
+  const m = /^#([^/]+)\/(.+?)(?::L(\d+))?$/.exec(decoded)
   if (!m) return null
   return { nodeId: m[1] ?? '', path: m[2] ?? '', line: m[3] ? Number(m[3]) : null }
 }

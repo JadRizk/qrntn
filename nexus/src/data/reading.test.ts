@@ -94,6 +94,10 @@ describe('findLinks — where each form resolves', () => {
     expect(one('[j](references/100%.md)')).toMatchObject({ kind: 'unresolved', to: null })
   })
 
+  it('an empty destination is no link — the schema wants a span with length', () => {
+    expect(findLinks(['[todo](<>) and [x](references/palette.md)'], ctx())).toHaveLength(1)
+  })
+
   it('the span is the target, even when the label says the same thing — and the operative name is found from the end', () => {
     const line = 'see [references/palette.md](references/palette.md) and Call the Skill tool with "the"'
     const links = findLinks([line], { ...ctx(), skillIds: new Set(['the', 'design-direction']) })
