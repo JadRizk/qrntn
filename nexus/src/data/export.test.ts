@@ -129,6 +129,28 @@ describe('a row qrntn adopt wrote', () => {
   })
 })
 
+describe('a record that does not hold', () => {
+  it('is refused by file, field and index — with exit 2, before a graph is written', () => {
+    const lib = library('bad-record')
+    const dir = join(lib, 'skills', 'thin-one')
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(join(dir, 'SKILL.md'), SKILL_MD)
+    const backfill = node([join(COMMANDS, 'ledger.mjs'), '--backfill', '--library', lib])
+    expect(backfill.status, backfill.stdout + backfill.stderr).toBe(0)
+    // The scanner's own spelling of a severity, pasted into a record by hand.
+    writeFileSync(join(dir, 'AUDIT.json'), JSON.stringify({
+      schemaVersion: 1, skill: 'thin-one', certifications: [], inventory: {},
+      findings: [{ code: 'X', severity: 'BLOCK', at: 'SKILL.md:1:1', excerpt: '', disposition: 'real', why: 'w' }],
+    }))
+    const out = join(lib, '.graph', 'graph.json')
+    const r = exporter(['--library', lib, '--out', out])
+    expect(r.status).toBe(2)
+    expect(r.stderr).toMatch(/^refused: skills\/thin-one\/AUDIT\.json — findings\[0\]\.severity/m)
+    expect(r.stderr).toContain('validate-record.mjs')
+    expect(existsSync(out)).toBe(false)
+  })
+})
+
 describe('a held skill, hashed against the ledger qrntn wrote', () => {
   it('carries a verdict per file and the ledger\'s record, and names what the ledger hashes that is gone', () => {
     const lib = library('held')

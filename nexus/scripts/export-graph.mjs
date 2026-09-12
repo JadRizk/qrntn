@@ -43,6 +43,7 @@ import { fileURLToPath } from 'node:url'
 import { GraphSnapshotSchema } from '../src/data/types.ts'
 import { chooseLibrary, originTitle, parseRejectedTable, resolveEntityKind } from '../src/data/integrity.ts'
 import { findAnchors, findLinks, pinFinding } from '../src/data/reading.ts'
+import { FindingSchema } from '../packages/record/schema.ts'
 
 function refuse(message) {
   console.error(`refused: ${message}`)
@@ -301,10 +302,34 @@ const skills = skillDirs.map((dir) => {
   // decided 1: pins come from AUDIT.json only; AUDIT.md is a readable file).
   // Read for its findings, which pin to lines below; its shape is the
   // record package's and is validated by `validate-record`, not here.
+  // Its findings are checked against the record package's own schema before
+  // anything is pinned: a hand-converted record that spells a severity the
+  // scanner's way (`BLOCK`) or drops an `excerpt` is refused by file, field
+  // and index — not a stack trace from the pinner or the snapshot parse.
   const auditJsonPath = join(skillPath, 'AUDIT.json')
-  const auditJson = existsSync(auditJsonPath) ? readJSON(auditJsonPath) : null
-  const rawFindings = Array.isArray(auditJson?.findings) ? auditJson.findings : []
-  if (record.findings === null && auditJson) record.findings = rawFindings.length
+  let auditJson = null
+  if (existsSync(auditJsonPath)) {
+    try {
+      auditJson = readJSON(auditJsonPath)
+    } catch (err) {
+      refuse(`skills/${dir}/AUDIT.json is not JSON — ${err.message}`)
+    }
+  }
+  const rawFindings = []
+  if (auditJson !== null) {
+    if (auditJson.findings !== undefined && !Array.isArray(auditJson.findings)) {
+      refuse(`skills/${dir}/AUDIT.json — findings must be an array`)
+    }
+    for (const [i, finding] of (auditJson.findings ?? []).entries()) {
+      const parsed = FindingSchema.safeParse(finding)
+      if (!parsed.success) {
+        const issue = parsed.error.issues[0]
+        refuse(`skills/${dir}/AUDIT.json — findings[${i}]${issue?.path?.length ? '.' + issue.path.join('.') : ''}: ${issue?.message ?? 'invalid'}\n  check it with: node validate-record.mjs skills/${dir}/AUDIT.json`)
+      }
+      rawFindings.push(parsed.data)
+    }
+    if (record.findings === null) record.findings = rawFindings.length
+  }
 
   return {
     id: dir,

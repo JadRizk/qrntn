@@ -91,7 +91,11 @@ function spansOf(line: string): Span[] {
   for (const m of line.matchAll(MD_LINK_RE)) {
     const target = m[1] ?? ''
     const inner = target.startsWith('<') ? target.slice(1, -1) : target
-    const at = m.index + m[0].indexOf(target) + (target.startsWith('<') ? 1 : 0)
+    // The target starts after `](` and any space — not at the first place
+    // its text occurs, which for `[references/x.md](references/x.md)` is
+    // the label.
+    const open = m[0].indexOf('](') + 2
+    const at = m.index + open + (m[0].slice(open).length - m[0].slice(open).trimStart().length) + (target.startsWith('<') ? 1 : 0)
     spans.push({ col: at, len: inner.length, raw: inner, form: 'path' })
   }
   for (const m of line.matchAll(AUTOLINK_RE)) {
@@ -102,7 +106,9 @@ function spansOf(line: string): Span[] {
   }
   for (const m of line.matchAll(CALL_RE)) {
     const name = m[1] ?? ''
-    spans.push({ col: m.index + m[0].indexOf(name), len: name.length, raw: name, form: 'name' })
+    // The name is the last thing in the match, inside its quotes — found
+    // from the end, because a skill called `the` occurs in the phrase first.
+    spans.push({ col: m.index + m[0].lastIndexOf(name), len: name.length, raw: name, form: 'name' })
   }
   for (const m of line.matchAll(WIKILINK_RE)) {
     const name = m[1] ?? ''
@@ -145,7 +151,15 @@ export function resolveTarget(span: Span, ctx: LinkContext): { kind: LinkKind; t
   }
 
   const raw = span.raw
-  if (raw.startsWith('#')) return { kind: 'anchor', to: slugify(decodeURIComponent(raw.slice(1))) }
+  if (raw.startsWith('#')) {
+    // A stray `%` in a fragment is a malformed link, not a reason to abort
+    // the export of every other file: it resolves to nothing.
+    try {
+      return { kind: 'anchor', to: slugify(decodeURIComponent(raw.slice(1))) }
+    } catch {
+      return { kind: 'unresolved', to: null }
+    }
+  }
   if (SCHEME_RE.test(raw)) return { kind: 'external', to: hostOf(raw) }
 
   // A path, relative to this file, kept inside the skill's own tree or
@@ -199,12 +213,24 @@ export function parseAt(at: string): { file: string; line: number | null; col: n
   return { file: m[1] ?? at, line: m[2] ? Number(m[2]) : null, col: m[3] ? Number(m[3]) : null }
 }
 
+// The scanner's excerpt() collapses runs of whitespace to one space and
+// ends a truncated excerpt with `…` (commands/audit-skill.mjs), so the line
+// is folded the same way before the comparison, and an elided excerpt only
+// has to be a prefix of what it quoted. A hand-written excerpt with none of
+// that is compared as it is.
+export function excerptOnLine(excerpt: string, line: string): boolean {
+  const folded = line.replace(/\s+/g, ' ').trim()
+  let needle = excerpt.replace(/\s+/g, ' ').trim()
+  if (needle === '') return false
+  if (needle.endsWith('…')) needle = needle.slice(0, -1).trimEnd()
+  return needle !== '' && folded.includes(needle)
+}
+
 export function pinFinding(finding: Finding, linesByFile: ReadonlyMap<string, readonly string[]>): PinnedFinding {
   const { file, line, col } = parseAt(finding.at)
   const lines = linesByFile.get(file)
   const onLine = line !== null && lines !== undefined && line >= 1 && line <= lines.length ? line : null
-  const excerpt = finding.excerpt.trim()
-  const excerptMatches = onLine !== null && excerpt !== '' && (lines?.[onLine - 1] ?? '').includes(excerpt)
+  const excerptMatches = onLine !== null && excerptOnLine(finding.excerpt, lines?.[onLine - 1] ?? '')
   return {
     code: finding.code,
     severity: finding.severity,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { findAnchors, findLinks, parseAt, pinFinding, slugify, type LinkContext } from './reading.ts'
+import { excerptOnLine, findAnchors, findLinks, parseAt, pinFinding, slugify, type LinkContext } from './reading.ts'
 
 // design-direction, as the fixture has it: three references, one asset, two
 // scripts; a sibling skill, a refused row, a declined row, one ghost.
@@ -89,6 +89,24 @@ describe('findLinks — where each form resolves', () => {
     expect(one('[j](references/palette.md#the-ramp)')).toMatchObject({ kind: 'node', to: 'design-direction/palette.md' })
   })
 
+  it('a malformed fragment or path is unresolved, never a thrown export', () => {
+    expect(one('[j](#50%)')).toMatchObject({ kind: 'unresolved', to: null })
+    expect(one('[j](references/100%.md)')).toMatchObject({ kind: 'unresolved', to: null })
+  })
+
+  it('the span is the target, even when the label says the same thing — and the operative name is found from the end', () => {
+    const line = 'see [references/palette.md](references/palette.md) and Call the Skill tool with "the"'
+    const links = findLinks([line], { ...ctx(), skillIds: new Set(['the', 'design-direction']) })
+    expect(links).toHaveLength(2)
+    expect(links[0]!.col).toBe(line.lastIndexOf('references/palette.md'))
+    expect(line.slice(links[1]!.col, links[1]!.col + links[1]!.len)).toBe('the')
+    expect(links[1]!.col).toBe(line.lastIndexOf('the'))
+    // A title after a space, and a space after the paren, do not move it.
+    const titled = '[x](  references/palette.md "the palette" )'
+    const t = findLinks([titled], ctx())[0]!
+    expect(titled.slice(t.col, t.col + t.len)).toBe('references/palette.md')
+  })
+
   it('a URL inside a markdown link is one span, not two; several links on a line keep their columns', () => {
     const line = '[a](references/palette.md) and [b](https://example.com) and [[motion-basics]]'
     const links = findLinks([line], ctx())
@@ -132,6 +150,16 @@ describe('pinFinding', () => {
   it('pins to the line when the file has it and says whether the excerpt is still there', () => {
     expect(pinFinding(finding, lines)).toMatchObject({ file: 'SKILL.md', line: 2, col: 1, excerptMatches: true })
     expect(pinFinding({ ...finding, excerpt: 'gone' }, lines)).toMatchObject({ line: 2, excerptMatches: false })
+  })
+
+  it('matches an excerpt the way the scanner wrote it — whitespace folded, elision as a prefix', () => {
+    const line = '  const  payload = "aGVsbG8gd29ybGQ="   // decoded below'
+    expect(excerptOnLine('const payload = "aGVsbG8gd29ybGQ="…', line)).toBe(true)
+    expect(excerptOnLine('const payload = "aGVsbG8gd29ybGQ="', line)).toBe(true)
+    expect(excerptOnLine('payload = "nope"', line)).toBe(false)
+    expect(excerptOnLine('', line)).toBe(false)
+    expect(excerptOnLine('…', line)).toBe(false)
+    expect(pinFinding({ ...finding, excerpt: 'assistant:  skip…' }, lines)).toMatchObject({ line: 2, excerptMatches: true })
   })
 
   it('pins nowhere when the line is beyond the file or the file is not in the skill', () => {

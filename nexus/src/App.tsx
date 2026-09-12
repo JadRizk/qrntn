@@ -15,7 +15,8 @@ import { DetailsDrawer } from './ui/DetailsDrawer.tsx'
 import { ReadingPane, type Reading } from './ui/ReadingPane.tsx'
 import { DOCK_WIDTH, LeftDock } from './ui/LeftDock.tsx'
 import { QrntnWordmark } from './ui/QrntnWordmark.tsx'
-import type { FileLink, GraphNode, GraphSnapshot } from './data/types.ts'
+import type { FileLink, GraphNode, GraphSnapshot, LeafNode } from './data/types.ts'
+import { fileOfLeaf, leafForPath } from './data/leafPath.ts'
 import { KIND_LABEL, KIND_ORDER, type NodeKind } from './data/taxonomy.ts'
 import type { FrameGeometry, GraphController, GraphNodeSnapshot, GraphStats, OpticsConfig, PhysicsConfig } from '../packages/graph/src/types.ts'
 
@@ -60,7 +61,7 @@ function readingFor(node: GraphNode, lookup: (id: string) => GraphNode | undefin
     case 'skill': return { nodeId: node.id, path: 'SKILL.md', line: null }
     case 'leaf': {
       const owner = lookup(node.owner)
-      const file = owner?.kind === 'skill' ? owner.files.find((f) => f.role === node.leafKind && f.path.endsWith(`/${node.file}`)) ?? owner.files.find((f) => f.path === node.file) : undefined
+      const file = owner?.kind === 'skill' ? fileOfLeaf(owner, node) : undefined
       return file ? { nodeId: node.owner, path: file.path, line: null } : null
     }
     case 'scriptFold': {
@@ -126,6 +127,7 @@ export function App() {
   // wrong seam — one Map over the loaded snapshot instead (READING-ROOM.html).
   const nodesById = useMemo(() => new Map(snapshot?.nodes.map((n) => [n.id, n]) ?? []), [snapshot])
   const lookupNode = useCallback((id: string) => nodesById.get(id), [nodesById])
+  const leaves = useMemo(() => (snapshot?.nodes ?? []).filter((n): n is LeafNode => n.kind === 'leaf'), [snapshot])
 
   // The reading room. Selection stays the single source of truth; the pane
   // is a view of the selected node's bytes, and every interaction below is a
@@ -173,11 +175,11 @@ export function App() {
     const owner = lookupNode(skillId)
     if (owner?.kind !== 'skill') return
     // Selection follows the file when the file is a node; else the skill.
-    const leaf = snapshot?.nodes.find((n) => n.kind === 'leaf' && n.owner === skillId && (path === n.file || path.endsWith(`/${n.file}`)))
+    const leaf = leafForPath(leaves, skillId, path)
     if (leaf) reveal(leaf)
     setSelectedId(leaf ? leaf.id : skillId)
     openReading({ nodeId: skillId, path, line: null })
-  }, [lookupNode, snapshot, reveal, openReading])
+  }, [lookupNode, leaves, reveal, openReading])
 
   // A link in the pane. Node links select the target and open its primary
   // file; a file link stays in the skill; an anchor scrolls; external and
@@ -226,6 +228,11 @@ export function App() {
   useHotkey('[', () => stepFinding(-1))
   useEffect(() => {
     const on = (e: KeyboardEvent) => {
+      // The same guard useHotkey applies: alt+← in the palette's input is a
+      // caret move, not a step back through the reader.
+      const t = e.target as HTMLElement | null
+      const typing = !!t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable)
+      if (typing) return
       if (e.altKey && e.key === 'ArrowLeft' && historyRef.current.length > 0) { e.preventDefault(); goBack() }
     }
     window.addEventListener('keydown', on)

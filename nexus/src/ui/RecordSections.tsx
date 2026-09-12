@@ -17,6 +17,7 @@
 
 import { KeyValue, SectionHeading } from '@nexus/react'
 import type { GraphNode, HashVerdict, SkillFile, SkillRecord } from '../data/types.ts'
+import { fileOfLeaf } from '../data/leafPath.ts'
 
 export interface RecordSectionsProps {
   node: GraphNode | null
@@ -156,8 +157,7 @@ export function RecordSections({ node, lookup, onRead }: RecordSectionsProps) {
   if (node.kind === 'leaf') {
     const owner = lookup(node.owner)
     if (owner?.kind !== 'skill') return null
-    const file = owner.files.find((f) => f.role === node.leafKind && f.path.endsWith(`/${node.file}`))
-      ?? owner.files.find((f) => f.path === node.file)
+    const file = fileOfLeaf(owner, node)
     if (!file) return null
     return (
       <div style={{ marginBottom: 'var(--nx-space-4)' }}>

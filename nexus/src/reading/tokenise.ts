@@ -197,7 +197,9 @@ export function tokenise(content: string, links: readonly FileLink[]): Tokenised
     }
 
     const scan: Scan = { counts, bidi: false }
-    const trailingFrom = line.replace(/[ \t]+$/, '').length
+    // Trailing whitespace ends where the line's text ends, before a CR if
+    // the file is CRLF — the \r is its own mark and must not hide the dots.
+    const trailingFrom = line.replace(/[ \t]+\r?$/, '').length
     const tokens: Token[] = []
 
     // Links first (the exporter's offsets are authoritative), comments in

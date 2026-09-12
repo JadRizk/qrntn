@@ -72,6 +72,12 @@ describe('tokenise — what the reader shows', () => {
     expect(flat(lines[0]!.tokens)).toBe('a b⍽c··')
   })
 
+  it('trailing spaces are still dots on a CRLF line', () => {
+    const { lines } = tokenise('text   \r\nnext\r\n', [])
+    expect(flat(lines[0]!.tokens)).toBe('text···␍')
+    expect(flat(lines[1]!.tokens)).toBe('next␍')
+  })
+
   it('an HTML comment is its own token, across lines', () => {
     const { lines } = tokenise('a <!-- hidden\nstill --> b', [])
     expect(flat(lines[0]!.tokens)).toBe('a /*<!-- hidden*/')
