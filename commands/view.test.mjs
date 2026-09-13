@@ -13,6 +13,7 @@
 import { spawn, spawnSync } from 'node:child_process'
 import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { createServer, request } from 'node:http'
+import { connect } from 'node:net'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -144,11 +145,11 @@ const stop = (p, signal = 'SIGINT') =>
 		p.kill(signal)
 	})
 
-/** A raw request, so the path reaches the server exactly as written. */
-const get = (url, path, method = 'GET') =>
+/** A raw request, so the path reaches the server exactly as written. `headers` overrides what node would send — Host, for one. */
+const get = (url, path, method = 'GET', headers = {}) =>
 	new Promise((resolveP, reject) => {
 		const u = new URL(url)
-		const req = request({ host: u.hostname, port: u.port, path, method }, (res) => {
+		const req = request({ host: u.hostname, port: u.port, path, method, headers }, (res) => {
 			let body = ''
 			res.setEncoding('utf8')
 			res.on('data', (d) => { body += d })
@@ -156,6 +157,18 @@ const get = (url, path, method = 'GET') =>
 		})
 		req.on('error', reject)
 		req.end()
+	})
+
+/** The request line and nothing else, on a bare socket: the one way to send no Host at all, which node's client will not do. */
+const rawRequest = (url, lines) =>
+	new Promise((resolveP, reject) => {
+		const u = new URL(url)
+		const sock = connect({ host: u.hostname, port: Number(u.port) }, () => sock.write(lines.join('\r\n') + '\r\n\r\n'))
+		let raw = ''
+		sock.setEncoding('utf8')
+		sock.on('data', (d) => { raw += d })
+		sock.on('end', () => resolveP({ status: Number(/^HTTP\/1\.[01] (\d{3})/.exec(raw)?.[1] ?? 0), raw }))
+		sock.on('error', reject)
 	})
 
 // ── usage ───────────────────────────────────────────────────────────────────
@@ -248,6 +261,27 @@ const get = (url, path, method = 'GET') =>
 		check('serves: index.html carries a Content-Security-Policy', /default-src 'self'/.test(csp) && /connect-src 'self'/.test(csp) && /object-src 'none'/.test(csp) && !/unsafe-eval/.test(csp), csp)
 		check('serves: the policy admits no remote source', !/https?:/.test(csp) && !/\*/.test(csp), csp)
 		check('serves: nosniff and no referrer, on every response', page.headers['x-content-type-options'] === 'nosniff' && page.headers['referrer-policy'] === 'no-referrer' && graph.headers['x-content-type-options'] === 'nosniff' && absent.headers['x-content-type-options'] === 'nosniff', JSON.stringify([page.headers, absent.headers]))
+		// Named, for whoever asks.
+		check('serves: every response says who is serving', /^qrntn-view/.test(page.headers.server ?? '') && /^qrntn-view/.test(absent.headers.server ?? ''), JSON.stringify([page.headers.server, absent.headers.server]))
+
+		// THE HOST CHECK. A page on evil.example whose DNS is flipped to
+		// 127.0.0.1 after it loads reaches this port with `Host: evil.example`
+		// and, without this rule, reads the graph — every byte of every held
+		// skill, once the reading room is in it. Vite's CVE-2025-24010, and
+		// its answer: 403 for a Host that is not this machine's.
+		const bound = new URL(url).port
+		for (const host of [`localhost:${bound}`, `127.0.0.1:${bound}`, `[::1]:${bound}`, 'localhost', `LOCALHOST:${bound}`]) {
+			const r = await get(url, '/data/graph.json', 'GET', { host })
+			check(`host: ${host} is this machine, answered`, r.status === 200 && /"stub"/.test(r.body), `${r.status}`)
+		}
+		for (const host of [`evil.example:${bound}`, `127.0.0.1:${Number(bound) + 1}`, `localhost.evil.example:${bound}`, `127.0.0.1.nip.io:${bound}`, `[::2]:${bound}`]) {
+			const r = await get(url, '/data/graph.json', 'GET', { host })
+			check(`host: ${host} is not, refused with 403 and no graph`, r.status === 403 && !/"stub"/.test(r.body) && !r.body.includes(host.split(':')[0]), `${r.status} ${r.body.slice(0, 80)}`)
+		}
+		const refusedPage = await get(url, '/', 'GET', { host: `evil.example:${bound}` })
+		check('host: the page is refused too, not only the data', refusedPage.status === 403 && !/<title>/.test(refusedPage.body), `${refusedPage.status}`)
+		const noHost = await rawRequest(url, ['GET /data/graph.json HTTP/1.0'])
+		check('host: no Host at all is 400, and no graph', noHost.status === 400 && !/"stub"/.test(noHost.raw), noHost.raw.slice(0, 120))
 		// The one that has teeth: this file EXISTS in the bundle. Without the
 		// rule that refuses everything under /data/, it is found on disk and
 		// served, and a fixture answers as though it were this library.

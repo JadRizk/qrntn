@@ -17,8 +17,15 @@
 // serves that. The fixture the viewer carries in a checkout never ships and is
 // never served: nothing under /data/ is answered but the graph exported here.
 //
-// LOCAL, ONLY. Bound to 127.0.0.1, no browser opened, nothing leaves the
-// machine. The URL is printed; opening it is the reader's act.
+// LOCAL, ONLY. Bound to 127.0.0.1, and answering only to a Host header that
+// names this machine — `localhost`, `127.0.0.1` or `[::1]`, at the bound port
+// or none. A page on evil.example whose DNS is flipped to 127.0.0.1 after it
+// loads can fetch this server as if same-origin, and with the reading room in
+// the graph the response is every byte of every held skill; the CSP does not
+// defend against that, because it is not our page making the request. Vite
+// (CVE-2025-24010) and Next.js both added the same check in 2025 and both
+// answer 403; so does this. No browser opened, nothing leaves the machine.
+// The URL is printed; opening it is the reader's act. See docs/SERVING.md.
 //
 // Exit codes hold their meaning across a long-running process. 2 when it could
 // not start — no bundle, not a library, port in use, or an exporter that
@@ -82,6 +89,24 @@ const HERE = dirname(fileURLToPath(import.meta.url))
 const VIEW = resolve(HERE, '..', 'view')
 const EXPORTER = join(VIEW, 'export-graph.mjs')
 
+// What a request must call this server to be answered. Names for this
+// machine only, at the bound port or none; case does not matter, because
+// Host does not either. Anything else is a page that reached a loopback
+// address by a name that is not ours, which is what DNS rebinding looks like
+// from here.
+const HOSTS = new Set(['localhost', '127.0.0.1', '[::1]'])
+
+// Names this process to whoever asks. The version comes from the package
+// when this file is in one; deployed alone, it is just the name.
+const SERVER_HEADER = (() => {
+	try {
+		const { version } = JSON.parse(readFileSync(join(HERE, '..', 'package.json'), 'utf8'))
+		return `qrntn-view/${version}`
+	} catch {
+		return 'qrntn-view'
+	}
+})()
+
 function resolveLibrary(argv = process.argv.slice(2)) {
 	const i = argv.indexOf('--library')
 	if (i !== -1) {
@@ -105,8 +130,9 @@ function synopsis() {
   --port <n>        listen here rather than on a free port the system picks
   --json            one line with the URL and the counts, then serve
 
-Nothing leaves the machine. The viewer's own data is never served — only the
-graph exported here, for the library you named.
+Nothing leaves the machine. The server answers only to localhost, and never
+serves the viewer's own data — only the graph exported here, for the library
+you named.
 
 Exit codes:  0 stopped · 1 the library is inconsistent, so there is no graph
              2 could not start — no bundle, not a library, port in use
@@ -247,10 +273,40 @@ try {
 
 const INDEX = readFileSync(join(VIEW, 'index.html'))
 
+/** The Host header names this machine at this port, or nothing is answered. */
+function hostIsOurs(host, boundPort) {
+	if (typeof host !== 'string' || host === '') return false
+	// `[::1]:7768` — the bracket form keeps its colons; split on the last one
+	// only when what follows is a port.
+	const m = /^(.*?)(?::(\d{1,5}))?$/.exec(host.trim().toLowerCase())
+	if (!m) return false
+	const [, name, p] = m
+	if (!HOSTS.has(name)) return false
+	return p === undefined || Number(p) === boundPort
+}
+
 function handle(req, res) {
 	if (req.method !== 'GET' && req.method !== 'HEAD') {
 		res.writeHead(405, { Allow: 'GET, HEAD' })
 		return res.end()
+	}
+	// BEFORE THE PATH. A request that calls this server by a name that is
+	// not this machine's is not answered, whatever it asks for — the file
+	// comment at the top says why, and docs/SERVING.md says it at length.
+	// 400 when there is no Host at all (HTTP/1.0 allows that; nothing a
+	// browser sends does), 403 when there is one and it is not ours. Neither
+	// body repeats what was sent: a page probing this port learns that it was
+	// refused and not what would have been accepted.
+	{
+		const host = req.headers.host
+		if (host === undefined || host === '') {
+			res.writeHead(400, { 'Content-Type': CONTENT_TYPES['.txt'], 'X-Content-Type-Options': 'nosniff', Server: SERVER_HEADER })
+			return res.end('a Host header is required\n')
+		}
+		if (!hostIsOurs(host, server.address()?.port)) {
+			res.writeHead(403, { 'Content-Type': CONTENT_TYPES['.txt'], 'X-Content-Type-Options': 'nosniff', Server: SERVER_HEADER })
+			return res.end('forbidden: qrntn view answers only as localhost\n')
+		}
 	}
 	// The path, taken from the request line by hand. `new URL(req.url, base)`
 	// reads `//host/x` as a protocol-relative URL and answers `/` for it —
@@ -283,6 +339,7 @@ function handle(req, res) {
 			'Cache-Control': 'no-store',
 			'X-Content-Type-Options': 'nosniff',
 			'Referrer-Policy': 'no-referrer',
+			Server: SERVER_HEADER,
 		}
 		if (type === CONTENT_TYPES['.html']) headers['Content-Security-Policy'] = CSP
 		res.writeHead(status, headers)

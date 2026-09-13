@@ -13,6 +13,20 @@ appears in a release.
 A version that only refuses better still gets an entry. Declining is a success,
 and a release that made a refusal clearer shipped something.
 
+## Unreleased
+
+**The server checks `Host`.** A fixed port — coming next — is what makes DNS rebinding
+practical — a page on another origin whose DNS is flipped to `127.0.0.1` can
+fetch this server as if same-origin and, with the reading room in the graph,
+read every byte of every held skill; the CSP does not defend against it,
+because it is not our page making the request. So a request that does not
+name this machine — `localhost`, `127.0.0.1` or `[::1]`, at the bound port —
+is answered 403 and nothing else, and one with no `Host` at all is 400. The
+same check Vite added for CVE-2025-24010 and Next.js for `allowedDevOrigins`,
+with the same status. Every response now carries `Server: qrntn-view/<version>`.
+A change to *what leaves the machine* in the direction of less; the `view`
+row in `docs/THREATS.md` says so.
+
 ## 0.3.0 — 2026-09-13
 
 **`view` reads.** Select a skill and the drawer now says what the records
