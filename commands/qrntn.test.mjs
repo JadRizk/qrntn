@@ -440,7 +440,7 @@ const VERBS = [...readFileSync(BIN, 'utf8').matchAll(/^\t\['([a-z-]+)', '([\w.-]
 		console.log('  (the viewer bundle is not built — view/ absent — so the signal assertions were skipped; `npm run build:cli --prefix nexus` builds it)')
 	} else {
 		for (const signal of ['SIGINT', 'SIGTERM']) {
-			const got = await signalled(['view', '--library', lib, '--json'], signal, viewUp)
+			const got = await signalled(['view', '--library', lib, '--port', '0', '--json'], signal, viewUp)
 			check(`view: ${signal} through the dispatcher exits 0, not a signal death`, got === 0, `got ${got}`)
 		}
 	}

@@ -15,7 +15,19 @@ and a release that made a refusal clearer shipped something.
 
 ## Unreleased
 
-**The server checks `Host`.** A fixed port — coming next — is what makes DNS rebinding
+**`view` has an address.** `qrntn view` serves at `http://localhost:7768/`
+— one port, remembered, `q r n t` on a telephone keypad and unassigned at
+IANA — and opens your browser there. `--port <n>` still overrides it and
+`--port 0` lets the system choose; `--no-open`, `BROWSER=none` or `--json`
+leave the browser alone, `BROWSER=<command>` opens with that instead, and a
+browser that will not start is a dim line under the URL, never an exit. A busy
+port is refused rather than skipped past, and when the squatter is another
+`qrntn view` the refusal says so and names its URL. Not a daemon, on purpose:
+the graph is exported at start and served as a snapshot, so a server that
+outlives the reading would be reporting on a tree that has since changed.
+`docs/SERVING.md` decided all of it.
+
+**The server checks `Host`.** A fixed port is what makes DNS rebinding
 practical — a page on another origin whose DNS is flipped to `127.0.0.1` can
 fetch this server as if same-origin and, with the reading room in the graph,
 read every byte of every held skill; the CSP does not defend against it,

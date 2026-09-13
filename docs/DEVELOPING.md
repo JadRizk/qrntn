@@ -123,6 +123,15 @@ no framework: a `check(name, cond, detail)` accumulator, sandboxes built in
 `tmpdir`, `N passed, M failed`, exit 1 on any failure. Suites take no filter
 argument; you run the whole file, which is seconds.
 
+One rule for any suite that starts `view`: pass `--port 0` and set
+`BROWSER=none`. The default port is fixed — that is the feature — and the
+self-test runs every mutant against the whole suite in parallel, so a run
+that took the default would collide with its siblings and fail for a reason
+that is not the mutant's; and a suite that opens a browser tab per mutant is
+one nobody runs twice. `view.test.mjs` asserts the default in one block that
+tolerates a neighbour holding it, and tests the opener by pointing `BROWSER`
+at a shell script that records what it was handed.
+
 **`commands/<verb>.self-test.mjs` — is the suite actually asserting anything.**
 A suite that has only ever passed has not been tested. The self-test rewrites
 the command's source in a sandbox copy, in specific ways, runs the suite
