@@ -13,7 +13,7 @@ appears in a release.
 A version that only refuses better still gets an entry. Declining is a success,
 and a release that made a refusal clearer shipped something.
 
-## Unreleased
+## 0.4.0 — 2026-09-13
 
 **`view` has an address.** `qrntn view` serves at `http://localhost:7768/`
 — one port, remembered, `q r n t` on a telephone keypad and unassigned at
