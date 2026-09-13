@@ -238,6 +238,16 @@ const get = (url, path, method = 'GET') =>
 
 		const absent = await get(url, '/data/other.json')
 		check('serves: nothing else under /data/', absent.status === 404, `${absent.status}`)
+
+		// The reader renders held skills' full artefact text (READING.md), so
+		// the page ships under a policy that admits no remote fetch, and no
+		// response is ever sniffed into another type. The header is the belt;
+		// nexus/index.html's <meta> is the braces, held to the same string.
+		const page = await get(url, '/')
+		const csp = page.headers['content-security-policy'] ?? ''
+		check('serves: index.html carries a Content-Security-Policy', /default-src 'self'/.test(csp) && /connect-src 'self'/.test(csp) && /object-src 'none'/.test(csp) && !/unsafe-eval/.test(csp), csp)
+		check('serves: the policy admits no remote source', !/https?:/.test(csp) && !/\*/.test(csp), csp)
+		check('serves: nosniff and no referrer, on every response', page.headers['x-content-type-options'] === 'nosniff' && page.headers['referrer-policy'] === 'no-referrer' && graph.headers['x-content-type-options'] === 'nosniff' && absent.headers['x-content-type-options'] === 'nosniff', JSON.stringify([page.headers, absent.headers]))
 		// The one that has teeth: this file EXISTS in the bundle. Without the
 		// rule that refuses everything under /data/, it is found on disk and
 		// served, and a fixture answers as though it were this library.
@@ -353,6 +363,11 @@ const get = (url, path, method = 'GET') =>
 			check('real bundle: the origin is named after the library, not the tool', snapshot.nodes.find((n) => n.kind === 'origin')?.title !== 'Nexus', JSON.stringify(snapshot.nodes[0]))
 			const index = await get(s.first.url, '/')
 			check('real bundle: index.html is the viewer', index.status === 200 && /<div id="root">/.test(index.body), index.body.slice(0, 200))
+			// Two places, one policy: the <meta> the viewer's own page carries is
+			// the header the server sets, verbatim — so `vite dev` and the
+			// bundle are held to the same rule (READING.md).
+			const metaCsp = /http-equiv="Content-Security-Policy"\s+content="([^"]+)"/.exec(index.body)?.[1] ?? ''
+			check('real bundle: the page\'s own <meta> policy is the served header, verbatim', metaCsp !== '' && metaCsp === (index.headers['content-security-policy'] ?? ''), `${metaCsp}\n${index.headers['content-security-policy']}`)
 			const assetPath = /src="(\/assets\/[^"]+\.js)"/.exec(index.body)?.[1]
 			const asset = assetPath ? await get(s.first.url, assetPath) : { status: 0 }
 			check('real bundle: the viewer\'s script is served', asset.status === 200, `${assetPath} -> ${asset.status}`)

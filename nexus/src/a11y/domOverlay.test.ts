@@ -30,6 +30,7 @@ describe('ariaLabelFor', () => {
     const node: GraphNode = {
       kind: 'skill', id: 'animate', name: 'animate', description: '', category: 'motion',
       origin: 'acquired', manualOnly: false, words: 10, refWords: 0, usage: null,
+      files: [], record: { source: null, commit: null, date: null, verdict: null, findings: null, dispositioned: null, reportPath: null, missing: [] }, findings: [],
     }
     expect(ariaLabelFor(node)).toBe('animate, acquired skill')
   })
