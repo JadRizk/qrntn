@@ -13,7 +13,7 @@ appears in a release.
 A version that only refuses better still gets an entry. Declining is a success,
 and a release that made a refusal clearer shipped something.
 
-## 0.3.0 — unreleased
+## 0.3.0 — 2026-09-13
 
 **`view` reads.** Select a skill and the drawer now says what the records
 say: origin, pinned commit, verdict, and every file in the skill with its
