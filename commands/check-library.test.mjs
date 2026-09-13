@@ -26,9 +26,23 @@ const ROOT = mkdtempSync(join(tmpdir(), 'check-library-test-'))
 
 let pass = 0
 const failures = []
+// Under the mutation harness the first failure is the whole answer — a mutant
+// is caught or it is not — so the suite stops there instead of running the
+// rest against a script already known to be broken. mutate.mjs sets this for
+// mutant runs only, never for the clean run, and points TMPDIR into the
+// sandbox it sweeps, so an early exit leaves nothing behind.
+const FAIL_FAST = process.env.QRNTN_FAIL_FAST === '1'
 const check = (name, cond, detail = '') => {
 	if (cond) pass++
-	else failures.push(`${name}${detail ? ` — ${detail}` : ''}`)
+	else {
+		failures.push(`${name}${detail ? ` — ${detail}` : ''}`)
+		if (FAIL_FAST) stopAtFirstFailure()
+	}
+}
+const stopAtFirstFailure = () => {
+	console.log(`\n${pass} passed, 1 failed — stopped at the first, QRNTN_FAIL_FAST`)
+	console.error(`  FAIL  ${failures[0]}`)
+	process.exit(1)
 }
 
 const skillMd = (name) => `---
@@ -227,6 +241,11 @@ const catalogOf = (lib) => JSON.parse(readFileSync(join(lib, 'catalog.json'), 'u
 	check('absent ledger.mjs: no stack trace', !/ERR_MODULE_NOT_FOUND/.test(raw), raw.slice(0, 300))
 	check('absent ledger.mjs: nothing was left behind in the library', !existsSync(join(lib, 'edges.json')), 'wrote into the library')
 }
+
+// The suite's own root goes with it. Seven suites did not do this, and a
+// week of runs — most of them mutants' — left eleven thousand roots in the
+// temp directory before anyone looked.
+rmSync(ROOT, { recursive: true, force: true })
 
 console.log(`\n${pass} passed, ${failures.length} failed`)
 for (const f of failures) console.log(`  FAIL  ${f}`)

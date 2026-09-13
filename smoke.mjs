@@ -2,8 +2,10 @@
 //
 // The gate that decides whether any of this actually shipped.
 //
-//   node smoke.mjs           pack, install, and drive the installed tool
-//   node smoke.mjs --keep    leave the sandbox behind for inspection
+//   node smoke.mjs              pack, install, and drive the installed tool
+//   node smoke.mjs --keep       leave the sandbox behind for inspection
+//   node smoke.mjs --as-built   pack view/ as it stands, without prepack
+//                               rebuilding it — for a runner that just did
 //
 // SK-97 §7. Every other gate in this repository runs the commands out of the
 // checkout, where every file exists whether or not `package.json` says it
@@ -61,6 +63,16 @@ const BIN_NAME = Object.keys(MANIFEST.bin)[0]
 // manifest says.
 const SHIPPED_AT_ROOT = new Set(['package.json', ...MANIFEST.files.map((f) => f.split('/')[0])])
 const KEEP = process.argv.includes('--keep')
+// `npm pack` runs prepack, and prepack rebuilds view/ — vite empties the
+// directory first. Run alone, that is right: the tarball should carry a
+// bundle built from this tree, not whatever was lying in view/. Under
+// check.mjs it is the reason this gate could not run beside the others, since
+// a suite copying view/ into a sandbox during the rebuild reads half of it.
+// The runner builds the bundle first and alone, so it passes --as-built and
+// the pack takes view/ as it is; what the tarball carries is then still
+// exactly what the build gate wrote, and the assertion below that the
+// installed package serves it is unchanged.
+const AS_BUILT = process.argv.includes('--as-built')
 
 let pass = 0
 const failures = []
@@ -106,7 +118,7 @@ const git = (args, cwd) => execFileSync('git', args, { cwd, encoding: 'utf8', st
 
 // ── pack, and install what was packed ───────────────────────────────────────
 
-const packed = spawnSync('npm', ['pack', '--pack-destination', SANDBOX], { cwd: HERE, encoding: 'utf8' })
+const packed = spawnSync('npm', ['pack', '--pack-destination', SANDBOX, ...(AS_BUILT ? ['--ignore-scripts'] : [])], { cwd: HERE, encoding: 'utf8' })
 const tarball = (packed.stdout ?? '').trim().split('\n').pop()
 check('npm pack produced a tarball', packed.status === 0 && tarball && existsSync(join(SANDBOX, tarball)), (packed.stderr ?? '').slice(-300))
 

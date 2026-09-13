@@ -16,7 +16,7 @@
 // earlier run of this tool.
 
 import { spawn, spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -29,9 +29,23 @@ const ROOT = mkdtempSync(join(tmpdir(), 'qrntn-bin-test-'))
 
 let pass = 0
 const failures = []
+// Under the mutation harness the first failure is the whole answer — a mutant
+// is caught or it is not — so the suite stops there instead of running the
+// rest against a script already known to be broken. mutate.mjs sets this for
+// mutant runs only, never for the clean run, and points TMPDIR into the
+// sandbox it sweeps, so an early exit leaves nothing behind.
+const FAIL_FAST = process.env.QRNTN_FAIL_FAST === '1'
 const check = (name, cond, detail = '') => {
 	if (cond) pass++
-	else failures.push(`${name}${detail ? ` — ${detail}` : ''}`)
+	else {
+		failures.push(`${name}${detail ? ` — ${detail}` : ''}`)
+		if (FAIL_FAST) stopAtFirstFailure()
+	}
+}
+const stopAtFirstFailure = () => {
+	console.log(`\n${pass} passed, 1 failed — stopped at the first, QRNTN_FAIL_FAST`)
+	console.error(`  FAIL  ${failures[0]}`)
+	process.exit(1)
 }
 
 function run(args, opts = {}) {
@@ -385,13 +399,14 @@ const VERBS = [...readFileSync(BIN, 'utf8').matchAll(/^\t\['([a-z-]+)', '([\w.-]
 	// signalled — so the verb is always a grandchild, one process further away
 	// than anything `p.kill` can reach. Every outcome this test exists to catch
 	// is one where the dispatcher ends and the verb does not: a hang, killed
-	// here after twenty seconds, leaves the verb's server listening with no
+	// here after five seconds, leaves the verb's server listening with no
 	// parent; a signal death, where the dispatcher dies of the signal instead
 	// of forwarding it, leaves the same. Under qrntn.self-test.mjs those are
 	// not edge cases but the mutations, and each one leaked two `view` servers
 	// — SIGINT, then SIGTERM — reparented to init and holding a port until the
 	// machine was rebooted. Ten were found on one machine, in pairs twenty
-	// seconds apart, and this is the file that put them there.
+	// seconds apart (the bound was twenty then), and this is the file that
+	// put them there.
 	//
 	// `detached: true` gives the dispatcher its own process group, which the
 	// verb inherits because the dispatcher spawns it with plain stdio. Sending
@@ -408,6 +423,8 @@ const VERBS = [...readFileSync(BIN, 'utf8').matchAll(/^\t\['([a-z-]+)', '([\w.-]
 		}
 	}
 
+	const HANG_BOUND_MS = 5000
+
 	/** Run a verb, signal the DISPATCHER once it is up, and report how it ended. */
 	const signalled = (args, signal, ready) =>
 		new Promise((resolveP) => {
@@ -415,11 +432,15 @@ const VERBS = [...readFileSync(BIN, 'utf8').matchAll(/^\t\['([a-z-]+)', '([\w.-]
 			let out = ''
 			// A hang is a real outcome here and one of the two defects this
 			// exists to catch, so it is bounded and named rather than left to
-			// stall the suite.
+			// stall the suite. Five seconds, not twenty: a forwarded signal
+			// reaches `view` and its 0 comes back in milliseconds, so the
+			// bound is only ever paid by the defect — and under the self-test
+			// the defect IS a mutation, paying it twice per run. At twenty that
+			// one mutant cost 43s in a suite whose others cost 3s.
 			const timer = setTimeout(() => {
 				sweep(p)
 				resolveP('HUNG')
-			}, 20000)
+			}, HANG_BOUND_MS)
 			p.stdout.on('data', (d) => {
 				out += d
 				if (ready(out)) p.kill(signal)
@@ -461,7 +482,7 @@ const VERBS = [...readFileSync(BIN, 'utf8').matchAll(/^\t\['([a-z-]+)', '([\w.-]
 		const timer = setTimeout(() => {
 			sweep(p)
 			resolveP('HUNG')
-		}, 20000)
+		}, HANG_BOUND_MS)
 		p.on('exit', (code, sig) => {
 			clearTimeout(timer)
 			sweep(p)
@@ -471,6 +492,11 @@ const VERBS = [...readFileSync(BIN, 'utf8').matchAll(/^\t\['([a-z-]+)', '([\w.-]
 	})
 	check('a verb that handles no signal is not made to hang by forwarding', sleeper !== 'HUNG', `got ${sleeper}`)
 }
+
+// The suite's own root goes with it. Seven suites did not do this, and a
+// week of runs — most of them mutants' — left eleven thousand roots in the
+// temp directory before anyone looked.
+rmSync(ROOT, { recursive: true, force: true })
 
 console.log(`\n${pass} passed, ${failures.length} failed`)
 for (const f of failures) console.log(`  FAIL  ${f}`)

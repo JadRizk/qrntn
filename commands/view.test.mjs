@@ -23,9 +23,23 @@ const ROOT = mkdtempSync(join(tmpdir(), 'view-test-'))
 
 let pass = 0
 const failures = []
+// Under the mutation harness the first failure is the whole answer — a mutant
+// is caught or it is not — so the suite stops there instead of running the
+// rest against a script already known to be broken. mutate.mjs sets this for
+// mutant runs only, never for the clean run, and points TMPDIR into the
+// sandbox it sweeps, so an early exit leaves nothing behind.
+const FAIL_FAST = process.env.QRNTN_FAIL_FAST === '1'
 const check = (name, cond, detail = '') => {
 	if (cond) pass++
-	else failures.push(`${name}${detail ? ` — ${detail}` : ''}`)
+	else {
+		failures.push(`${name}${detail ? ` — ${detail}` : ''}`)
+		if (FAIL_FAST) stopAtFirstFailure()
+	}
+}
+const stopAtFirstFailure = () => {
+	console.log(`\n${pass} passed, 1 failed — stopped at the first, QRNTN_FAIL_FAST`)
+	console.error(`  FAIL  ${failures[0]}`)
+	process.exit(1)
 }
 
 // ── the sandbox: the package as it ships ────────────────────────────────────
@@ -149,6 +163,9 @@ function serve(script, args, env) {
 		p.on('exit', (code) => { if (!done) { done = true; resolveP({ p, first: null, code, out: () => out, err: () => err }) } })
 	})
 }
+
+/** How long a readiness wait is allowed to take before the suite gives up on that process. */
+const READY_BOUND_MS = 5000
 
 const stop = (p, signal = 'SIGINT') =>
 	new Promise((resolveP) => {
@@ -346,7 +363,10 @@ const rawRequest = (url, lines) =>
 	await new Promise((resolveP) => {
 		// Bounded: a mutant that prints nothing would otherwise stall the suite
 		// here rather than fail it, and a stalled suite reports nothing at all.
-		const timer = setTimeout(resolveP, 20000)
+		// Five seconds: the server is up and the block printed within 300ms of
+		// spawn, so only a mutant that never gets there pays the bound — and
+		// two of them did, at twenty, for 30s each in a suite that takes 9s.
+		const timer = setTimeout(resolveP, READY_BOUND_MS)
 		const done = () => { clearTimeout(timer); resolveP() }
 		// Waits for the LAST line of the block, not the URL. The URL is printed
 		// two lines before the end, and stdout arrives in chunks: resolving on
@@ -420,7 +440,7 @@ const rawRequest = (url, lines) =>
 		const opened = () => (existsSync(log) ? readFileSync(log, 'utf8').trim().split('\n').filter(Boolean) : [])
 
 		const wait = (p, until) => new Promise((resolveP) => {
-			const timer = setTimeout(resolveP, 20000)
+			const timer = setTimeout(resolveP, READY_BOUND_MS)
 			const done = () => { clearTimeout(timer); resolveP() }
 			let out = ''
 			p.stdout.on('data', (d) => { out += d; if (until.test(out)) done() })

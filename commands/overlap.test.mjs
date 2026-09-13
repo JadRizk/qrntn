@@ -18,13 +18,25 @@ import { analyse, cosine, coverage, declaredPairs, heldSkills, idf, rank, render
 
 let pass = 0
 const failures = []
+// Under the mutation harness the first failure is the whole answer — a mutant
+// is caught or it is not — so the suite stops there instead of running the
+// rest against a script already known to be broken. mutate.mjs sets this for
+// mutant runs only, never for the clean run, and points TMPDIR into the
+// sandbox it sweeps, so an early exit leaves nothing behind.
+const FAIL_FAST = process.env.QRNTN_FAIL_FAST === '1'
 const check = (name, fn) => {
 	try {
 		fn()
 		pass++
 	} catch (e) {
 		failures.push(`${name}: ${e.message}`)
+		if (FAIL_FAST) stopAtFirstFailure()
 	}
+}
+const stopAtFirstFailure = () => {
+	console.log(`\n${pass} passed, 1 failed — stopped at the first, QRNTN_FAIL_FAST`)
+	console.error(`  FAIL  ${failures[0]}`)
+	process.exit(1)
 }
 const ok = (cond, msg) => {
 	if (!cond) throw new Error(msg)
