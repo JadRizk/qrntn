@@ -182,8 +182,8 @@ suite reads it at the one seam where it records a failure. A mutant is caught
 or it is not; measured before this, the first failure fell at the 51st of the
 scanner suite's 100 spawns on average, so half of every caught run was spent
 confirming what was already known. The harness also points `TMPDIR` into the
-sandbox it sweeps, so an early exit leaves nothing in the temp directory. The
-report line says which assertion caught each mutant — `(at assertion 32)` —
+scratch directory it sweeps beside the sandbox, so an early exit leaves nothing
+in the temp directory. The report line says which assertion caught each mutant — `(at assertion 32)` —
 and a high number is worth a look: the suite tests that property late.
 
 **On a Mac, the gates run with the real `git`.** `/usr/bin/git` under Xcode is

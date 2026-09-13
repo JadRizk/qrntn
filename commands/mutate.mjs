@@ -75,7 +75,7 @@
 // this is that.
 
 import { spawn, spawnSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { availableParallelism, tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 
@@ -169,19 +169,31 @@ export async function mutate({ name, test, sources, build, mutations, jobs, time
 	const runOne = ({ m, target }) =>
 		new Promise((resolveP) => {
 			const dir = mkdtempSync(join(tmpdir(), `${name}-self-`))
+			// The suite's own temp directory: BESIDE the sandbox, never inside
+			// it. Inside was the first version, and it passed here and failed on
+			// CI — usage.test asserts that `--out` into tmpdir() is refused as
+			// outside the library, and with tmpdir() under the sandbox it was
+			// inside. It passed on a Mac only because /var/folders is a symlink
+			// the containment check realpaths on one side and not the other.
+			const scratch = `${dir}-tmp`
+			mkdirSync(scratch)
 			const files = { ...originals, [target]: originals[target].replace(m.find, m.replace) }
+			const discard = () => {
+				rmSync(dir, { recursive: true, force: true })
+				rmSync(scratch, { recursive: true, force: true })
+			}
 			let suite
 			try {
 				suite = build(dir, files)
 			} catch (e) {
-				rmSync(dir, { recursive: true, force: true })
+				discard()
 				return resolveP({ m, status: null, out: '', buildError: e })
 			}
 			const started = Date.now()
 			// A mutant's suite stops at its first failure (every suite reads
 			// QRNTN_FAIL_FAST at the seam where it records one), and its temp
-			// directories land inside the sandbox, so what an early exit leaves
-			// behind is swept with everything else. Measured before this: the
+			// directories land in the scratch beside the sandbox, so what an
+			// early exit leaves behind is swept with everything else. Measured before this: the
 			// first failure fell at the 51st of the scanner suite's 100 spawns,
 			// on average, so half of every caught run was spent confirming what
 			// was already known. The clean run below gets neither — it has to
@@ -189,7 +201,7 @@ export async function mutate({ name, test, sources, build, mutations, jobs, time
 			const p = spawn(process.execPath, [suite], {
 				detached: true,
 				stdio: ['ignore', 'pipe', 'pipe'],
-				env: { ...SUITE_ENV, QRNTN_FAIL_FAST: '1', TMPDIR: dir }
+				env: { ...SUITE_ENV, QRNTN_FAIL_FAST: '1', TMPDIR: scratch }
 			})
 			let out = ''
 			let stopped = false
@@ -203,7 +215,7 @@ export async function mutate({ name, test, sources, build, mutations, jobs, time
 				clearTimeout(timer)
 				// Whatever the suite spawned and did not stop: gone with it.
 				sweep(p)
-				rmSync(dir, { recursive: true, force: true })
+				discard()
 				resolveP({ m, status, out, stopped, seconds: (Date.now() - started) / 1000 })
 			})
 		})
