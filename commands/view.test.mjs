@@ -11,8 +11,9 @@
 // from the tarball; this does it from the checkout.
 
 import { spawn, spawnSync } from 'node:child_process'
-import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createServer, request } from 'node:http'
+import { connect } from 'node:net'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -87,8 +88,19 @@ function library(label) {
 	return lib
 }
 
-const runSync = (script, args) => {
-	const r = spawnSync(process.execPath, [script, ...args], { encoding: 'utf8' })
+// NO RUN HERE OPENS A BROWSER. Stdout is a pipe, which is one gate, and
+// BROWSER=none is the other — belt and braces, because a suite that pops a
+// browser tab on every mutant is a suite nobody runs twice. The one block
+// that tests the opener points BROWSER at a recorder instead.
+const ENV = (env = {}) => ({ ...process.env, BROWSER: 'none', ...env })
+
+// EVERY SERVER THIS SUITE STARTS ASKS FOR A SYSTEM-PICKED PORT. The default is
+// a fixed one — that is the feature — and view.self-test.mjs runs every mutant
+// against this whole file in parallel, so a run that took the default would
+// collide with its siblings and fail for a reason that is not the mutant's.
+// One block below asserts the default, and tolerates a neighbour holding it.
+const runSync = (script, args, env) => {
+	const r = spawnSync(process.execPath, [script, ...args], { encoding: 'utf8', env: ENV(env) })
 	return { code: r.status, raw: (r.stdout ?? '') + (r.stderr ?? ''), out: r.stdout ?? '', err: r.stderr ?? '' }
 }
 
@@ -117,9 +129,9 @@ const sweep = () => {
 process.on('exit', sweep)
 
 /** Start the server, resolve with its first stdout line parsed, or with its exit if it never serves. */
-function serve(script, args) {
+function serve(script, args, env) {
 	return new Promise((resolveP) => {
-		const p = spawn(process.execPath, [script, ...args], { encoding: 'utf8' })
+		const p = spawn(process.execPath, [script, ...args], { encoding: 'utf8', env: ENV(env) })
 		spawned.push(p)
 		let out = ''
 		let err = ''
@@ -144,11 +156,11 @@ const stop = (p, signal = 'SIGINT') =>
 		p.kill(signal)
 	})
 
-/** A raw request, so the path reaches the server exactly as written. */
-const get = (url, path, method = 'GET') =>
+/** A raw request, so the path reaches the server exactly as written. `headers` overrides what node would send — Host, for one. */
+const get = (url, path, method = 'GET', headers = {}) =>
 	new Promise((resolveP, reject) => {
 		const u = new URL(url)
-		const req = request({ host: u.hostname, port: u.port, path, method }, (res) => {
+		const req = request({ host: u.hostname, port: u.port, path, method, headers }, (res) => {
 			let body = ''
 			res.setEncoding('utf8')
 			res.on('data', (d) => { body += d })
@@ -158,12 +170,25 @@ const get = (url, path, method = 'GET') =>
 		req.end()
 	})
 
+/** The request line and nothing else, on a bare socket: the one way to send no Host at all, which node's client will not do. */
+const rawRequest = (url, lines) =>
+	new Promise((resolveP, reject) => {
+		const u = new URL(url)
+		const sock = connect({ host: u.hostname, port: Number(u.port) }, () => sock.write(lines.join('\r\n') + '\r\n\r\n'))
+		let raw = ''
+		sock.setEncoding('utf8')
+		sock.on('data', (d) => { raw += d })
+		sock.on('end', () => resolveP({ status: Number(/^HTTP\/1\.[01] (\d{3})/.exec(raw)?.[1] ?? 0), raw }))
+		sock.on('error', reject)
+	})
+
 // ── usage ───────────────────────────────────────────────────────────────────
 {
 	const script = sandbox('usage')
 	const help = runSync(script, ['--help'])
 	check('--help: exit 0', help.code === 0, `exit ${help.code}`)
-	check('--help: names the verb and the flags', /usage: .*view/.test(help.out) && /--port/.test(help.out) && /--library/.test(help.out), help.out.slice(0, 200))
+	check('--help: names the verb and the flags', /usage: .*view/.test(help.out) && /--port/.test(help.out) && /--library/.test(help.out) && /--no-open/.test(help.out), help.out.slice(0, 200))
+	check('--help: names the port a reader will remember', /localhost:7768/.test(help.out), help.out)
 
 	const unknown = runSync(script, ['--prot', '1'])
 	check('unknown flag: exit 2', unknown.code === 2 && /unknown option --prot/.test(unknown.err), unknown.raw.slice(0, 200))
@@ -225,7 +250,7 @@ const get = (url, path, method = 'GET') =>
 {
 	const script = sandbox('serves')
 	const lib = library('serves')
-	const s = await serve(script, ['--library', lib, '--json'])
+	const s = await serve(script, ['--library', lib, '--port', '0', '--json'])
 	check('serves: started', s.first !== null, `exit ${s.code} ${s.out()} ${s.err()}`)
 	if (s.first) {
 		const { url } = s.first
@@ -248,6 +273,27 @@ const get = (url, path, method = 'GET') =>
 		check('serves: index.html carries a Content-Security-Policy', /default-src 'self'/.test(csp) && /connect-src 'self'/.test(csp) && /object-src 'none'/.test(csp) && !/unsafe-eval/.test(csp), csp)
 		check('serves: the policy admits no remote source', !/https?:/.test(csp) && !/\*/.test(csp), csp)
 		check('serves: nosniff and no referrer, on every response', page.headers['x-content-type-options'] === 'nosniff' && page.headers['referrer-policy'] === 'no-referrer' && graph.headers['x-content-type-options'] === 'nosniff' && absent.headers['x-content-type-options'] === 'nosniff', JSON.stringify([page.headers, absent.headers]))
+		// Named, so a second `qrntn view` refused on this port can tell whose it is.
+		check('serves: every response says who is serving', /^qrntn-view/.test(page.headers.server ?? '') && /^qrntn-view/.test(absent.headers.server ?? ''), JSON.stringify([page.headers.server, absent.headers.server]))
+
+		// THE HOST CHECK. A page on evil.example whose DNS is flipped to
+		// 127.0.0.1 after it loads reaches this port with `Host: evil.example`
+		// and, without this rule, reads the graph — every byte of every held
+		// skill, once the reading room is in it. Vite's CVE-2025-24010, and
+		// its answer: 403 for a Host that is not this machine's.
+		const bound = new URL(url).port
+		for (const host of [`localhost:${bound}`, `127.0.0.1:${bound}`, `[::1]:${bound}`, 'localhost', `LOCALHOST:${bound}`]) {
+			const r = await get(url, '/data/graph.json', 'GET', { host })
+			check(`host: ${host} is this machine, answered`, r.status === 200 && /"stub"/.test(r.body), `${r.status}`)
+		}
+		for (const host of [`evil.example:${bound}`, `127.0.0.1:${Number(bound) + 1}`, `localhost.evil.example:${bound}`, `127.0.0.1.nip.io:${bound}`, `[::2]:${bound}`]) {
+			const r = await get(url, '/data/graph.json', 'GET', { host })
+			check(`host: ${host} is not, refused with 403 and no graph`, r.status === 403 && !/"stub"/.test(r.body) && !r.body.includes(host.split(':')[0]), `${r.status} ${r.body.slice(0, 80)}`)
+		}
+		const refusedPage = await get(url, '/', 'GET', { host: `evil.example:${bound}` })
+		check('host: the page is refused too, not only the data', refusedPage.status === 403 && !/<title>/.test(refusedPage.body), `${refusedPage.status}`)
+		const noHost = await rawRequest(url, ['GET /data/graph.json HTTP/1.0'])
+		check('host: no Host at all is 400, and no graph', noHost.status === 400 && !/"stub"/.test(noHost.raw), noHost.raw.slice(0, 120))
 		// The one that has teeth: this file EXISTS in the bundle. Without the
 		// rule that refuses everything under /data/, it is found on disk and
 		// served, and a fixture answers as though it were this library.
@@ -294,7 +340,7 @@ const get = (url, path, method = 'GET') =>
 {
 	const script = sandbox('human')
 	const lib = library('human')
-	const p = spawn(process.execPath, [script, '--library', lib], { encoding: 'utf8' })
+	const p = spawn(process.execPath, [script, '--library', lib, '--port', '0'], { encoding: 'utf8', env: ENV() })
 	spawned.push(p)
 	let out = ''
 	await new Promise((resolveP) => {
@@ -310,7 +356,7 @@ const get = (url, path, method = 'GET') =>
 		p.stdout.on('data', (d) => { out += d; if (/nothing leaves this machine/.test(out)) done() })
 		p.on('exit', done)
 	})
-	check('human output: names the library, the counts and the url', /view · human-lib/.test(out) && /2 nodes · 1 edges/.test(out) && /http:\/\/127\.0\.0\.1:\d+\//.test(out), out)
+	check('human output: names the library, the counts and the url — as localhost, the name a reader remembers', /view · human-lib/.test(out) && /2 nodes · 1 edges/.test(out) && /http:\/\/localhost:\d+\//.test(out), out)
 	check('human output: says how to stop and that nothing leaves', /Ctrl-C/.test(out) && /nothing leaves/.test(out), out)
 	const stopped = await stop(p, 'SIGTERM')
 	check('human output: SIGTERM stops it with 0 too', stopped.code === 0, JSON.stringify(stopped))
@@ -325,7 +371,112 @@ const get = (url, path, method = 'GET') =>
 	const r = runSync(script, ['--library', lib, '--port', String(port)])
 	holder.close()
 	check('busy port: exit 2', r.code === 2, `exit ${r.code} ${r.raw.slice(0, 200)}`)
-	check('busy port: says which port and what to do', new RegExp(`port ${port} is in use`).test(r.err) && /--port/.test(r.err), r.err)
+	check('busy port: says which port and what to do', new RegExp(`port ${port} is in use`).test(r.err) && /--port 0/.test(r.err), r.err)
+	check('busy port: a stranger on the port is not called one of ours', !/another qrntn view/.test(r.err), r.err)
+}
+{
+	// The same port, but the squatter is another `qrntn view`: the refusal
+	// says so and names the URL the reader most likely wants.
+	const script = sandbox('collision')
+	const lib = library('collision')
+	const first = await serve(script, ['--library', lib, '--port', '0', '--json'])
+	check('collision: the first one started', first.first !== null, first.err())
+	if (first.first) {
+		const r = runSync(script, ['--library', lib, '--port', String(first.first.port)])
+		check('collision: exit 2 — this one served nothing', r.code === 2, `exit ${r.code} ${r.raw.slice(0, 200)}`)
+		check('collision: says it is one of ours, and where', /another qrntn view is already serving/.test(r.err) && r.err.includes(`http://localhost:${first.first.port}/`), r.err)
+		check('collision: says what to do', /stop it there/.test(r.err) && /--port 0/.test(r.err), r.err)
+		await stop(first.p)
+	}
+}
+{
+	// THE DEFAULT PORT. Run with no --port at all, and it is 7768 — unless a
+	// neighbour in a parallel mutant run holds it this instant, in which case
+	// the refusal names 7768, which proves the same thing. A mutant that
+	// dropped the default picks a random port and matches neither.
+	const script = sandbox('default-port')
+	const lib = library('default-port')
+	const s = await serve(script, ['--library', lib, '--json'])
+	const took = s.first?.port === 7768 && s.first?.url === 'http://127.0.0.1:7768/'
+	const refused = s.first === null && s.code === 2 && /7768/.test(s.err())
+	check('default port: 7768, or refused because 7768 is held', took || refused, JSON.stringify(s.first) + s.err())
+	if (s.first) await stop(s.p)
+}
+{
+	// THE OPENER. BROWSER=<command> runs that command with the URL and nothing
+	// else — the convention CRA, Vite and Netlify share, and the one way to
+	// test this without a browser: the command is a recorder. Three gates are
+	// then asserted shut: --no-open, --json, BROWSER=none. A pipe on its own
+	// is a gate only when BROWSER is unset, which every other run here proves.
+	if (process.platform === 'win32') {
+		console.log('  (the opener test needs a shell script as BROWSER — skipped on win32)')
+	} else {
+		const script = sandbox('opener')
+		const lib = library('opener')
+		const recorder = join(ROOT, 'record-open.sh')
+		const log = join(ROOT, 'opened.log')
+		writeFileSync(recorder, `#!/bin/sh\nprintf '%s\\n' "$@" >> '${log}'\n`)
+		chmodSync(recorder, 0o755)
+		const opened = () => (existsSync(log) ? readFileSync(log, 'utf8').trim().split('\n').filter(Boolean) : [])
+
+		const wait = (p, until) => new Promise((resolveP) => {
+			const timer = setTimeout(resolveP, 20000)
+			const done = () => { clearTimeout(timer); resolveP() }
+			let out = ''
+			p.stdout.on('data', (d) => { out += d; if (until.test(out)) done() })
+			p.on('exit', done)
+		})
+		const human = (extra, env) => {
+			const p = spawn(process.execPath, [script, '--library', lib, '--port', '0', ...extra], { encoding: 'utf8', env: ENV(env) })
+			spawned.push(p)
+			return p
+		}
+		// The recorder is a detached /bin/sh, and on a loaded machine it can
+		// take longer than any fixed sleep. Poll for the count expected; when
+		// the expectation is "nothing new", wait the whole window.
+		const settle = (n, window = 5000) => new Promise((resolveP) => {
+			const started = Date.now()
+			const tick = () => { if (opened().length >= n || Date.now() - started > window) resolveP(); else setTimeout(tick, 50) }
+			tick()
+		})
+
+		let p = human([], { BROWSER: recorder })
+		await wait(p, /nothing leaves this machine/)
+		await settle(1)
+		const first = opened()
+		check('opener: BROWSER=<command> is run with the URL, and only the URL', first.length === 1 && /^http:\/\/localhost:\d+\/$/.test(first[0]), JSON.stringify(first))
+		await stop(p)
+
+		p = human(['--no-open'], { BROWSER: recorder })
+		await wait(p, /nothing leaves this machine/)
+		await settle(2, 1500)
+		check('opener: --no-open leaves the browser alone', opened().length === 1, JSON.stringify(opened()))
+		await stop(p)
+
+		const j = await serve(script, ['--library', lib, '--port', '0', '--json'], { BROWSER: recorder })
+		await settle(2, 1500)
+		check('opener: --json never opens', j.first !== null && opened().length === 1, JSON.stringify(opened()))
+		if (j.first) await stop(j.p)
+
+		// Off, not "a browser called none that failed to start": the failure
+		// line must be absent too, or the switch is only pretending to work.
+		p = human([], { BROWSER: 'none' })
+		let quiet = ''
+		p.stdout.on('data', (d) => { quiet += d })
+		await wait(p, /nothing leaves this machine/)
+		await settle(2, 1500)
+		check('opener: BROWSER=none is the off switch — nothing recorded, nothing attempted', opened().length === 1 && !/could not open/.test(quiet), JSON.stringify(opened()) + quiet)
+		await stop(p)
+
+		// A browser that cannot be started is a line, not an exit.
+		p = human([], { BROWSER: join(ROOT, 'no-such-browser') })
+		let out = ''
+		p.stdout.on('data', (d) => { out += d })
+		await wait(p, /could not open a browser/)
+		check('opener: a browser that will not start is a dim line under the URL, and the server is still up', /could not open a browser/.test(out) && p.exitCode === null, out)
+		const stopped = await stop(p)
+		check('opener: and it still stops with 0', stopped.code === 0, JSON.stringify(stopped))
+	}
 }
 {
 	// A fixed port is honoured.
@@ -354,7 +505,7 @@ const get = (url, path, method = 'GET') =>
 		mkdirSync(join(lib, 'skills'), { recursive: true })
 		const init = spawnSync(process.execPath, [join(HERE, 'init.mjs'), '--library', lib], { encoding: 'utf8' })
 		check('real bundle: a library was made to view', init.status === 0, init.stdout + init.stderr)
-		const s = await serve(join(HERE, 'view.mjs'), ['--library', lib, '--json'])
+		const s = await serve(join(HERE, 'view.mjs'), ['--library', lib, '--port', '0', '--json'])
 		check('real bundle: the bundled exporter ran and the server started', s.first !== null, `exit ${s.code} ${s.out()} ${s.err()}`)
 		if (s.first) {
 			const graph = await get(s.first.url, '/data/graph.json')

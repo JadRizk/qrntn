@@ -284,7 +284,7 @@ check('refresh: ran against the pin intake wrote', refresh.code === 0 || /drift|
 const BUNDLE = join(INSTALL, 'node_modules', ...PKG_PATH, 'view', 'index.html')
 if (existsSync(BUNDLE)) {
 	const served = await new Promise((resolveP) => {
-		const p = spawn(QRNTN, ['view', '--library', LIB, '--json'], { cwd: SANDBOX, env: { ...process.env, HOME } })
+		const p = spawn(QRNTN, ['view', '--library', LIB, '--port', '0', '--json'], { cwd: SANDBOX, env: { ...process.env, HOME, BROWSER: 'none' } })
 		let out = ''
 		let err = ''
 		let done = false

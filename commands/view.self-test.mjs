@@ -17,6 +17,10 @@
 // how it is meant to stop — 0, not a signal death — which is the contract the
 // README freezes and the one that was already broken once, in the dispatcher.
 //
+// The fifth is the Host check (docs/SERVING.md). A server on a fixed port that
+// answers any Host is exactly as useful to a rebinding page as one with no
+// check at all, and it too looks like a server that works.
+//
 //   node view.self-test.mjs
 
 import { cpSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -135,9 +139,85 @@ const MUTATIONS = [
 		replace: '\tif (false) {'
 	},
 	{
+		// The rebinding case. A page at evil.example whose DNS now says
+		// 127.0.0.1 reaches this port with `Host: evil.example`; without this
+		// line it reads the graph.
+		name: 'any Host is answered, so a rebinding page reads the graph',
+		find: '\t\tif (!hostIsOurs(host, server.address()?.port)) {',
+		replace: '\t\tif (false) {'
+	},
+	{
+		// The name is checked but not the port: `127.0.0.1:9999` for a server
+		// on 7768 is accepted. Not a rebinding hole on its own, but the rule
+		// is "names this server", and half a rule is what drifts.
+		name: 'a Host with the wrong port is accepted',
+		find: '\treturn p === undefined || Number(p) === boundPort',
+		replace: '\treturn true'
+	},
+	{
+		name: 'a request with no Host at all is answered',
+		find: "\t\tif (host === undefined || host === '') {",
+		replace: '\t\tif (false) {'
+	},
+	{
+		// Without the name, a second `qrntn view` refused on the port cannot
+		// tell the reader the squatter is one of ours.
+		name: 'the server no longer says who it is',
+		find: '\t\t\tServer: SERVER_HEADER,\n\t\t}',
+		replace: '\t\t}'
+	},
+	{
+		name: 'the busy-port probe never recognises one of ours',
+		find: "\t\t\tresolveP(named.startsWith('qrntn-view') ? named : null)",
+		replace: '\t\t\tresolveP(null)'
+	},
+	{
+		// The URL a reader remembers. Without the default the port is random
+		// again, which is the state this feature exists to end.
+		name: 'the default port is the system\'s pick again',
+		find: 'let port = DEFAULT_PORT',
+		replace: 'let port = 0'
+	},
+	{
+		name: 'the printed URL is the address, not the name',
+		find: '\tconst url = `http://localhost:${bound}/`',
+		replace: '\tconst url = `http://127.0.0.1:${bound}/`'
+	},
+	{
+		// `--json` is for a program on the other end of the pipe. The JSON
+		// branch returns before the opener is consulted; without that return
+		// the human block prints after the JSON line and the browser opens.
+		name: '--json opens a browser too',
+		find: '\t\tconsole.log(JSON.stringify({ library: LIBRARY, url: boundUrl, port: bound, nodes: counts.nodes, edges: counts.edges, graph: GRAPH }))\n\t\treturn',
+		replace: '\t\tconsole.log(JSON.stringify({ library: LIBRARY, url: boundUrl, port: bound, nodes: counts.nodes, edges: counts.edges, graph: GRAPH }))'
+	},
+	{
+		name: '--no-open is ignored',
+		find: "const OPEN = !NO_OPEN && process.env.BROWSER !== 'none' && (process.stdout.isTTY || Boolean(process.env.BROWSER))",
+		replace: "const OPEN = process.env.BROWSER !== 'none' && (process.stdout.isTTY || Boolean(process.env.BROWSER))"
+	},
+	{
+		// Caught only because the suite also asserts that no "could not open"
+		// line is printed: a browser called "none" fails to start, which
+		// without that assertion looks the same as never trying.
+		name: 'BROWSER=none opens a browser called "none"',
+		find: "const OPEN = !NO_OPEN && process.env.BROWSER !== 'none' && (process.stdout.isTTY || Boolean(process.env.BROWSER))",
+		replace: "const OPEN = !NO_OPEN && (process.stdout.isTTY || Boolean(process.env.BROWSER))"
+	},
+	{
+		name: 'the browser is never opened',
+		find: '\tif (OPEN) openBrowser(url, () => console.log(',
+		replace: '\tif (false) openBrowser(url, () => console.log('
+	},
+	{
+		name: 'a browser that will not start is silent',
+		find: '\t\tif (i >= candidates.length) return onFail()',
+		replace: '\t\tif (i >= candidates.length) return'
+	},
+	{
 		name: 'INERT CONTROL — a comment reworded, nothing else',
-		find: '// LOCAL, ONLY. Bound to 127.0.0.1, no browser opened, nothing leaves the',
-		replace: '// LOCAL ONLY. Bound to 127.0.0.1, no browser is opened, nothing leaves the',
+		find: '// LOCAL, ONLY. Bound to 127.0.0.1, and answering only to a Host header that',
+		replace: '// LOCAL ONLY. Bound to 127.0.0.1, and answering only to a Host header which',
 		expect: 'survives'
 	}
 ]

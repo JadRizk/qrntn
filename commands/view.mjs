@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // view — the graph, served locally against any skill library.
 //
-//   node view.mjs [--library <dir>] [--port <n>] [--json]
+//   node view.mjs [--library <dir>] [--port <n>] [--no-open] [--json]
 //
 // The viewer is `nexus/`, a Vite + React + three.js application, and the CLI
 // is zero-dependency plain Node and stays that way. So this ships a PREBUILT
@@ -17,8 +17,27 @@
 // serves that. The fixture the viewer carries in a checkout never ships and is
 // never served: nothing under /data/ is answered but the graph exported here.
 //
-// LOCAL, ONLY. Bound to 127.0.0.1, no browser opened, nothing leaves the
-// machine. The URL is printed; opening it is the reader's act.
+// LOCAL, ONLY. Bound to 127.0.0.1, and answering only to a Host header that
+// names this machine — `localhost`, `127.0.0.1` or `[::1]`, at the bound port
+// or none. The check is what a fixed port makes necessary: a page on
+// evil.example whose DNS is flipped to 127.0.0.1 after it loads can fetch
+// this server as if same-origin, and with the reading room in the graph the
+// response is every byte of every held skill. Vite (CVE-2025-24010) and
+// Next.js both added the same check in 2025 and both answer 403; so does
+// this. Nothing leaves the machine. See docs/SERVING.md.
+//
+// ONE PORT, REMEMBERED. 7768 — `q r n t` on a telephone keypad, unassigned at
+// IANA, on nobody's default list — unless `--port` says otherwise; `--port 0`
+// lets the system choose. A busy port is refused, not skipped past: a viewer
+// whose URL moves when it is already open in a tab is the problem a fixed
+// port exists to fix. When the squatter is another `qrntn view`, the refusal
+// says so and names its URL.
+//
+// THE BROWSER IS OPENED, unless `--no-open`, `--json`, `BROWSER=none`, or
+// stdout is not a terminal and BROWSER is unset. The platform's own opener is
+// spawned detached, so Ctrl-C here never reaches the browser and a browser
+// that will not open is a dim line under the URL, never an exit. The URL is
+// still printed; opening it is still available as the reader's act.
 //
 // Exit codes hold their meaning across a long-running process. 2 when it could
 // not start — no bundle, not a library, port in use, or an exporter that
@@ -30,9 +49,9 @@
 //
 // Plain Node, no dependencies.
 
-import { spawnSync } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs'
-import { createServer } from 'node:http'
+import { createServer, request } from 'node:http'
 import { tmpdir } from 'node:os'
 import { basename, dirname, extname, join, posix, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -70,9 +89,22 @@ try {
 }
 
 const FLAGS = {
-	boolean: ['--json', '--help', '-h'],
+	boolean: ['--json', '--no-open', '--help', '-h'],
 	valued: ['--library', '--port']
 }
+
+// `q r n t` on a telephone keypad. Inside IANA's unassigned block 7748–7776
+// (registry read 2026-09-13) and the default of no dev server anyone runs
+// beside this one — not 3000, 5173, 8080, 8888, and not 5000 or 7000, which
+// macOS's AirPlay receiver holds. Fixed so the URL is one a reader remembers.
+const DEFAULT_PORT = 7768
+
+// What a request must call this server to be answered. Names for this
+// machine only, at the bound port or none; case does not matter, because
+// Host does not either. Anything else is a page that reached a loopback
+// address by a name that is not ours, which is what DNS rebinding looks like
+// from here.
+const HOSTS = new Set(['localhost', '127.0.0.1', '[::1]'])
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 // The bundle sits beside commands/, not inside it: `view/` is a build output
@@ -81,6 +113,18 @@ const HERE = dirname(fileURLToPath(import.meta.url))
 // may be found that way. The library never is.
 const VIEW = resolve(HERE, '..', 'view')
 const EXPORTER = join(VIEW, 'export-graph.mjs')
+
+// Names this process to whoever asks, so a second `qrntn view` refused on a
+// busy port can tell the reader the squatter is us. The version comes from
+// the package when this file is in one; deployed alone, it is just the name.
+const SERVER_HEADER = (() => {
+	try {
+		const { version } = JSON.parse(readFileSync(join(HERE, '..', 'package.json'), 'utf8'))
+		return `qrntn-view/${version}`
+	} catch {
+		return 'qrntn-view'
+	}
+})()
 
 function resolveLibrary(argv = process.argv.slice(2)) {
 	const i = argv.indexOf('--library')
@@ -96,17 +140,20 @@ function resolveLibrary(argv = process.argv.slice(2)) {
 }
 
 function synopsis() {
-	return `usage: ${invokedAs()} [--library <dir>] [--port <n>] [--json]
+	return `usage: ${invokedAs()} [--library <dir>] [--port <n>] [--no-open] [--json]
 
-  Exports the graph for the library, serves it on 127.0.0.1, prints the URL
-  and runs until interrupted. Ctrl-C stops it; re-run to re-export.
+  Exports the graph for the library, serves it at http://localhost:${DEFAULT_PORT}/,
+  opens your browser there and runs until interrupted. Ctrl-C stops it;
+  re-run to re-export.
 
   --library <dir>   the library — else SKILL_LIBRARY, else the working directory
-  --port <n>        listen here rather than on a free port the system picks
-  --json            one line with the URL and the counts, then serve
+  --port <n>        listen here instead of ${DEFAULT_PORT}; 0 lets the system choose
+  --no-open         print the URL and leave the browser alone — so does BROWSER=none
+  --json            one line with the URL and the counts, then serve; never opens
 
-Nothing leaves the machine. The viewer's own data is never served — only the
-graph exported here, for the library you named.
+Nothing leaves the machine. The server answers only to localhost, and never
+serves the viewer's own data — only the graph exported here, for the library
+you named.
 
 Exit codes:  0 stopped · 1 the library is inconsistent, so there is no graph
              2 could not start — no bundle, not a library, port in use
@@ -158,8 +205,9 @@ if (args.includes('--help') || args.includes('-h')) {
 }
 
 const JSON_OUT = args.includes('--json')
+const NO_OPEN = args.includes('--no-open')
 
-let port = 0
+let port = DEFAULT_PORT
 {
 	const i = args.indexOf('--port')
 	if (i !== -1) {
@@ -247,10 +295,40 @@ try {
 
 const INDEX = readFileSync(join(VIEW, 'index.html'))
 
+/** The Host header names this machine at this port, or nothing is answered. */
+function hostIsOurs(host, boundPort) {
+	if (typeof host !== 'string' || host === '') return false
+	// `[::1]:7768` — the bracket form keeps its colons; split on the last one
+	// only when what follows is a port.
+	const m = /^(.*?)(?::(\d{1,5}))?$/.exec(host.trim().toLowerCase())
+	if (!m) return false
+	const [, name, p] = m
+	if (!HOSTS.has(name)) return false
+	return p === undefined || Number(p) === boundPort
+}
+
 function handle(req, res) {
 	if (req.method !== 'GET' && req.method !== 'HEAD') {
 		res.writeHead(405, { Allow: 'GET, HEAD' })
 		return res.end()
+	}
+	// BEFORE THE PATH. A request that calls this server by a name that is
+	// not this machine's is not answered, whatever it asks for — the file
+	// comment at the top says why, and docs/SERVING.md says it at length.
+	// 400 when there is no Host at all (HTTP/1.0 allows that; nothing a
+	// browser sends does), 403 when there is one and it is not ours. Neither
+	// body repeats what was sent: a page probing this port learns that it was
+	// refused and not what would have been accepted.
+	{
+		const host = req.headers.host
+		if (host === undefined || host === '') {
+			res.writeHead(400, { 'Content-Type': CONTENT_TYPES['.txt'], 'X-Content-Type-Options': 'nosniff', Server: SERVER_HEADER })
+			return res.end('a Host header is required\n')
+		}
+		if (!hostIsOurs(host, server.address()?.port)) {
+			res.writeHead(403, { 'Content-Type': CONTENT_TYPES['.txt'], 'X-Content-Type-Options': 'nosniff', Server: SERVER_HEADER })
+			return res.end('forbidden: qrntn view answers only as localhost\n')
+		}
 	}
 	// The path, taken from the request line by hand. `new URL(req.url, base)`
 	// reads `//host/x` as a protocol-relative URL and answers `/` for it —
@@ -283,6 +361,7 @@ function handle(req, res) {
 			'Cache-Control': 'no-store',
 			'X-Content-Type-Options': 'nosniff',
 			'Referrer-Policy': 'no-referrer',
+			Server: SERVER_HEADER,
 		}
 		if (type === CONTENT_TYPES['.html']) headers['Content-Security-Policy'] = CSP
 		res.writeHead(status, headers)
@@ -327,15 +406,96 @@ function handle(req, res) {
 
 const server = createServer(handle)
 
-server.on('error', (e) => {
+/** One HEAD to the port that refused us: is the squatter another `qrntn view`? Resolves to its Server header, or null. */
+function probe(p) {
+	return new Promise((resolveP) => {
+		const req = request({ host: '127.0.0.1', port: p, method: 'HEAD', path: '/', timeout: 1000 }, (res) => {
+			res.resume()
+			const named = res.headers.server ?? ''
+			resolveP(named.startsWith('qrntn-view') ? named : null)
+		})
+		req.on('timeout', () => { req.destroy() })
+		req.on('error', () => resolveP(null))
+		req.end()
+	})
+}
+
+server.on('error', async (e) => {
 	cleanup()
 	if (e.code === 'EADDRINUSE') {
-		console.error(refusalLine(`port ${port} is in use — pick another with --port, or none to let the system choose`))
+		// Refused, not skipped past to the next free port: the fixed port is
+		// the point. But whose is it? If it is ours, say so and name the URL —
+		// the reader most likely wants that tab, not a second server. Exit is
+		// 2 either way: this process exported nothing and served nothing, and
+		// the one already up may be serving a graph older than the tree.
+		const other = await probe(port)
+		if (other) {
+			console.error(refusalLine(`another qrntn view is already serving on port ${port} — http://localhost:${port}/`))
+			console.error(`  stop it there and re-run to re-export, or --port 0 for a second one`)
+		} else {
+			console.error(refusalLine(`port ${port} is in use — pick another with --port, or --port 0 to let the system choose`))
+		}
 	} else {
 		console.error(refusalLine(`could not listen on 127.0.0.1:${port} — ${e.code ?? e.message}`))
 	}
 	process.exit(2)
 })
+
+// ── the browser ─────────────────────────────────────────────────────────────
+//
+// The platform's own opener, handed the URL and nothing else, spawned
+// detached with its stdio closed: Ctrl-C here must not reach the browser, and
+// a browser writing to a pipe nobody reads must not block this server.
+// `BROWSER=<command>` runs that instead, the convention CRA, Vite and Netlify
+// share — and, as it happens, the only way to test this without a browser.
+// `BROWSER=none` is the same convention's off switch.
+//
+// Under WSL there is often no `xdg-open`; `wslview` is the usual bridge, and
+// the Windows `cmd.exe` is on every WSL PATH by interop. Tried in that order.
+function isWSL() {
+	if (process.platform !== 'linux') return false
+	try {
+		return /microsoft/i.test(readFileSync('/proc/version', 'utf8'))
+	} catch {
+		return false
+	}
+}
+
+function openerCandidates(url) {
+	const browser = process.env.BROWSER
+	if (browser) return [[browser, [url]]]
+	if (process.platform === 'darwin') return [['open', [url]]]
+	if (process.platform === 'win32') return [['cmd', ['/c', 'start', '', url]]]
+	if (isWSL()) return [['wslview', [url]], ['cmd.exe', ['/c', 'start', '', url]]]
+	return [['xdg-open', [url]]]
+}
+
+/** Try each opener in turn; `onFail` runs once when none could be started. */
+function openBrowser(url, onFail) {
+	const candidates = openerCandidates(url)
+	const attempt = (i) => {
+		if (i >= candidates.length) return onFail()
+		const [cmd, argv] = candidates[i]
+		let child
+		try {
+			child = spawn(cmd, argv, { detached: true, stdio: 'ignore' })
+		} catch {
+			return attempt(i + 1)
+		}
+		// ENOENT and its kin arrive as an event, after spawn returned.
+		child.on('error', () => attempt(i + 1))
+		child.unref()
+	}
+	attempt(0)
+}
+
+// Opened unless told not to, in any of the ways the field already
+// recognises. A pipe is a reason on its own only when BROWSER is unset: an
+// explicit BROWSER is an instruction, and a test's recorder is one. `--json`
+// is not in this expression because it never reaches it: the JSON branch
+// below prints its line and returns before the opener is consulted, and
+// view.self-test.mjs removes that return to prove the suite would notice.
+const OPEN = !NO_OPEN && process.env.BROWSER !== 'none' && (process.stdout.isTTY || Boolean(process.env.BROWSER))
 
 const stop = () => {
 	server.close()
@@ -347,9 +507,14 @@ process.on('SIGINT', stop)
 process.on('SIGTERM', stop)
 
 server.listen(port, '127.0.0.1', () => {
-	const url = `http://127.0.0.1:${server.address().port}/`
+	const bound = server.address().port
+	// Two spellings of one address. The reader gets `localhost`, which is the
+	// name they will type and remember; the JSON line gets the address that
+	// was actually bound, for a client that resolves `localhost` to ::1 alone.
+	const url = `http://localhost:${bound}/`
+	const boundUrl = `http://127.0.0.1:${bound}/`
 	if (JSON_OUT) {
-		console.log(JSON.stringify({ library: LIBRARY, url, port: server.address().port, nodes: counts.nodes, edges: counts.edges, graph: GRAPH }))
+		console.log(JSON.stringify({ library: LIBRARY, url: boundUrl, port: bound, nodes: counts.nodes, edges: counts.edges, graph: GRAPH }))
 		return
 	}
 	console.log(`\nview · ${basename(LIBRARY)}\n`)
@@ -357,4 +522,5 @@ server.listen(port, '127.0.0.1', () => {
 	console.log(`  ${counts.nodes} nodes · ${counts.edges} edges`)
 	console.log(`\n  ${tint.state(url)}\n`)
 	console.log(`  ${tint.dim('Ctrl-C to stop · re-run to re-export · nothing leaves this machine')}\n`)
+	if (OPEN) openBrowser(url, () => console.log(`  ${tint.dim('could not open a browser — open the URL above yourself')}\n`))
 })

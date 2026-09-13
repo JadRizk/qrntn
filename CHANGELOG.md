@@ -13,6 +13,32 @@ appears in a release.
 A version that only refuses better still gets an entry. Declining is a success,
 and a release that made a refusal clearer shipped something.
 
+## Unreleased
+
+**`view` has an address.** `qrntn view` serves at `http://localhost:7768/`
+— one port, remembered, `q r n t` on a telephone keypad and unassigned at
+IANA — and opens your browser there. `--port <n>` still overrides it and
+`--port 0` lets the system choose; `--no-open`, `BROWSER=none` or `--json`
+leave the browser alone, `BROWSER=<command>` opens with that instead, and a
+browser that will not start is a dim line under the URL, never an exit. A busy
+port is refused rather than skipped past, and when the squatter is another
+`qrntn view` the refusal says so and names its URL. Not a daemon, on purpose:
+the graph is exported at start and served as a snapshot, so a server that
+outlives the reading would be reporting on a tree that has since changed.
+`docs/SERVING.md` decided all of it.
+
+**The server checks `Host`.** A fixed port is what makes DNS rebinding
+practical — a page on another origin whose DNS is flipped to `127.0.0.1` can
+fetch this server as if same-origin and, with the reading room in the graph,
+read every byte of every held skill; the CSP does not defend against it,
+because it is not our page making the request. So a request that does not
+name this machine — `localhost`, `127.0.0.1` or `[::1]`, at the bound port —
+is answered 403 and nothing else, and one with no `Host` at all is 400. The
+same check Vite added for CVE-2025-24010 and Next.js for `allowedDevOrigins`,
+with the same status. Every response now carries `Server: qrntn-view/<version>`.
+A change to *what leaves the machine* in the direction of less; the `view`
+row in `docs/THREATS.md` says so.
+
 ## 0.3.0 — 2026-09-13
 
 **`view` reads.** Select a skill and the drawer now says what the records
