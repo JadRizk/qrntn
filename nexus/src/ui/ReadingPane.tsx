@@ -1,4 +1,4 @@
-// ui/ReadingPane.tsx — the reading room. READING-ROOM.html, phase 2.
+// ui/ReadingPane.tsx — the reading room. docs/READING.md, phase 2.
 //
 // Opening a file replaces the drawer with this: the same right-hand slot,
 // wider, full height. The header names the file and the verdict of its hash

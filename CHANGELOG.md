@@ -41,8 +41,8 @@ is never navigable.
 like from a distance: a rendered view hides an HTML comment addressed to the
 model, a right-to-left override, a zero-width space and a Cyrillic `а` — the
 concealments `docs/THREATS.md` names and the scanner exists to catch. The
-reader renders what `cat` renders, and more. `docs/READING.md` decided this;
-`docs/READING-ROOM.html` specified it.
+reader renders what `cat` renders, and more. `docs/READING.md` decided it,
+and records what was built.
 
 **What leaves the machine.** Nothing, still — and now under a policy rather
 than a promise. The viewer renders held skills' full artefact text, so the

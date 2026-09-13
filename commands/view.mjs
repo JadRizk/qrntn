@@ -269,7 +269,7 @@ function handle(req, res) {
 
 	// Every response, whatever it carries: never sniffed into another type,
 	// never a referrer. And on the page, the policy that makes the reader
-	// safe to ship (READING.md, READING-ROOM.html): the viewer renders held
+	// safe to ship (docs/READING.md): the viewer renders held
 	// skills' full artefact text as source, and a policy that admits no
 	// remote fetch is what keeps "nothing leaves the machine" true if any of
 	// that text is ever rendered as more than text. Mirrored as a <meta> in

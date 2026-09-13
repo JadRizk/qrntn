@@ -47,7 +47,7 @@ const EMPTY_LINK_CATEGORIES: readonly string[] = []
 // width would arrive mid-transition and drag the camera along with it.
 const DRAWER_INSET = 296 + 12 + 12
 // The reading pane: wider than the drawer, and the width the graph does not
-// need while a file is open (READING-ROOM.html). At the viewer's 12 px mono
+// need while a file is open (docs/READING.md). At the viewer's 12 px mono
 // a column is ≈7.2 px, so 560 holds ~66 columns after the gutter and 760
 // ~96. Same +12 +12 as the drawer, for the same reason.
 const paneWidthFor = (viewport: number) => Math.round(Math.min(760, Math.max(560, viewport * 0.44)))
@@ -132,7 +132,7 @@ export function App() {
   // The full node by id, for the drawer's record sections. The engine's own
   // GraphNodeSnapshot carries none of a skill's fields (description, files,
   // record), and widening the vendored engine's type for them would be the
-  // wrong seam — one Map over the loaded snapshot instead (READING-ROOM.html).
+  // wrong seam — one Map over the loaded snapshot instead (docs/READING.md, *Decided*).
   const nodesById = useMemo(() => new Map(snapshot?.nodes.map((n) => [n.id, n]) ?? []), [snapshot])
   const lookupNode = useCallback((id: string) => nodesById.get(id), [nodesById])
   const leaves = useMemo(() => (snapshot?.nodes ?? []).filter((n): n is LeafNode => n.kind === 'leaf'), [snapshot])

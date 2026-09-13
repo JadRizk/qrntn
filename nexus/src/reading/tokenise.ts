@@ -1,4 +1,4 @@
-// reading/tokenise.ts — the source, as the reader shows it. READING-ROOM.html.
+// reading/tokenise.ts — the source, as the reader shows it. docs/READING.md.
 //
 // A markdown renderer hides an HTML comment, a right-to-left override, a
 // zero-width space and a Cyrillic a (U+0430) that reads as Latin — every concealment

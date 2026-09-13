@@ -298,7 +298,7 @@ const skills = skillDirs.map((dir) => {
     missing: Object.keys(ledgerFiles).filter((p) => !onDisk.has(p)).sort(),
   }
 
-  // The structured record, when the skill has one (READING-ROOM.html,
+  // The structured record, when the skill has one (docs/READING.md,
   // decided 1: pins come from AUDIT.json only; AUDIT.md is a readable file).
   // Read for its findings, which pin to lines below; its shape is the
   // record package's and is validated by `validate-record`, not here.

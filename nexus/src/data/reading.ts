@@ -1,4 +1,4 @@
-// Pure pieces of the reading room's export — READING-ROOM.html, phase 2.
+// Pure pieces of the reading room's export — docs/READING.md, phase 2.
 //
 // What in a file is a link, where it points, which heading a `#fragment`
 // names, and which line a finding's `at` pins to. All of it runs once, in

@@ -83,7 +83,7 @@ const OriginNodeSchema = z.object({
 export const OriginKindSchema = z.enum(['authored', 'acquired'])
 export type OriginKind = z.infer<typeof OriginKindSchema>
 
-// The records, on the node (READING-ROOM.html, phase 1). A skill is a folder
+// The records, on the node (docs/READING.md, phase 1). A skill is a folder
 // of text that becomes instructions, and the library holds — per skill — a
 // sha256 for every file (ledger integrity.files) and the audit's verdict.
 // Until now the graph carried none of it, so the drawer could name a skill
@@ -104,14 +104,14 @@ export type HashVerdict = z.infer<typeof HashVerdictSchema>
 // kinds, scripts, and `other` — a LICENSE, a dotfile, AUDIT.json — which
 // the ledger hashes and so must be listed. Provenance is not depth — AUDIT.md
 // and ORIGIN.md are readable from the skill and never become nodes
-// (READING-ROOM.html, decided 4).
+// (docs/READING.md, decided 4).
 export const FileRoleSchema = z.enum(['spine', 'audit', 'origin', 'ref', 'asset', 'agent', 'script', 'other'])
 export type FileRole = z.infer<typeof FileRoleSchema>
 
 // A link found in a file, as offsets the viewer colours and never re-derives.
 // `node` points at a node id; `file` at a path in the same skill that is
 // readable but not drawn (AUDIT.md, ORIGIN.md, a nested reference —
-// READING-ROOM.html, decided 3 and 4); `anchor` at a heading slug in this
+// docs/READING.md, decided 3 and 4); `anchor` at a heading slug in this
 // file; `external` carries only the host, because nothing navigates off the
 // page; `unresolved` is a link to nothing this export knows, and stays text.
 export const LinkKindSchema = z.enum(['node', 'file', 'anchor', 'external', 'unresolved'])

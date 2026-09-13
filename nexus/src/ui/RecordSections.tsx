@@ -1,10 +1,10 @@
 // ui/RecordSections.tsx — what the records say about the selected node, in
-// the drawer, beneath its edges. READING-ROOM.html, phase 1.
+// the drawer, beneath its edges. docs/READING.md, phase 1.
 //
 // The engine's GraphNodeSnapshot carries id, label, category, degree and
 // adjacency — none of the skill's own fields. Rather than widen the vendored
 // engine's type to carry them, App.tsx looks the full GraphNode up by id in
-// the loaded snapshot and hands it here (READING-ROOM.html, "one builder-
+// the loaded snapshot and hands it here (docs/READING.md, "one builder-
 // level choice"). This renders records and never artefact text: the reader
 // that shows the bytes is phase 2, and a bigger threat surface.
 //

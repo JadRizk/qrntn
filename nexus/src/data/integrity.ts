@@ -97,7 +97,7 @@ export function checkDuplicateIds(snapshot: GraphSnapshot): IntegrityWarning[] {
 // collision checkDuplicateIds catches for nodes: one row reachable, one
 // silently shadowed. export-graph.mjs lists a root companion .md once and
 // a references/ file once, but the invariant is checked here rather than
-// trusted to stay that way as the walk grows (READING-ROOM.html, decided 3).
+// trusted to stay that way as the walk grows (docs/READING.md, decided 3).
 export function checkDuplicateFilePaths(snapshot: GraphSnapshot): IntegrityWarning[] {
   const warnings: IntegrityWarning[] = []
   for (const node of snapshot.nodes) {
