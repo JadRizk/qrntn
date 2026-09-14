@@ -14,7 +14,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync, writeSync } from 'node:f
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 
-import { analyse, cosine, coverage, declaredPairs, heldSkills, idf, rank, render, stem, tokens } from './overlap.mjs'
+import { analyse, cosine, coverage, declaredPairs, heldSkills, idf, nearestCoverer, rank, render, stem, tokens } from './overlap.mjs'
 
 let pass = 0
 const failures = []
@@ -188,6 +188,89 @@ check('a manual-only candidate is told its rows are not about routing', () => {
 	)
 	const text = render(rank({ repo: ROOT, candidate: cand }), { top: 3 })
 	ok(/not routing/.test(text), 'a manual-only candidate must be told the rows are about context cost')
+})
+
+// -- the reduction the consumers take --------------------------------------
+
+// nearestCoverer exists because a ranking of every pair is the wrong shape for
+// anything downstream, and the obvious fix — keep the pairs above N% — is the
+// threshold this script refuses on the record. So the assertions below are
+// about it being a RANK: one row per skill, no constant anywhere, and an
+// answer that does not depend on the order the pairs arrived in.
+
+check('nearestCoverer keeps one row per skill, and it is the strongest', () => {
+	const { pairs } = rank({ repo: ROOT })
+	const best = nearestCoverer(pairs)
+	// At most one row per skill, however many pairs name it. That is the bound,
+	// and it holds by construction rather than by a cutoff.
+	ok(best.size <= heldSkills(ROOT).length, 'more rows than there are skills')
+	eq(best.get('narrow').covers, 'wide', 'narrow is covered by wide')
+	// And it really is the maximum, not the first one seen.
+	const forNarrow = pairs.filter((p) => p.covered === 'narrow' && !p.declared)
+	eq(best.get('narrow').coverage, Math.max(...forNarrow.map((p) => p.coverage)), 'the strongest coverer')
+})
+
+check('a declared pair is dropped by default and returned on request', () => {
+	// Synthetic rather than off the fixture, because the assertion is about the
+	// reduction and the fixture's declared pair is two skills with nothing in
+	// common — it is excluded by the zero rule before `declared` is ever read,
+	// which would make this pass for the wrong reason. The real path, on a
+	// library where a declared pair genuinely overlaps, is covered where it
+	// matters: nexus/src/data/export.test.ts draws no measured edge between
+	// two skills edges.json already joins.
+	const declared = [{ covers: 'wide', covered: 'twin', coverage: 0.8, shared: ['typography'], declared: true }]
+	eq(nearestCoverer(declared).size, 0, 'a declared pair survived the default reduction')
+	const kept = nearestCoverer(declared, { includeDeclared: true })
+	eq(kept.size, 1, 'includeDeclared dropped the row instead of keeping it')
+	eq(kept.get('twin').covers, 'wide', 'the coverer')
+})
+
+check('the answer does not depend on the order the pairs arrived in', () => {
+	// A caller that filtered or concatenated its own list has not promised
+	// rank()'s sort order. Two coverers at the same share must resolve the same
+	// way whichever is seen first, or the report churns between runs.
+	const tie = (covers, covered) => ({ covers, covered, coverage: 0.5, shared: [], declared: false })
+	const forwards = nearestCoverer([tie('alpha', 'target'), tie('beta', 'target')])
+	const backwards = nearestCoverer([tie('beta', 'target'), tie('alpha', 'target')])
+	eq(forwards.get('target').covers, backwards.get('target').covers, 'a tie resolved by arrival order')
+	eq(forwards.get('target').covers, 'alpha', 'a tie breaks on the coverers name')
+})
+
+check('an empty ranking reduces to nothing, not to a crash', () => {
+	eq(nearestCoverer([]).size, 0, 'an empty ranking')
+})
+
+check('a skill nothing overlaps has no coverer, rather than a weakest one', () => {
+	// `elsewhere` is about database migrations and shares no distinctive
+	// vocabulary with anything here. A reduction that takes the maximum would
+	// hand it whichever pair scored zero least recently and call that its
+	// nearest coverer — a relationship asserted where none exists at all. Zero
+	// is the absence of the measurement, not a small value of it.
+	const { pairs } = rank({ repo: ROOT })
+	ok(pairs.some((p) => p.covered === 'elsewhere' || p.covers === 'elsewhere'), 'the fixture no longer has an unrelated skill')
+	const best = nearestCoverer(pairs)
+	ok(!best.has('elsewhere'), 'a skill with nothing in common was given a coverer')
+	for (const p of best.values()) ok(p.coverage > 0, `${p.covers} -> ${p.covered} was drawn at zero`)
+})
+
+// -- where the skills are read from ------------------------------------------
+
+check('the skills directory can be named apart from the library', () => {
+	// usage.mjs takes --library and --skills as independent flags. The measure
+	// has to be pointable at the directory the rows it is joined to came from,
+	// or one table ends up holding two populations.
+	const elsewhere = mkdtempSync(join(tmpdir(), 'overlap-skills-'))
+	try {
+		mkdirSync(join(elsewhere, 'only-one'), { recursive: true })
+		writeFileSync(join(elsewhere, 'only-one', 'SKILL.md'), `---\nname: only-one\ndescription: animation motion transition\n---\n\n# only-one\n`)
+		const names = heldSkills(ROOT, elsewhere).map((s) => s.name)
+		eq(names, ['only-one'], 'the named directory was not the one read')
+		// edges.json still comes from the library, not from the skills tree.
+		const { pairs } = rank({ repo: ROOT, skillsDir: elsewhere })
+		eq(pairs, [], 'one skill cannot pair with anything')
+	} finally {
+		rmSync(elsewhere, { recursive: true, force: true })
+	}
 })
 
 rmSync(ROOT, { recursive: true, force: true })

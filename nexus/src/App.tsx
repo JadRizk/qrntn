@@ -37,8 +37,22 @@ const physics: PhysicsConfig = { ...DEFAULT_PHYSICS, sectorForce: 0.06, radiusFo
 // *identity* (hiddenNodeCategories/hiddenLinkCategories/isolateId), so a
 // fresh array literal on every App render would re-run it for no reason —
 // same reasoning hiddenNodeCategories below is already useMemo'd for.
-const HIDDEN_RELATIONSHIP_KINDS: readonly string[] = ['operative', 'referential', 'alternative']
+//
+// `overlaps` is on this list for the same readability reason and on different
+// grounds. The other three are relationships a person declared; that one is
+// measured (commands/overlap.mjs, via the exporter) and is drawn for each
+// skill's strongest undeclared coverer — at most one per node, but present for
+// every routable skill whether or not the number is large. Left in the default
+// view it would draw a line between every skill and its nearest neighbour in
+// trigger vocabulary, which is a picture of the measure rather than of the
+// library. Held back until a skill is selected it answers the question someone
+// selecting a skill is actually asking: what else competes for this one's
+// requests, and by how much — the drawer prints the share beside the name.
+const HIDDEN_RELATIONSHIP_KINDS: readonly string[] = ['operative', 'referential', 'alternative', 'overlaps']
 const EMPTY_LINK_CATEGORIES: readonly string[] = []
+// Same identity reasoning, for the drawer's edge annotations: a fresh `[]` on
+// every render would rebuild its lookup for nothing.
+const EMPTY_EDGES: readonly [] = []
 
 // DetailsDrawer's own width, plus the --nx-space-5 it insets from the right
 // edge and the same again as breathing room — how much of the canvas's right
@@ -556,6 +570,7 @@ export function App() {
           lookup={lookupNode}
           onRead={readFile}
           linkCategories={canvasProps.linkCategories}
+          edges={snapshot?.edges ?? EMPTY_EDGES}
           onClose={() => setSelectedId(null)}
         />
         <ReadingPane

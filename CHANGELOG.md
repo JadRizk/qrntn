@@ -15,6 +15,45 @@ and a release that made a refusal clearer shipped something.
 
 ## Unreleased
 
+**`overlap` grew two consumers.** It measured which descriptions compete for
+the same request and printed a table, and nothing read it — not `adopt`, not
+`check`, not the graph. A number nobody consumes cannot be wrong, which is the
+problem: the ranking was a lexical prediction that no part of this tool ever
+tested against what actually happened. Both entries below import the one
+implementation in `commands/overlap.mjs` rather than restating the measure,
+for the reason `SURFACE.md` gives: a second copy agrees today and drifts
+tomorrow, and the graph would then draw a number `qrntn overlap` does not
+print. Both reduce the ranking the same way, and the reduction is a rank
+rather than a cutoff — for each skill, the one description that claims most of
+its distinctive vocabulary. There is no constant to tune anywhere in either,
+which was the whole objection to letting a score select anything.
+
+**`usage --report` says why a zero is a zero.** A skill that never fired has
+always had a row here — cost with no denominator, the row the report exists to
+produce. What it could never say was *why*, and "nobody wanted it" and "nobody
+could reach it" are opposite findings with opposite fixes. A fourth population
+now names, for each never-invoked skill, the routable description that covers
+it and how often THAT one fired: a lexical prediction with the count that
+confirms or refutes it beside it. Manual-only skills appear in neither column
+— nothing routes to them, so nothing can swallow their triggers — and pairs
+already declared in `edges.json` are left out, because someone wrote that
+relationship down. The section prints only when something was measured: a
+heading over an empty table reads as "nothing covers anything", which is a
+claim, and none was made.
+
+**The graph draws what nobody declared.** A new `overlaps` edge, measured
+rather than read out of a file a person edited, pointing from the description
+doing the covering to the one being covered — the direction the phenomenon
+has. It is the first edge in a fourth register: `measured` shares `semantic`'s
+arc, because an overlap is about meaning, at a fraction of its intensity,
+because it is nobody's claim; the drawer prints the share beside the name and
+the terms that drove it underneath. Hidden until a skill is selected, like the
+declared relationships it sits beside, and never drawn for a pair `edges.json`
+already joins — a declaration drawn twice would read as a finding against the
+person who made it. The spring is near zero on purpose, so the measure cannot
+rearrange the thing it is measuring. The export says how many pairs it did not
+draw; the rest are in `qrntn overlap`.
+
 **The reader has a preview.** `p`, or the footer button, on a markdown file:
 headings as headings, lists, quotes, tables, fences as numbered code — built
 from the same parse the colour comes from, and with every run of text put

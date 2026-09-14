@@ -561,6 +561,92 @@ check('the totals count the cost, not just the calls', () => {
 	eq(t.neverInvokedBytes, 19, 'bytes paid for nothing')
 })
 
+// ────────────────────────── never fired, and something covers it: the join ──
+
+// The overlap map is INJECTED into reportModel, so everything below is about
+// what the report DOES with a measurement and nothing about whether the
+// measurement is right — overlap.test.mjs owns that, and a test here that
+// depended on an IDF weight would fail the next time anyone edited a fixture
+// description, which is exactly the thing this report exists to encourage.
+//
+// `never-fired` and `no-description` are the two never-invoked held skills;
+// `artifact-design` fired five times. So the fixture already has the shape the
+// population describes, and only the pair has to be supplied.
+const pair = (covers, covered, coverage) => ({ covers, covered, coverage, shared: ['alpha', 'beta'], declared: false })
+const covering = () => new Map([['never-fired', pair('artifact-design', 'never-fired', 0.62)]])
+
+check('a covered row names the coverer and carries the coverers own counts', () => {
+	const m = reportModel(ledger(), held(), covering())
+	eq(m.covered.length, 1, 'one covered row')
+	const row = m.covered[0]
+	eq(row.name, 'never-fired', 'the covered skill')
+	eq(row.coverer, 'artifact-design', 'the coverer')
+	eq(row.coverage, 0.62, 'the share, carried through unrounded')
+	// Five, not zero. The covered skill's own counts are zero by construction —
+	// that is what put it in this population — so a row showing them would be
+	// printing its own definition back at the reader. The number that makes the
+	// row mean anything is the COVERER's.
+	eq(row.covererInvocations.all, 5, 'the coverers all-time count')
+	eq(row.covererInvocations.d7, 2, 'the coverers seven-day count')
+})
+
+check('a skill that fired is not in this population, however well covered', () => {
+	// The population is a SUBSET of the never-invoked, not a ranking of pairs.
+	// A skill that fires is routing fine whatever its description overlaps, and
+	// a row here would be an accusation with a counter-example attached.
+	const m = reportModel(ledger(), held(), new Map([['artifact-design', pair('dataviz', 'artifact-design', 0.9)]]))
+	eq(m.covered, [], 'a skill with invocations was reported as covered')
+})
+
+check('the join is keyed on the directory, not on the display name', () => {
+	// A skill whose frontmatter `name` disagrees with its folder. The ledger is
+	// keyed by the name the transcripts record; overlap.mjs reads the library
+	// off disk and keys by folder. Joining on the display name would silently
+	// drop exactly this skill — and silence in the population that exists to
+	// explain a zero is the whole failure.
+	const renamed = [{ name: 'says-one-thing', dir: 'called-another', descriptionBytes: 40, manualOnly: false }]
+	const m = reportModel(ledger(), renamed, new Map([['called-another', pair('artifact-design', 'called-another', 0.5)]]))
+	eq(m.covered.length, 1, 'the row was dropped by a name mismatch')
+	// Reported under the name a reader would recognise, joined under the one on
+	// disk. Both, because they are two different jobs.
+	eq(m.covered[0].name, 'says-one-thing', 'display name')
+	eq(m.covered[0].dir, 'called-another', 'join key')
+})
+
+check('the totals count what the population costs', () => {
+	const t = reportModel(ledger(), held(), covering()).totals
+	eq(t.covered, 1, 'covered skills')
+	eq(t.coveredBytes, 19, 'bytes paid by a skill something else may be answering for')
+	// Still a subset: the never-invoked totals are untouched by the join.
+	eq(t.neverInvoked, 2, 'never invoked')
+	eq(t.neverInvokedBytes, 19, 'bytes paid for nothing')
+})
+
+check('no measurement is no section, rather than an empty one', () => {
+	// A heading with an empty table under it reads as "nothing covers
+	// anything", which is a claim. No map was passed, so no claim is made.
+	const text = renderReport(ledger(), held())
+	ok(!text.includes('never invoked, and something routable covers them'), 'the section printed with nothing measured')
+	// And the rest of the report is unchanged by the absence.
+	ok(text.includes('held skills — 6'), 'the report lost a section it should keep')
+})
+
+check('the section prints the coverer, the share and the shared terms', () => {
+	const text = renderReport(ledger(), held(), covering())
+	ok(text.includes('never invoked, and something routable covers them — 1 of 2'), 'the heading names the subset and its parent')
+	const row = text.split('\n').find((l) => l.trim().startsWith('never-fired') && l.includes('artifact-design'))
+	ok(row, 'no row for the covered skill')
+	// 4 and 5 are artifact-design's d90 and all-time counts — the coverer's.
+	eq(row.trim().split(/\s+/), ['never-fired', 'artifact-design', '62%', '4', '5', 'alpha,', 'beta'], 'the row')
+	// The terms are what makes the row actionable: the number says read these
+	// two descriptions, and the terms say where to look.
+	ok(text.includes('alpha, beta'), 'the shared terms were dropped')
+	// And the caveat travels with the number, in the output rather than only in
+	// a comment — the same rule overlap.mjs keeps for its own ranking.
+	ok(text.includes('lexical'), 'the section states no limit on the measure')
+	ok(text.includes('It is not proof'), 'the section reads as a verdict')
+})
+
 // ─────────────────────────────────────────────────────────── the report, read ──
 
 const rendered = () => renderReport(ledger(), held())

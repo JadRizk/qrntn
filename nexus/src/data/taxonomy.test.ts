@@ -50,17 +50,51 @@ describe('totality — every kind export-graph.mjs can emit has a taxonomy entry
     }
   })
 
-  it('the three registers are separated by gain, which is what lets them share a width', () => {
-    // The ordering is the whole design: scaffolding under judgments under
-    // claims. If a future tweak inverts one of these, the graph stops having
-    // a hierarchy and the registers become decoration.
-    expect(EDGE_REGISTER.structure.gain).toBeLessThan(EDGE_REGISTER.verdict.gain)
+  it('the registers are separated by gain, which is what lets them share a width', () => {
+    // The ordering is the whole design: scaffolding under measurements under
+    // judgments under claims. If a future tweak inverts one of these, the
+    // graph stops having a hierarchy and the registers become decoration.
+    //
+    // `measured` lands where it does on an argument, not on taste: it is
+    // louder than the board the graph is printed on, because it is content
+    // and meant to be followed, and quieter than the quietest thing anyone
+    // actually decided, because nobody decided it.
+    expect(EDGE_REGISTER.structure.gain).toBeLessThan(EDGE_REGISTER.measured.gain)
+    expect(EDGE_REGISTER.measured.gain).toBeLessThan(EDGE_REGISTER.verdict.gain)
     expect(EDGE_REGISTER.verdict.gain).toBeLessThan(EDGE_REGISTER.semantic.gain)
   })
 
-  it('each register routes differently, so form carries the taxonomy', () => {
-    const routings = Object.values(EDGE_REGISTER).map((r) => r.routing)
+  it('the declared registers route differently, so form carries the taxonomy', () => {
+    // Was every register, and could not survive a fourth: there are three
+    // routings in the engine's vocabulary and the rule capped the taxonomy at
+    // three registers by construction. What the rule was protecting is that
+    // you can tell what KIND of thing an edge is without reading its colour —
+    // and that still holds for everything a person declared.
+    const declared = [EDGE_REGISTER.structure, EDGE_REGISTER.semantic, EDGE_REGISTER.verdict]
+    const routings = declared.map((r) => r.routing)
     expect(new Set(routings).size).toBe(routings.length)
+  })
+
+  it('the measured register is the semantic one with the volume down', () => {
+    // The one register that shares another's routing, and the sharing is the
+    // statement — the same move this file already makes for colour, where
+    // leaf/scriptFold share a hue because they are the same kind of thing.
+    // An overlap is about meaning, so it belongs in open space on an arc; it
+    // is nobody's claim, so it must never arrive at a claim's intensity. If a
+    // future tweak lets it, a number this tool computed starts looking like
+    // something a person asserted, which is the one misreading the whole
+    // overlap feature is written to avoid.
+    expect(EDGE_REGISTER.measured.routing).toBe(EDGE_REGISTER.semantic.routing)
+    expect(EDGE_REGISTER.measured.gain).toBeLessThan(EDGE_REGISTER.semantic.gain)
+    expect(EDGE_REGISTER.measured.half).toBeLessThan(EDGE_REGISTER.semantic.half)
+  })
+
+  it('the measured layer is the only thing here nobody wrote down', () => {
+    // Every other kind is read out of a file a person edited. If a second kind
+    // ever joins this register, this assertion is the prompt to say in the
+    // taxonomy what it measures and why it is not a claim.
+    const measured = ALL_EDGE_KINDS.filter((k) => EDGE_TAXONOMY[k].register === 'measured')
+    expect(measured).toEqual(['overlaps'])
   })
 
   it('the two vendor verdicts are distinguishable from each other', () => {

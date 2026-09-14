@@ -3,7 +3,7 @@ import { ariaLabelFor, buildAdjacency } from './domOverlay.ts'
 import type { EdgeRecord, GraphNode } from '../data/types.ts'
 
 function edge(from: string, to: string, render = true): EdgeRecord {
-  return { kind: 'referential', from, to, render, when: null, note: null, source: null }
+  return { kind: 'referential', from, to, render, when: null, note: null, source: null, weight: null }
 }
 
 describe('buildAdjacency', () => {

@@ -67,6 +67,14 @@ import { basename, dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { realpathSync } from 'node:fs'
 import { computeInstall, resolveInstallRoot, writeLedgerSections } from './ledger.mjs'
+// IMPORTED, NOT REIMPLEMENTED. The overlap measure is a tokeniser, a stopword
+// list, an IDF weighting and two scoring functions, every one of which is a
+// judgment call that was made once and argued for in overlap.mjs's own header.
+// A second copy of it here would agree with that one today and drift the first
+// time either is touched — the exact failure SURFACE.md's "cannot drift"
+// clause exists to prevent — and the report would then be quoting a number the
+// `overlap` verb does not produce.
+import { nearestCoverer, rank } from './overlap.mjs'
 
 // ── colour, which is optional ───────────────────────────────────────────────
 //
@@ -459,7 +467,10 @@ export function heldSkills(dir = DEFAULT_SKILLS) {
 // can be tested without going through the rendering, and so `--now` is enough
 // to make the whole report reproducible.
 //
-// Three populations, kept apart on purpose:
+// Four populations, kept apart on purpose. The fourth is not a fourth slice of
+// the collection — it is a SUBSET of the second, and it is the one the other
+// three could never produce: a reason. The rest of this file counts; only that
+// row says why a count is zero.
 //
 //   · held and invoked        — a real bytes-per-invocation figure
 //   · held and never invoked  — cost with no denominator; the point of this
@@ -470,7 +481,13 @@ export function heldSkills(dir = DEFAULT_SKILLS) {
 //                               not include them; dropping them silently would
 //                               hide most of the corpus. So: listed, counted,
 //                               and never mixed.
-export function reportModel(ledger, held) {
+//   · held, never invoked, and covered — the subset of the second population
+//                               that something else's description can account
+//                               for. Injected rather than computed, so the
+//                               join stays pure and testable; main() does the
+//                               reading. An empty map is the honest default:
+//                               nothing measured, so nothing claimed.
+export function reportModel(ledger, held, coveredBy = new Map()) {
 	const heldNames = new Set(held.map((s) => s.name))
 
 	const rows = held.map((s) => {
@@ -478,6 +495,15 @@ export function reportModel(ledger, held) {
 		const invocations = found ? found.invocations : { d7: 0, d30: 0, d90: 0, all: 0 }
 		return {
 			name: s.name,
+			// The DIRECTORY name, kept beside the display name because they are
+			// not always the same string and the overlap join is keyed on this
+			// one. A skill's frontmatter `name` is what the transcripts record
+			// and so what `ledger.skills` is keyed by; overlap.mjs reads the
+			// library off disk and keys by folder. Joining the two on the
+			// display name would quietly drop any skill whose frontmatter
+			// disagrees with its folder — a silent miss in exactly the rows
+			// this population exists to surface.
+			dir: s.dir,
 			manualOnly: s.manualOnly,
 			descriptionBytes: s.descriptionBytes,
 			invocations,
@@ -510,15 +536,50 @@ export function reportModel(ledger, held) {
 	const spread = (list) => ({ d7: sum(list, 'd7'), d30: sum(list, 'd30'), d90: sum(list, 'd90'), all: sum(list, 'all') })
 	const never = rows.filter((r) => r.invocations.all === 0)
 
+	// A never-invoked skill is a cost with no denominator; that is the third
+	// population and it has been here since this report existed. What it could
+	// never say is WHY, and "nobody wanted it" and "nobody could reach it" are
+	// different findings with opposite fixes — delete the skill, or rewrite the
+	// description that is taking its requests.
+	//
+	// The coverer's own invocation count is carried and NOT filtered on,
+	// because it is the half that makes the row falsifiable: a coverer that
+	// fired constantly while this one never did is the shape the routing
+	// research describes, and a coverer that never fired either explains
+	// nothing and has to be visible as such rather than silently dropped.
+	const displayName = new Map(held.map((s) => [s.dir, s.name]))
+	const invocationsOf = new Map(rows.map((r) => [r.dir, r.invocations]))
+	const bytesOf = new Map(rows.map((r) => [r.dir, r.descriptionBytes]))
+	const covered = never
+		.map((r) => {
+			const pair = coveredBy.get(r.dir)
+			if (!pair) return null
+			return {
+				name: r.name,
+				dir: r.dir,
+				coverer: displayName.get(pair.covers) ?? pair.covers,
+				coverage: pair.coverage,
+				shared: pair.shared,
+				// null, not zero: the coverer is not a row in this table at all
+				// — possible when --skills and --library name different trees.
+				covererInvocations: invocationsOf.get(pair.covers) ?? null,
+			}
+		})
+		.filter(Boolean)
+		.sort((a, b) => b.coverage - a.coverage || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
+
 	return {
 		rows,
 		unheld,
+		covered,
 		totals: {
 			held: rows.length,
 			heldDescriptionBytes: rows.reduce((n, r) => n + r.descriptionBytes, 0),
 			heldInvocations: spread(rows),
 			neverInvoked: never.length,
 			neverInvokedBytes: never.reduce((n, r) => n + r.descriptionBytes, 0),
+			covered: covered.length,
+			coveredBytes: covered.reduce((n, r) => n + (bytesOf.get(r.dir) ?? 0), 0),
 			unheld: unheld.length,
 			unheldInvocations: spread(unheld),
 		},
@@ -556,8 +617,8 @@ const ratio = (n) => (n === null ? '—' : n.toFixed(1))
 // this makes the run reproducible down to the filename.
 export const baselineName = (ledger) => `baseline-${ledger.now.slice(0, 10)}.md`
 
-export function renderReport(ledger, held) {
-	const model = reportModel(ledger, held)
+export function renderReport(ledger, held, coveredBy = new Map()) {
+	const model = reportModel(ledger, held, coveredBy)
 	const t = model.totals
 	const out = []
 
@@ -616,6 +677,74 @@ export function renderReport(ledger, held) {
 				`${t.neverInvokedBytes} byte(s) of description loaded every session, returning nothing measurable here.`
 		)
 	out.push('')
+
+	// The fourth population, and the only section in this report that is not
+	// arithmetic over the ledger. It prints only when there is something to
+	// print: with no overlap measured — a caller that passed no map, a library
+	// whose skills/ could not be read — the section is absent rather than
+	// present and empty, because an empty table under this heading would read
+	// as "nothing covers anything", which is a claim, and none was made.
+	if (model.covered.length) {
+		out.push(
+			`never invoked, and something routable covers them — ${t.covered} of ${t.neverInvoked}, ` +
+				`${t.coveredBytes} byte(s)`
+		)
+		out.push('')
+		out.push(
+			table(
+				[
+					{ head: 'skill', left: true },
+					{ head: 'covered by', left: true },
+					{ head: 'cov' },
+					// "its", because these two are the COVERER's counts in a table
+					// whose every other column is about the row. The note below
+					// says so too; a header that needs a note to be read right is
+					// a header, and this pair is too easy to misread as the zeros
+					// that put the row here.
+					{ head: `its ${head('d90')}` },
+					{ head: 'its all' },
+					{ head: 'shared', left: true },
+				],
+				model.covered.map((r) => [
+					r.name,
+					r.coverer,
+					`${(r.coverage * 100).toFixed(0)}%`,
+					// The COVERER's counts, not this row's — this row's are zero by
+					// construction, and printing them would be printing the
+					// definition of the section back at the reader.
+					r.covererInvocations ? r.covererInvocations.d90 : '—',
+					r.covererInvocations ? r.covererInvocations.all : '—',
+					r.shared.join(', '),
+				])
+			)
+		)
+		out.push('')
+		out.push(
+			'  Read a row as: the covering skill\'s description claims that share of\n' +
+				'  this one\'s distinctive vocabulary, by IDF weight, and the two counts are\n' +
+				'  the COVERER\'s — this row\'s are zero, which is what put it here. A skill\n' +
+				'  that never fired while the description covering it fired often is the\n' +
+				'  shape of a description taking its neighbour\'s requests. It is not proof\n' +
+				'  of one, and this is the weakest inference in the report:'
+		)
+		out.push(
+			'    · The measure is lexical. Synonyms are invisible, so a low share is\n' +
+				'      not evidence of no collision, and a description that names its\n' +
+				'      neighbour to disambiguate itself scores worse for doing the right\n' +
+				'      thing. `qrntn overlap` states the full set of limits; nothing here\n' +
+				'      escapes them by being joined to a count.\n' +
+				'    · Pairs already declared in edges.json are excluded — someone wrote\n' +
+				'      that relationship down and argued for it. Run `qrntn overlap` to\n' +
+				'      see them; a declared edge is not a licence for any amount of\n' +
+				'      overlap.\n' +
+				'    · Manual-only skills appear in neither column. Nothing routes to\n' +
+				'      them, so nothing can swallow their triggers and they cannot\n' +
+				'      swallow anyone\'s — their zero means something else entirely.\n' +
+				'    · A coverer whose own counts are low explains nothing. Two skills\n' +
+				'      that both never fired are two unused skills, not a collision.'
+		)
+		out.push('')
+	}
 
 	out.push(
 		`invoked but not held here — ${t.unheld} name(s), ${t.unheldInvocations.all} invocation(s)`
@@ -698,7 +827,9 @@ ${CONT}[--install [--install-root <dir>]]
 
   --json         print the ledger to stdout and write nothing
   --report       print the human-facing table — usage joined to description
-                 cost, with bytes-per-invocation — and write nothing
+                 cost, with bytes-per-invocation, and joined to \`overlap\` for
+                 the skills that never fired while another routable
+                 description claims their vocabulary — and write nothing
   --baseline     with --report, write it to ledger/baseline-<date>.md instead.
                  Refuses to overwrite: a baseline is a record, and the whole
                  value of the second reading is that the first still says what
@@ -843,7 +974,26 @@ function main(argv) {
 	}
 
 	if (wantsReport) {
-		const text = renderReport(ledger, heldSkills(resolve(flag('--skills') ?? DEFAULT_SKILLS)))
+		const skillsDir = resolve(flag('--skills') ?? DEFAULT_SKILLS)
+		// The overlap join. Both halves must be about the same population, so
+		// the measure is pointed at the directory the rows were read from
+		// rather than at `<library>/skills` — those are the same path for
+		// every ordinary invocation and different the moment someone passes
+		// --skills, which is exactly when a silent mismatch would be hardest
+		// to notice.
+		//
+		// Degrades to nothing measured. A library with no readable skills/ is
+		// already an empty table above; a failure here must not take the two
+		// populations that did read with it, so the report loses one section
+		// and keeps the rest — the same way overlap.mjs itself degrades on a
+		// malformed edges.json rather than refusing.
+		let coveredBy = new Map()
+		try {
+			coveredBy = nearestCoverer(rank({ repo: library, skillsDir }).pairs)
+		} catch {
+			// Nothing measured, so nothing claimed: the section does not print.
+		}
+		const text = renderReport(ledger, heldSkills(skillsDir), coveredBy)
 		if (!argv.includes('--baseline')) {
 			process.stdout.write(text)
 			return 0
