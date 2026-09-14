@@ -507,6 +507,74 @@ foreseen: Ctrl-C is a signal death to the dispatcher, which reports it as
 `1`, so `view` handles `SIGINT` itself and exits `0` — a viewer someone closed
 is not a failed gate.
 
+## Still open
+
+Three threads from promoting an authored skill, and then re-promoting it to
+fix one line, on 2026-09-14 — and a fourth that was reported with them and
+turned out not to be one. Recorded, not fixed; where the fix is obvious it
+is named. Line numbers are the checkout's on 2026-09-14.
+
+**No re-promote path for a held authored skill.** `promote.mjs:509` refuses
+when `skills/<name>` exists — *promotion never overwrites a held skill* — and
+`refresh` only knows acquired skills, because what it diffs against is an
+upstream pin (`refresh.mjs:362`, `acquiredSkills`). An authored skill has no
+upstream, so a one-line correction to a held one has no verb. What it takes:
+`mv skills/<name> inbox/<name>`; withdraw every outbound edge from
+`edges.json`, because `check-catalog` refuses an edge whose source is not
+held (*edge from "<name>" — no such skill is held*, `check-catalog.mjs:111`)
+and the authored branch runs `checkCatalog()` (`promote.mjs:522`) before the
+move; `promote`; then redeclare the edges. Four steps, two of them undoing
+each other, for an edit that in any other repository is a commit. Candidate:
+`promote --replace <name>` — diffs the inbox copy against the held one,
+rewrites the ledger row instead of refusing on its existence, and tolerates
+outbound edges from the name being replaced, since they are about to be true
+again. Authored only: an acquired skill's re-arrival is `intake` at a new pin,
+and that path exists.
+
+**`check-catalog`'s prose heuristic keys on (from, to), not (from, to,
+type).** `check-catalog.mjs:222` collects every *Call the Skill tool with
+"<target>"* in a spine into `calls`; line 137 then warns on any
+non-operative edge whose target is in that set. A skill that invokes a
+sibling mid-run — an operative edge — and also names it in its *when not to
+apply* section as the thing to use instead — an `alternative` — has two true
+edges on one pair, and the second is flagged *prose invokes it, but the edge
+is typed "alternative"*. Withdrawing it to get a clean check leaves the
+graph under-describing the skill by one edge. Either the warning considers
+the other edges on the same pair — a non-operative edge is not drift when an
+operative sibling accounts for the invocation — or `edges.json`'s `$comment`
+states one edge per (from, to) pair and the check enforces it as an error
+rather than a warning that reads as a mistake in the type. The first is the
+smaller change; the second is the clearer rule.
+
+**The authored path never shows its scan.** Authoring runs no `audit`, and on
+provenance that is right: there are no untrusted bytes, and `AUDIT.md` is
+the record of adjudicating someone else's. But promote's authored branch is
+then the only scan the skill ever gets, and `rescan()` (`promote.mjs:320`)
+runs the full scanner and keeps only what blocks — `BLOCK`, plus
+`STRUCT-LONGDESC` and `STRUCT-LONGBODY` on this path. Every `REVIEW` and
+`NOTE` is computed and discarded: an over-triggering description, a script
+that shells out, a spine that reads like the scanner's own examples. The
+report costs one process the tool already spawns. Two places it could go, and
+one has to be chosen: the authoring step runs `qrntn audit inbox/<name>` and
+the author reads it before filing, which puts the scan where the acquired
+path puts it; or promote's authored branch prints the non-blocking findings
+it already holds — shown, never gating, the same rule as `--dry-run`. Not
+decided; the verdict goes here when it is.
+
+**Corrected: `promote` does not regenerate the ledger.** Reported as: each
+promotion dirties every ledger file, bumping `lastVerified` on rows it never
+touched. It does not. `promote` writes one row — `ledger --write-structural
+<name>` (`ledger.mjs:538`). What had dirtied the rest, every acquired row and
+no authored one, was a bare `qrntn refresh` run in the same session while
+looking for the re-promote path above: `refresh` clones every acquired
+skill's upstream, diffs, and stamps `integrity.lastVerified` with today on
+each (`refresh.mjs:346`, `recordResult`) — which is what the field means:
+the hashes were re-verified, on that day. `DEVELOPING.md`'s table already
+says `refresh` rewrites `ledger/` and that a diff in a tracked file is the
+cost. What was missing was `--dry-run` on a verb being run to see what it
+does. Nothing to change in the tool; this one is closed, not open. Recorded
+so nobody fixes it in `promote`.
+
 ## The frozen contracts
 
 `0.x` means the surface may move, and the README says so. These do not:
