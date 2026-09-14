@@ -63,7 +63,11 @@ which nothing you own can be touched. **Real** is for using the tool on your
 library, which is what it is for. **Clone** is for exercising every verb on
 your real data with none of it being real: a `git clone` of the library inside
 the sandbox, re-cloned by `qrntn-lib-reset`, and the mutating verbs run against
-it with a sandbox `HOME`.
+it with a sandbox `HOME`. One thing a clone cannot carry: a held skill that is
+itself a *relative* symlink out of the library — `skills/foo ->
+../../.agents/skills/foo` — dangles once the library sits somewhere else, and
+`check` reports its ledger entry as orphaned. That is the clone, not the
+library.
 
 A library is a directory with `skills/<name>/SKILL.md` and a `catalog.json`.
 The folder your agent loads from is usually not one — `~/.claude/skills` is
