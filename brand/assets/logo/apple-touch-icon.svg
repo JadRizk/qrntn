@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" width="180" height="180" role="img" aria-label="qrntn">
+  <title>qrntn — apple-touch source</title>
+  <desc>mark-flag.svg on the ground with 20px of breathing room. Opaque on purpose: iOS paints transparency black and applies its own corner mask, so nothing is pre-rounded.</desc>
+  <rect width="180" height="180" fill="#08090A"/>
+  <rect x="20" y="43" width="140" height="94" fill="#FEDD00"/>
+</svg>
