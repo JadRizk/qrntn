@@ -15,12 +15,21 @@
 // Colour: the accent for links and a matching hash (cleared is the accent);
 // severity in critical / warning / tertiary, never the accent; escapes in
 // critical because each one is a character a rendered view would hide.
+// Syntax (reading/highlight.ts) takes what is left: keywords in the default
+// ink, strings in warning — a string is where an instruction hides in a
+// script — names in info, marks in tertiary, comments muted and italic but
+// never fainter than the code beside them. A tint, on characters the
+// tokeniser already decided to show; it claims neither accent nor critical.
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import { Drawer, HazardRule, SectionHeading } from '@nexus/react'
 import type { FileLink, GraphNode, HashVerdict, PinnedFinding, SkillFile, TextFile } from '../data/types.ts'
-import { escapedTotal, tokenise, type Line, type Token } from '../reading/tokenise.ts'
+import { HIGHLIGHT_LIMIT, highlight, languageOf } from '../reading/highlight.ts'
+import { PREVIEW_LIMIT, render } from '../reading/render.ts'
+import { escapedTotal, tokenise, type Line } from '../reading/tokenise.ts'
+import { MarkdownPreview } from './MarkdownPreview.tsx'
+import { GUTTER, PIN_H, PinRow, SEVERITY_COLOUR, TokenSpan } from './tokens.tsx'
 
 export interface Reading {
   /** The node whose bytes are open: a skill, or a declined / refused / ghost row. */
@@ -48,7 +57,6 @@ const VERDICT: Record<HashVerdict, { label: string; colour: string }> = {
   drift: { label: 'drift', colour: 'var(--nx-fg-critical)' },
   unlisted: { label: 'not in ledger', colour: 'var(--nx-fg-tertiary)' },
 }
-const SEVERITY_COLOUR = { block: 'var(--nx-fg-critical)', review: 'var(--nx-fg-warning)', note: 'var(--nx-fg-tertiary)' } as const
 
 const shortDigest = (hex: string) => `sha256:${hex.slice(0, 4)}…${hex.slice(-4)}`
 const shortCommit = (sha: string) => sha.slice(0, 7)
@@ -57,62 +65,6 @@ const sizeOf = (bytes: number) => (bytes < 1024 ? `${bytes} B` : `${(bytes / 102
 // Row geometry the windowing relies on. A line is one row; a pinned finding
 // is one row beneath its line, taller and fixed so offsets stay arithmetic.
 const LINE_H = 20
-const PIN_H = 92
-const GUTTER = 58
-
-// ------------------------------------------------------------------ tokens
-
-const chip: CSSProperties = {
-  color: 'var(--nx-fg-critical)', background: 'rgba(255,46,99,.12)', padding: '0 3px',
-  fontSize: 'var(--nx-text-2xs)', letterSpacing: 'var(--nx-track-tight)', verticalAlign: 'baseline',
-}
-
-function TokenSpan({ t, onFollow }: { t: Token; onFollow: (link: FileLink) => void }) {
-  switch (t.kind) {
-    case 'text':
-      return t.bidi
-        ? <span style={{ background: 'rgba(255,46,99,.10)', borderBottom: '1px solid var(--nx-fg-critical)' }} title="inside a bidirectional run">{t.text}</span>
-        : <>{t.text}</>
-    case 'escape':
-      return <span style={chip} title={`${t.cls} character ${t.label}`}>{t.label}</span>
-    case 'confusable':
-      return <span style={{ borderBottom: '1px dotted var(--nx-fg-warning)', color: 'var(--nx-fg-default)' }} title={`${t.label} — reads as "${t.looksLike}" but is not`}>{t.text}</span>
-    case 'ws':
-      return <span style={{ color: 'var(--nx-fg-tertiary)' }} title={t.label}>{t.mark}</span>
-    case 'comment':
-      return <span style={{ color: 'var(--nx-fg-tertiary)', fontStyle: 'italic' }} title="HTML comment — dropped by any rendered view, present in context">{t.text}</span>
-    case 'link':
-      return <LinkSpan link={t.link} onFollow={onFollow}>{t.tokens.map((s, i) => <TokenSpan key={i} t={s} onFollow={onFollow} />)}</LinkSpan>
-  }
-}
-
-function LinkSpan({ link, onFollow, children }: { link: FileLink; onFollow: (link: FileLink) => void; children: ReactNode }) {
-  const base: CSSProperties = { font: 'inherit', background: 'none', border: 0, padding: 0, margin: 0, cursor: 'pointer', color: 'var(--nx-fg-accent)' }
-  switch (link.kind) {
-    case 'node':
-      // Dotted for a file in this skill, solid for another node in the graph.
-      return (
-        <button type="button" onClick={() => onFollow(link)} title={`open ${link.to}`}
-          style={{ ...base, borderBottom: `1px ${link.to?.includes('/') ? 'dotted' : 'solid'} var(--nx-border-default)` }}>
-          {children}
-        </button>
-      )
-    case 'file':
-      return <button type="button" onClick={() => onFollow(link)} title={`read ${link.to} — a file of this skill, not drawn`} style={{ ...base, borderBottom: '1px dotted var(--nx-border-default)' }}>{children}</button>
-    case 'anchor':
-      return <button type="button" onClick={() => onFollow(link)} title={`jump to #${link.to}`} style={{ ...base, color: 'var(--nx-fg-muted)', borderBottom: '1px solid var(--nx-border-default)' }}>{children}</button>
-    case 'external':
-      // Never an <a>. Nothing leaves the machine; the string can be copied.
-      return (
-        <span title={`external — never opened from here · ${link.to}`}
-          style={{ color: 'var(--nx-fg-muted)', borderBottom: '1px dashed var(--nx-border-default)', cursor: 'text' }}>
-          {children}<span aria-hidden="true" style={{ color: 'var(--nx-fg-tertiary)', fontSize: 'var(--nx-text-2xs)', letterSpacing: 'var(--nx-track-wide)' }}> ↗ INERT</span>
-        </span>
-      )
-    case 'unresolved':
-      return <span title="no node or file this export knows">{children}<span aria-hidden="true" style={{ color: 'var(--nx-fg-tertiary)', fontSize: 'var(--nx-text-2xs)', letterSpacing: 'var(--nx-track-wide)' }}> · NO NODE</span></span>
-  }
-}
 
 // -------------------------------------------------------------------- rows
 
@@ -128,38 +80,13 @@ function LineRow({ row, onFollow, highlighted }: { row: Extract<Row, { kind: 'li
       style={{
         display: 'grid', gridTemplateColumns: `${GUTTER - 18}px 18px minmax(0, 1fr)`, height: LINE_H, lineHeight: `${LINE_H}px`,
         whiteSpace: 'pre', minWidth: 'max-content', paddingRight: 'var(--nx-space-4)',
-        background: highlighted ? 'rgba(254,221,0,.08)' : worst === 'block' ? 'rgba(255,46,99,.06)' : worst ? 'rgba(255,255,255,.03)' : undefined,
+        background: highlighted ? 'rgba(254,221,0,.08)' : worst === 'block' ? 'rgba(255,46,99,.06)' : worst ? 'rgba(255,255,255,.03)' : line.cls === 'fence' ? 'rgba(255,255,255,.02)' : undefined,
         fontWeight: line.cls === 'heading' ? 600 : 400, color: lineColour,
       }}
     >
       <span aria-hidden="true" style={{ color: 'var(--nx-fg-tertiary)', textAlign: 'right', paddingRight: 8, userSelect: 'none', fontVariantNumeric: 'tabular-nums' }}>{line.n}</span>
       <span aria-hidden="true" style={{ color: worst ? SEVERITY_COLOUR[worst] : undefined, textAlign: 'center', userSelect: 'none', fontSize: 'var(--nx-text-2xs)' }}>{worst ? '■' : ''}</span>
       <span style={{ paddingLeft: 6 }}>{line.tokens.map((t, i) => <TokenSpan key={i} t={t} onFollow={onFollow} />)}</span>
-    </div>
-  )
-}
-
-function PinRow({ finding, onGoTo }: { finding: PinnedFinding; onGoTo?: (line: number) => void }) {
-  const colour = SEVERITY_COLOUR[finding.severity]
-  return (
-    <div style={{ height: PIN_H, display: 'grid', gridTemplateColumns: `${GUTTER}px minmax(0, 1fr)`, whiteSpace: 'normal' }}>
-      <span />
-      <div style={{
-        margin: '2px 12px 6px 6px', borderLeft: `2px solid ${colour}`, background: 'var(--nx-bg-raised)', padding: '5px 10px',
-        fontSize: 'var(--nx-text-xs)', lineHeight: 1.45, overflow: 'auto', maxWidth: 520,
-      }}>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
-          <span style={{ color: 'var(--nx-fg-default)', fontWeight: 600 }}>{finding.code}</span>
-          <span style={{ color: colour, fontSize: 'var(--nx-text-2xs)', letterSpacing: 'var(--nx-track-wide)', textTransform: 'uppercase' }}>{finding.severity}</span>
-          <span style={{ fontSize: 'var(--nx-text-2xs)', letterSpacing: 'var(--nx-track-wide)', textTransform: 'uppercase', border: 'var(--nx-hairline) solid var(--nx-border-default)', padding: '0 5px', color: 'var(--nx-fg-muted)' }}>{finding.disposition}</span>
-          {finding.line === null
-            ? <span style={{ color: 'var(--nx-fg-warning)', fontSize: 'var(--nx-text-2xs)', letterSpacing: 'var(--nx-track-wide)' }}>{finding.at} · LINE GONE</span>
-            : onGoTo
-              ? <button type="button" onClick={() => onGoTo(finding.line ?? 1)} style={{ font: 'inherit', background: 'none', border: 0, padding: 0, color: 'var(--nx-fg-tertiary)', cursor: 'pointer' }}>{finding.at}</button>
-              : <span style={{ color: 'var(--nx-fg-tertiary)' }}>{finding.at}{finding.excerptMatches ? '' : ' · LINE MOVED'}</span>}
-        </div>
-        <div style={{ color: 'var(--nx-fg-muted)', marginTop: 2 }}>{finding.why}</div>
-      </div>
     </div>
   )
 }
@@ -173,7 +100,32 @@ export function ReadingPane(props: ReadingPaneProps) {
   const file: SkillFile | null = skill && reading ? skill.files.find((f) => f.path === reading.path) ?? null : null
   const text: TextFile | null = file?.kind === 'text' ? file : null
 
-  const tokenised = useMemo(() => (text ? tokenise(text.content, text.links) : null), [text])
+  const language = reading ? languageOf(reading.path) : null
+  const unhighlighted = text !== null && language !== null && text.content.length > HIGHLIGHT_LIMIT
+  const tokenised = useMemo(
+    () => (text ? tokenise(text.content, text.links, { scopes: highlight(text.content, language), markdown: language === 'markdown' }) : null),
+    [text, language],
+  )
+
+  // The formatted mode: a toggle, off by default (READING.md — the source is
+  // the reader), offered for markdown under PREVIEW_LIMIT, kept across files
+  // while the pane is up. `p` flips it; the footer says which is showing.
+  const [preview, setPreview] = useState(false)
+  const previewable = text !== null && language === 'markdown' && text.content.length <= PREVIEW_LIMIT
+  const showPreview = preview && previewable
+  const rendered = useMemo(() => (showPreview && text ? render(text.content, text.links) : null), [showPreview, text])
+  useEffect(() => {
+    if (!open) return
+    const on = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null
+      const typing = !!t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable)
+      if (typing || e.metaKey || e.ctrlKey || e.altKey || e.key !== 'p') return
+      e.preventDefault()
+      setPreview((v) => !v)
+    }
+    window.addEventListener('keydown', on)
+    return () => window.removeEventListener('keydown', on)
+  }, [open])
   const findings = useMemo(() => (skill && reading ? skill.findings.filter((f) => f.file === reading.path) : []), [skill, reading])
   const unpinned = useMemo(() => findings.filter((f) => f.line === null), [findings])
 
@@ -223,7 +175,9 @@ export function ReadingPane(props: ReadingPaneProps) {
     measure()
     el.addEventListener('scroll', onScroll, { passive: true })
     return () => { ro.disconnect(); el.removeEventListener('scroll', onScroll) }
-  }, [open, reading])
+    // The rows remount when the preview is toggled off, so they are
+    // re-measured and re-observed then too.
+  }, [open, reading, showPreview])
 
   const [first, last] = useMemo(() => {
     if (rows.length === 0) return [0, 0]
@@ -243,13 +197,13 @@ export function ReadingPane(props: ReadingPaneProps) {
   const requestRef = useRef('')
   useEffect(() => {
     const el = scrollRef.current
-    if (!el || !reading || request === requestRef.current) return
+    if (!el || !reading || showPreview || request === requestRef.current) return
     if (reading.line === null) { requestRef.current = request; el.scrollTop = 0; return }
     const idx = rows.findIndex((r) => r.kind === 'line' && r.line.n === reading.line)
     if (idx === -1) return
     requestRef.current = request
     el.scrollTop = Math.max(0, rowsTop + (offsets[idx] ?? 0) - viewH / 3)
-  }, [request, reading, rows, offsets, viewH, rowsTop])
+  }, [request, reading, rows, offsets, viewH, rowsTop, showPreview])
 
   // ---- header
 
@@ -272,6 +226,8 @@ export function ReadingPane(props: ReadingPaneProps) {
           <span style={{ color: 'var(--nx-fg-tertiary)', letterSpacing: 'var(--nx-track-normal)', textTransform: 'none' }}>
             {tokenised ? `${tokenised.lines.length.toLocaleString()} lines · ` : ''}{sizeOf(file.bytes)}{file.kind === 'binary' ? ' · binary' : ' · utf-8'}
             {tokenised && tokenised.counts.longest > 400 ? ` · longest line ${tokenised.counts.longest.toLocaleString()}` : ''}
+            {unhighlighted ? ' · too large to colour' : ''}
+            {showPreview ? ' · preview' : ''}
             {skill?.record.commit ? ` · pinned ${shortCommit(skill.record.commit)}` : ''}
           </span>
           {tokenised && (escaped > 0 || tokenised.counts.nonAscii > 0) && (
@@ -301,6 +257,12 @@ export function ReadingPane(props: ReadingPaneProps) {
       {canGoBack && (
         <button type="button" className="nx-btn" onClick={onBack} style={{ padding: '2px 8px' }}>← back</button>
       )}
+      {previewable && (
+        <button type="button" className="nx-btn" onClick={() => setPreview((v) => !v)} style={{ padding: '2px 8px' }} aria-pressed={showPreview}>
+          {showPreview ? 'source' : 'preview'}
+        </button>
+      )}
+      {previewable && hint('p', showPreview ? 'source' : 'preview')}
       {hint('esc', 'close')}
       {hint('⌘k', 'files')}
     </div>
@@ -314,6 +276,9 @@ export function ReadingPane(props: ReadingPaneProps) {
   else if (!skill) body = <Empty>no such node</Empty>
   else if (!file) body = <Empty>no such file in {skill.id}</Empty>
   else if (file.kind === 'binary') body = <Empty>binary · {sizeOf(file.bytes)} · {shortDigest(file.sha256)} · {verdict?.label}</Empty>
+  else if (rendered) body = (
+    <MarkdownPreview rendered={rendered} findings={findings} line={reading.line} request={request} onFollow={onFollow} onGoTo={onGoTo} />
+  )
   else body = (
     <>
       {unpinned.length > 0 && (
@@ -339,7 +304,7 @@ export function ReadingPane(props: ReadingPaneProps) {
       {/* The Drawer pads its body; the source wants the full width, so the
           padding is undone here. The body scrolls in both axes — lines never
           wrap — and the window above reads that scroll. */}
-      <div ref={bodyRef} style={{ margin: 'calc(-1 * var(--nx-space-5))', fontSize: 'var(--nx-text-sm)', minWidth: 'max-content' }}>
+      <div ref={bodyRef} style={{ margin: 'calc(-1 * var(--nx-space-5))', fontSize: 'var(--nx-text-sm)', minWidth: showPreview ? undefined : 'max-content' }}>
         {body}
       </div>
     </Drawer>
