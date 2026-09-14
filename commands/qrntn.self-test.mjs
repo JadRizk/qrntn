@@ -129,6 +129,11 @@ await mutate({
 		mkdirSync(join(dir, 'bin'), { recursive: true })
 		mkdirSync(join(dir, 'commands'), { recursive: true })
 		cpSync(join(REPO, 'package.json'), join(dir, 'package.json'))
+		// The suite derives the README's "N verbs colour refused:" count from
+		// the scripts and reads the README to compare. Without it here the
+		// read threw, every mutant was "caught" by the throw rather than by an
+		// assertion, and the inert control broke — the wrong-reason catch.
+		cpSync(join(REPO, 'README.md'), join(dir, 'README.md'))
 		for (const f of readdirSync(join(REPO, 'commands'))) {
 			if (f.endsWith('.mjs') || f.endsWith('.md') || f.endsWith('.json')) cpSync(join(REPO, 'commands', f), join(dir, 'commands', f))
 		}

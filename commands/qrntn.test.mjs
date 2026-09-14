@@ -89,6 +89,16 @@ const VERBS = [...readFileSync(BIN, 'utf8').matchAll(/^\t\['([a-z-]+)', '([\w.-]
 	// shipped — is half a gesture.
 	const shippedTests = files.filter((f) => /\.test\.mjs$|\.self-test\.mjs$|^check\.mjs$|fixtures|\/mutate\.mjs$/.test(f))
 	check('the allowlist ships no tests, self-tests, fixtures, the gate runner or the mutation harness', shippedTests.length === 0, JSON.stringify(shippedTests))
+
+	// The README counts the verbs that colour `refused:`, in words, and the
+	// count was wrong for two releases — "eight" from before adopt and view —
+	// because nothing derived it. Derived here: a verb colours the line if its
+	// script imports refusalLine, and audit is the one that must not.
+	const WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve']
+	const colouring = VERBS.filter((v) => /\brefusalLine\b/.test(readFileSync(join(REPO, 'commands', v.file), 'utf8')))
+	const claimed = /\*\*What colour does, and does not, change\.\*\* (\w+) verbs colour `refused:`/.exec(readFileSync(join(REPO, 'README.md'), 'utf8'))?.[1]
+	check('the README says how many verbs colour refused:, and the number is derived from the scripts', claimed?.toLowerCase() === WORDS[colouring.length], `README says "${claimed}", the scripts say ${colouring.length}: ${colouring.map((v) => v.verb).join(', ')}`)
+	check('audit is the verb that does not — it reports, never refuses', !colouring.some((v) => v.verb === 'audit'), '')
 }
 
 // ── asking what it does ─────────────────────────────────────────────────────

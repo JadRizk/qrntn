@@ -224,7 +224,7 @@ function readAudit(dir) {
 function parseInventory(dir) {
 	const path = join(dir, 'ORIGIN.md')
 	if (!existsSync(path)) {
-		refuse('no ORIGIN.md', 'provenance is missing — this did not come through skill-intake')
+		refuse('no ORIGIN.md', 'provenance is missing — this did not come through `qrntn intake`')
 		return null
 	}
 	const text = readFileSync(path, 'utf8')
@@ -320,7 +320,7 @@ function locateScanner() {
 function rescan(dir, extraBlocking = []) {
 	const scanner = locateScanner()
 	if (!scanner) {
-		refuse('skill-audit not found', 'the adapted artefact cannot be re-scanned, so it cannot be promoted')
+		refuse('the audit scanner is missing', 'the adapted artefact cannot be re-scanned, so it cannot be promoted\n  expected audit-skill.mjs beside this command — a packaging fault, not something you did; please report it')
 		return
 	}
 	const r = node([scanner, dir, '--json', '--exclude', 'AUDIT.md', '--exclude', 'ORIGIN.md'])
