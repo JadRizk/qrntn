@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="qrntn">
+  <title>qrntn — maskable source</title>
+  <desc>mark-flag.svg inscribed in the maskable safe zone: a circle of diameter 80% (409.6px) centred on the icon. A 3:2 flag inscribed in that circle is 340x227, so any Android crop — circle, squircle, rounded square — keeps the whole flag.</desc>
+  <rect width="512" height="512" fill="#08090A"/>
+  <rect x="86" y="142" width="340" height="227" fill="#FEDD00"/>
+</svg>

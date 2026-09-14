@@ -1,0 +1,14 @@
+{
+  "name": "qrntn",
+  "short_name": "qrntn",
+  "description": "Records and gates a human decision about an agent skill before it is allowed to load.",
+  "start_url": "./",
+  "display": "standalone",
+  "theme_color": "#08090A",
+  "background_color": "#08090A",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
