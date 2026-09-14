@@ -81,8 +81,18 @@ const LIST = args.includes('--list')
 
 const BUDGET = (() => {
 	const i = args.indexOf('--jobs')
-	const asked = i !== -1 ? Number(args[i + 1]) : Number(process.env.QRNTN_JOBS)
-	return Math.max(1, asked || availableParallelism())
+	if (i !== -1) {
+		const value = args[i + 1]
+		// Refused, not defaulted: every verb here answers a bad flag value
+		// with exit 2, and a runner that quietly ran at the wrong width would
+		// be the silent-drop defect argv.mjs exists to prevent.
+		if (!/^[1-9]\d*$/.test(value ?? '')) {
+			console.error('refused: --jobs needs a whole number of processes, 1 or more')
+			process.exit(2)
+		}
+		return Number(value)
+	}
+	return Math.max(1, Number(process.env.QRNTN_JOBS) || availableParallelism())
 })()
 // Half the budget each, rounded DOWN, so two self-tests fit side by side —
 // rounded up, on an odd core count, the second does not fit and they run one
@@ -115,10 +125,14 @@ const run = (cmd, argv, { env = ENV, cwd } = {}) =>
 		} catch (error) {
 			return resolveP({ status: null, signal: null, error, out })
 		}
+		child.stdout.setEncoding('utf8')
+		child.stderr.setEncoding('utf8')
 		child.stdout.on('data', (d) => { out += d })
 		child.stderr.on('data', (d) => { out += d })
 		child.on('error', (error) => resolveP({ status: null, signal: null, error, out }))
-		child.on('exit', (status, signal) => resolveP({ status, signal, error: null, out }))
+		// 'close', not 'exit': exit can fire with stdout still draining, and
+		// the line this runner quotes is the gate's last one.
+		child.on('close', (status, signal) => resolveP({ status, signal, error: null, out }))
 	})
 
 const node = (file, opts) => run(process.execPath, [file], opts)
@@ -247,7 +261,15 @@ function report(g, r, seconds) {
 
 async function runGate(g) {
 	const started = Date.now()
-	const r = await g.run()
+	let r
+	try {
+		r = await g.run()
+	} catch (error) {
+		// A gate that threw rather than exited is still a gate that did not
+		// pass; reported as one, so the pool's accounting and the summary
+		// both survive it, instead of an unhandled rejection ending the run.
+		r = { status: null, signal: null, error, out: error.stack ?? String(error) }
+	}
 	report(g, r, (Date.now() - started) / 1000)
 }
 

@@ -5,6 +5,7 @@
 // Each case is a record that is wrong in exactly one way, so a failure names the
 // rule that stopped working rather than "something about records".
 
+import { writeSync } from 'node:fs'
 import { validateRecord, loadSchema, validate } from './validate-record.mjs'
 
 let pass = 0
@@ -22,9 +23,12 @@ const check = (name, cond, detail = '') => {
 		if (FAIL_FAST) stopAtFirstFailure()
 	}
 }
+// writeSync, not console: stdout to a pipe is asynchronous on macOS, and a
+// line written just before process.exit can be lost — this is the line the
+// harness reads the assertion number from.
 const stopAtFirstFailure = () => {
-	console.log(`\n${pass} passed, 1 failed — stopped at the first, QRNTN_FAIL_FAST`)
-	console.error(`  FAIL  ${failures[0]}`)
+	writeSync(1, `\n${pass} passed, 1 failed — stopped at the first, QRNTN_FAIL_FAST\n`)
+	writeSync(2, `  FAIL  ${failures[0]}\n`)
 	process.exit(1)
 }
 

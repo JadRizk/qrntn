@@ -14,7 +14,7 @@
 //   node scripts/usage.test.mjs
 
 import { spawnSync } from 'node:child_process'
-import { readFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync, existsSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, writeSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -44,9 +44,12 @@ const check = (name, fn) => {
 		if (FAIL_FAST) stopAtFirstFailure()
 	}
 }
+// writeSync, not console: stdout to a pipe is asynchronous on macOS, and a
+// line written just before process.exit can be lost — this is the line the
+// harness reads the assertion number from.
 const stopAtFirstFailure = () => {
-	console.log(`\n${pass} passed, 1 failed — stopped at the first, QRNTN_FAIL_FAST`)
-	console.error(`  FAIL  ${failures[0]}`)
+	writeSync(1, `\n${pass} passed, 1 failed — stopped at the first, QRNTN_FAIL_FAST\n`)
+	writeSync(2, `  FAIL  ${failures[0]}\n`)
 	process.exit(1)
 }
 

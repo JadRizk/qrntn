@@ -176,7 +176,7 @@ export async function mutate({ name, test, sources, build, mutations, jobs, time
 			// inside. It passed on a Mac only because /var/folders is a symlink
 			// the containment check realpaths on one side and not the other.
 			const scratch = `${dir}-tmp`
-			mkdirSync(scratch)
+			mkdirSync(scratch, { recursive: true })
 			const files = { ...originals, [target]: originals[target].replace(m.find, m.replace) }
 			const discard = () => {
 				rmSync(dir, { recursive: true, force: true })
