@@ -87,7 +87,7 @@ const run = (script, args, cwd) => {
 
 // The sentence that names this suite's purpose: a command may refuse, but never
 // because it could not find a part of itself.
-const TOOL_MISSING = /(ledger\.mjs not found|skill-audit not found|check-catalog\.mjs not found|ERR_MODULE_NOT_FOUND|Cannot find module)/
+const TOOL_MISSING = /(ledger\.mjs not found|audit scanner is missing|check-catalog\.mjs not found|ERR_MODULE_NOT_FOUND|Cannot find module)/
 
 const lib = foreignLibrary()
 try {

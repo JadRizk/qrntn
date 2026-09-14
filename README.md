@@ -127,7 +127,7 @@ harmless, and there is no line it visibly violates.
 A script consuming these has to tell `1` and `2` apart. Collapsing them is how a
 CI gate starts lying about which problem it found.
 
-**What colour does, and does not, change.** Eight verbs colour `refused:`.
+**What colour does, and does not, change.** Ten verbs colour `refused:`.
 `audit` has no such line — it reports rather than refuses, and prefixes the one
 thing it cannot do `error:` — and colours its severity column, counts and
 verdict instead. The words carry the meaning and the ink is a second copy of

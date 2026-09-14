@@ -157,7 +157,7 @@ const git = (cwd, args) =>
 	execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim()
 
 function fetchAt(source, ref) {
-	const work = mkdtempSync(join(tmpdir(), 'skill-intake-'))
+	const work = mkdtempSync(join(tmpdir(), 'qrntn-intake-'))
 	git(work, ['init', '--quiet'])
 	git(work, ['remote', 'add', 'origin', source.url])
 	try {
@@ -251,7 +251,7 @@ function writeOrigin(dest, { source, sha, subpath, ref, files, name, licence }) 
 		join(dest, 'ORIGIN.md'),
 		`# Origin · \`${name}\`
 
-Written by \`skill-intake\`. Facts about where this came from, nothing about
+Written by \`qrntn intake\`. Facts about where this came from, nothing about
 what it claims to do — the repository's own description is written by whoever
 wrote the payload, so the account of this skill's purpose comes out of the
 audit and not out of the source.
@@ -271,7 +271,7 @@ audit and not out of the source.
 
 Hashes are the arrival state. They are expected to stop matching once the skill
 is adapted — that divergence is what obliges an adaptation log in \`AUDIT.md\`,
-and \`promote.mjs\` refuses when bytes have changed and nothing records why.
+and \`qrntn promote\` refuses when bytes have changed and nothing records why.
 
 | Path | Size | sha256 |
 |---|---|---|

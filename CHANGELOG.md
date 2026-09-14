@@ -15,6 +15,19 @@ and a release that made a refusal clearer shipped something.
 
 ## Unreleased
 
+**Records and refusals name this tool's verbs, not the skills it was cut
+from.** `ORIGIN.md` opened *"Written by `skill-intake`"* on every skill this
+tool fetched, and cited `promote.mjs`; `promote` refused a skill with no
+`ORIGIN.md` as one that *"did not come through skill-intake"*, and a missing
+scanner as *"skill-audit not found"*. Those are the names of the skills this
+was extracted from and the filenames behind the verbs, neither of which a
+user of the package has. They say `qrntn intake`, `qrntn promote` and *"the
+audit scanner is missing"* now — the last of them naming the file expected and
+calling it a packaging fault, which is what it is. The README also said eight
+verbs colour `refused:`, a count from before `adopt` and `view`; it says ten,
+and `qrntn.test.mjs` now derives the number from the scripts, so it cannot
+drift again.
+
 **`install` can say "in place".** The ledger's install section was written
 for one layout — the library somewhere of its own, `<install-root>/<name>` a
 symlink into it — and `{ symlinked: false, path: null }` meant not installed.
