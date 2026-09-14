@@ -70,9 +70,10 @@ GitHub set with its bidirectional-text banner and VS Code with its
 ambiguous-character highlighting: the reading surface itself surfaces what the
 rendering would conceal.
 
-A formatted mode — headings as headings, fences as blocks — is allowed later,
+A formatted mode — headings as headings, fences as blocks — is allowed
 as a toggle that is off by default, and it renders **no raw HTML and no remote
 images**. Not because of this document's taste but because of the next section.
+*Landed 2026-09-14* as the preview, below.
 
 ## What a reader adds to the threat model
 
@@ -178,7 +179,95 @@ scanner's source text and asserts the two are equal, entry for entry.
 | Confusable | the scanner's `CONFUSABLES` map, by code point | the character, dotted underline, the letter it imitates on hover |
 | Other non-ASCII | everything else above U+007F | rendered as it is; counted in the header |
 | Whitespace | tab, CR, NBSP, trailing spaces | `→` `␍` `⍽` `·` in grey |
-| HTML comment | `<!-- … -->`, across lines | present, dimmed, italic |
+| HTML comment | `<!-- … -->`, across lines | present, dimmed, italic — its characters scanned like any other, so a chip inside it is a chip |
+
+## Colour
+
+*Landed 2026-09-14.* The source is coloured, and that is all that changed:
+`reading/highlight.ts` reads a file once through a Lezer parser —
+`@lezer/markdown`, `@lezer/javascript`, `@lezer/yaml`, chosen by extension
+— and hands `tokenise.ts` ranges, *from, to, scope*, which a text token
+carries as a tint. A range cannot remove a byte, move a link, or unchip an
+escape: the tokeniser decides what is shown, and colour is laid over what
+it decided. `highlight.test.ts` asserts it — every byte of a file with a
+bidi override, a zero-width space and a homoglyph in it is in the tokens,
+in order, and the string around the chip is still a string.
+
+Lezer because it emits a tree, not an HTML string, so *nothing here is ever
+set as HTML* holds without an exception; its closure is `@lezer/common`,
+`@lezer/lr` and `@lezer/highlight`, one maintainer. Neither highlight.js
+(HTML out) nor Shiki (WASM, which the CSP would have to open) would do.
+
+Nine scopes, and the colour budget they draw on. The accent stays with
+links and the verdict; critical stays with escapes; a scope claims neither.
+
+| Scope | Covers | Shown as |
+|---|---|---|
+| `keyword` | the language's words: `const`, `import`, `return` | default ink |
+| `string` | a quoted run — where an instruction hides in a script | warning |
+| `comment` | a code comment | muted, italic — never fainter than the code beside it, because a comment is in the model's context too |
+| `literal` | number, boolean, null | default ink |
+| `name` | a property key, type, label or definition; a plain identifier *use* is left alone | info |
+| `mark` | syntax that is not content: `#`, `*`, `` ` ``, ` ``` `, `---`, list and quote marks, separators | tertiary |
+| `emphasis` / `strong` / `code` | markdown inline | italic / 600 / raised band |
+
+Front matter is parsed as YAML and the body as markdown from the line after,
+by the rule `tokenise.ts` classes lines by (exactly `---`, unclosed runs to
+the end); a fence whose info string names JS, JSX, TS, TSX or YAML is parsed
+as that, any other fence is text with a band behind it. A dialect is the
+extension's and no other — `.jsx` and `.tsx` read `<` as a tag, `.ts` as a
+cast — because each one changes what the character means. Above
+`HIGHLIGHT_LIMIT` (1,000,000 characters) the file is shown uncoloured and
+the header says so.
+
+The markdown line classes — front matter, heading, fence — are markdown's
+only. They used to apply to every file, which made `# section` in a shell
+script a bold heading and a YAML file that opens with `---` (a document
+start) front matter, greyed to the end; `tokenise({ markdown: false })` is
+what a script or a YAML file is read with now, and its lines are lines.
+Shell, Python and the rest are the line's colour until a parser is added;
+the seam is `languageOf` and `fenceParser`, one line each.
+
+## Preview
+
+*Landed 2026-09-14.* The formatted mode the section above allowed: a
+toggle, `p` or the footer button, off by default and offered for markdown
+under `PREVIEW_LIMIT` (300,000 characters). The source view stays the
+reader; the preview is a way of reading it that does not give up what the
+source view shows.
+
+`reading/render.ts` walks the same markdown tree `highlight.ts` colours
+from into blocks — front matter, heading, paragraph, list, quote, code,
+rule, table, HTML, comment, and *source* for anything the model has no
+shape for (a link reference) — and every run of text in a block is the
+source **through `tokenise.ts`**, not the source string. That is the whole
+design: the preview has no renderer of its own for characters. So
+
+- an invisible in a paragraph is the same chip it is in the source view,
+  a homoglyph the same underline, a bidi run the same mark;
+- a link is the exporter's span, found by the position of its target —
+  the same button or inert `↗ INERT` the source shows; a link the export
+  did not see is its label with the target named beside it, never a link
+  to nowhere;
+- an HTML comment is a comment block, labelled *dropped by any rendered
+  view, present in context*; an HTML tag or block is its own source; an
+  image is its alt and its target and **never a request** — not remote,
+  not local, because a fetch is a request and the rule is none;
+- a fence is code, coloured by its info string and numbered by the file's
+  own line numbers; front matter is the same coloured YAML lines.
+
+Every block carries the source lines it came from, so a finding pins under
+the block that holds its line, `#skill/path:L<n>` lands on that block, and
+the two views agree on where a thing is. Blocks are not windowed the way
+rows are; above the limit the toggle is not offered rather than the page
+stalling. `ui/MarkdownPreview.tsx` builds elements from the model one text
+node at a time through the same `TokenSpan` as the source view
+(`ui/tokens.tsx`) — no element anywhere is built from an HTML string, so
+the CSP and *nothing here is ever set as HTML* hold in both modes.
+
+One thing the preview takes from the source view: an HTML comment's text
+used to be kept raw inside its token, so an invisible *inside a comment*
+was invisible in the source view too. Comments are scanned now, in both.
 
 ## Links
 

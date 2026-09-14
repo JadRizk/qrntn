@@ -5,8 +5,10 @@
 // THREATS.md names and the scanner has a rule for. So the reader renders the
 // source, and this is the one pass that decides what each character becomes:
 // text, a named escape, a confusable with the letter it imitates, a
-// whitespace mark, or a link span the exporter already resolved. Pure: a
-// string and its links in, lines of tokens out, nothing read and no DOM.
+// whitespace mark, or a link span the exporter already resolved. Colour is
+// the one thing it takes from elsewhere: reading/highlight.ts hands in
+// ranges, and a text token carries the scope it fell under. Pure: a string,
+// its links and its colour in, lines of tokens out, nothing read and no DOM.
 //
 // The character classes are the scanner's (commands/audit-skill.mjs), by
 // range, so a character the scanner would flag is never one this pass would
@@ -15,18 +17,37 @@
 
 import type { FileLink } from '../data/types.ts'
 import { CONFUSABLES } from './confusables.ts'
+import type { Scope, ScopeRange } from './highlight.ts'
 
 export type EscapeClass = 'control' | 'invisible' | 'bidi' | 'tag'
 
 export type Token =
-  | { kind: 'text'; text: string; bidi: boolean }
+  | { kind: 'text'; text: string; bidi: boolean; scope?: Scope }
   | { kind: 'escape'; label: string; cls: EscapeClass; opens: boolean; closes: boolean }
   | { kind: 'confusable'; text: string; label: string; looksLike: string }
   | { kind: 'ws'; mark: string; label: string }
   | { kind: 'link'; link: FileLink; tokens: Token[] }
-  | { kind: 'comment'; text: string }
+  /** An HTML comment: scanned like any text, so an invisible inside it is still a chip. */
+  | { kind: 'comment'; tokens: Token[] }
 
 export type LineClass = 'plain' | 'frontmatter' | 'heading' | 'fence'
+
+export interface TokeniseOptions {
+  /** The highlighter's ranges over `content` (reading/highlight.ts), sorted. */
+  scopes?: readonly ScopeRange[]
+  /**
+   * Class lines as markdown — front matter, headings, fences. Default on,
+   * because the reader's first file is SKILL.md; off for a script or a YAML
+   * file, where `# x` is a comment and a leading `---` a document start.
+   */
+  markdown?: boolean
+  /**
+   * Mark trailing spaces on a line as dots. Default on — the source view;
+   * off for a slice of prose, where the space before an inline element is
+   * not the end of a line.
+   */
+  trailing?: boolean
+}
 
 export interface Line {
   n: number
@@ -49,6 +70,13 @@ export interface Counts {
 export interface Tokenised {
   lines: Line[]
   counts: Counts
+}
+
+// A scope range in the columns of one line, clipped to it.
+interface LineScope {
+  from: number
+  to: number
+  scope: Scope
 }
 
 //   200B-200F zero width & directional marks · 2060-2064 invisible operators
@@ -88,16 +116,24 @@ interface Scan {
 // One run of characters, no links in it: text with escapes, confusables and
 // whitespace marks broken out. `trailingFrom` is the column where trailing
 // whitespace begins on this line (or Infinity), so the dots land only there.
-function scanRun(run: string, colStart: number, trailingFrom: number, scan: Scan): Token[] {
+// `scopes` is the highlighter's colour for this line, sorted; a text token
+// ends where its scope does, and nothing else about the run changes — a
+// scope is a tint on characters the scan has already decided to show.
+function scanRun(run: string, colStart: number, trailingFrom: number, scan: Scan, scopes: readonly LineScope[] = []): Token[] {
   const out: Token[] = []
   let text = ''
+  let scope: Scope | undefined
   const flush = () => {
-    if (text) out.push({ kind: 'text', text, bidi: scan.bidi })
+    if (text) out.push(scope ? { kind: 'text', text, bidi: scan.bidi, scope } : { kind: 'text', text, bidi: scan.bidi })
     text = ''
   }
   let col = colStart
+  let si = 0
   for (const ch of run) {
     const cp = ch.codePointAt(0) ?? 0
+    while (si < scopes.length && (scopes[si]?.to ?? 0) <= col) si++
+    const here = scopes[si] && (scopes[si]?.from ?? Infinity) <= col ? scopes[si]?.scope : undefined
+    if (here !== scope) { flush(); scope = here }
     const cls = classify(ch)
     if (cls) {
       flush()
@@ -158,7 +194,8 @@ function splitComments(line: string, open: boolean): { segments: Array<{ text: s
   return { segments, open: inComment }
 }
 
-export function tokenise(content: string, links: readonly FileLink[]): Tokenised {
+export function tokenise(content: string, links: readonly FileLink[], options: TokeniseOptions = {}): Tokenised {
+  const { scopes = [], markdown = true, trailing = true } = options
   const raw = content.split('\n')
   // A trailing newline is the file ending, not an empty last line.
   if (raw.length > 1 && raw[raw.length - 1] === '') raw.pop()
@@ -172,17 +209,34 @@ export function tokenise(content: string, links: readonly FileLink[]): Tokenised
   }
 
   const lines: Line[] = []
-  let inFrontmatter = raw[0] === '---'
+  let inFrontmatter = markdown && raw[0] === '---'
   let inFence = false
   let commentOpen = false
+  // The highlighter's ranges are offsets into `content`; each line takes the
+  // ones that touch it, in its own columns. Sorted in, so one cursor walks
+  // them once for the whole file.
+  let lineStart = 0
+  let scopeIdx = 0
 
   for (let i = 0; i < raw.length; i++) {
     const line = raw[i] ?? ''
     const n = i + 1
     counts.longest = Math.max(counts.longest, line.length)
 
+    const lineEnd = lineStart + line.length
+    while (scopeIdx < scopes.length && (scopes[scopeIdx]?.to ?? 0) <= lineStart) scopeIdx++
+    const lineScopes: LineScope[] = []
+    for (let k = scopeIdx; k < scopes.length; k++) {
+      const r = scopes[k]
+      if (!r || r.from >= lineEnd) break
+      lineScopes.push({ from: Math.max(0, r.from - lineStart), to: Math.min(line.length, r.to - lineStart), scope: r.scope })
+    }
+    lineStart = lineEnd + 1
+
     let cls: LineClass = 'plain'
-    if (inFrontmatter) {
+    if (!markdown) {
+      // A script's lines are lines; colour, if any, is the highlighter's.
+    } else if (inFrontmatter) {
       cls = 'frontmatter'
       if (i > 0 && line === '---') {
         inFrontmatter = false
@@ -199,7 +253,7 @@ export function tokenise(content: string, links: readonly FileLink[]): Tokenised
     const scan: Scan = { counts, bidi: false }
     // Trailing whitespace ends where the line's text ends, before a CR if
     // the file is CRLF — the \r is its own mark and must not hide the dots.
-    const trailingFrom = line.replace(/[ \t]+\r?$/, '').length
+    const trailingFrom = trailing ? line.replace(/[ \t]+\r?$/, '').length : Infinity
     const tokens: Token[] = []
 
     // Links first (the exporter's offsets are authoritative), comments in
@@ -211,15 +265,16 @@ export function tokenise(content: string, links: readonly FileLink[]): Tokenised
       const { segments, open } = splitComments(line.slice(from, to), commentOpen)
       commentOpen = open
       for (const seg of segments) {
-        if (seg.comment) tokens.push({ kind: 'comment', text: seg.text })
-        else tokens.push(...scanRun(seg.text, from + seg.col, trailingFrom, scan))
+        const scanned = scanRun(seg.text, from + seg.col, trailingFrom, scan, lineScopes)
+        if (seg.comment) tokens.push({ kind: 'comment', tokens: scanned })
+        else tokens.push(...scanned)
       }
     }
     for (const link of spans) {
       if (link.col < cursor || link.col + link.len > line.length) continue // a stale offset never corrupts the line
       gap(cursor, link.col)
       const inner = line.slice(link.col, link.col + link.len)
-      tokens.push({ kind: 'link', link, tokens: scanRun(inner, link.col, trailingFrom, scan) })
+      tokens.push({ kind: 'link', link, tokens: scanRun(inner, link.col, trailingFrom, scan, lineScopes) })
       cursor = link.col + link.len
     }
     gap(cursor, line.length)

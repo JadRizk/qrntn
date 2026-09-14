@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { FileLink } from '../data/types.ts'
+import type { ScopeRange } from './highlight.ts'
 import { escapedTotal, tokenise, type Token } from './tokenise.ts'
 
 // Test inputs are built from code points, never pasted: a literal in this
@@ -10,12 +11,12 @@ const cp = (...codes: number[]) => String.fromCodePoint(...codes)
 const flat = (tokens: Token[]): string =>
   tokens.map((t) => {
     switch (t.kind) {
-      case 'text': return t.bidi ? `«${t.text}»` : t.text
+      case 'text': return t.bidi ? `«${t.text}»` : t.scope ? `${t.scope}⟨${t.text}⟩` : t.text
       case 'escape': return `[${t.label}]`
       case 'confusable': return `{${t.text}~${t.looksLike}}`
       case 'ws': return t.mark
       case 'link': return `<${t.link.kind}:${flat(t.tokens)}>`
-      case 'comment': return `/*${t.text}*/`
+      case 'comment': return `/*${flat(t.tokens)}*/`
     }
   }).join('')
 
@@ -84,6 +85,17 @@ describe('tokenise — what the reader shows', () => {
     expect(flat(lines[1]!.tokens)).toBe('/*still -->*/ b')
   })
 
+  it('an invisible inside an HTML comment is still a chip, and counted', () => {
+    const { lines, counts } = tokenise(`<!-- a${cp(0x200b)}b${cp(0x202e)} -->`, [])
+    expect(flat(lines[0]!.tokens)).toBe('/*<!-- a[U+200B]b[U+202E]« -->»*/')
+    expect(counts.invisible).toBe(1)
+    expect(counts.bidi).toBe(1)
+  })
+
+  it('trailing spaces are not dots when the caller says a slice is prose', () => {
+    expect(flat(tokenise('a  ', [], { trailing: false }).lines[0]!.tokens)).toBe('a  ')
+  })
+
   it('a link span is the exporter\'s offsets, with escapes inside it still escaped', () => {
     const line = `see [x](references/s${cp(0x202e)}ediug.md) now`
     const link: FileLink = { line: 1, col: 8, len: 21, raw: `references/s${cp(0x202e)}ediug.md`, kind: 'unresolved', to: null }
@@ -101,5 +113,53 @@ describe('tokenise — what the reader shows', () => {
     const { lines, counts } = tokenise(`${'\n'.repeat(999)}${'x'.repeat(401)}`, [])
     expect(lines).toHaveLength(1000)
     expect(counts.longest).toBe(401)
+  })
+
+  // ---- colour: highlight.ts hands in ranges; a text token ends where its scope does
+
+  it('a scope range splits a text token and names it; the bytes are unchanged', () => {
+    const scopes: ScopeRange[] = [{ from: 0, to: 5, scope: 'keyword' }, { from: 6, to: 7, scope: 'name' }]
+    const { lines } = tokenise('const x = 1', [], { scopes })
+    expect(flat(lines[0]!.tokens)).toBe('keyword⟨const⟩ name⟨x⟩ = 1')
+    expect(lines[0]!.tokens.map((t) => (t.kind === 'text' ? t.text : '')).join('')).toBe('const x = 1')
+  })
+
+  it('a range across lines lands on each line in its own columns', () => {
+    const scopes: ScopeRange[] = [{ from: 2, to: 7, scope: 'string' }]
+    const { lines } = tokenise('a "b\nc" d', [], { scopes })
+    expect(flat(lines[0]!.tokens)).toBe('a string⟨"b⟩')
+    expect(flat(lines[1]!.tokens)).toBe('string⟨c"⟩ d')
+  })
+
+  it('a scope is a tint: an escape inside it is still a chip, a confusable still marked, trailing space still a dot', () => {
+    const src = `"a${cp(0x200b)}${cp(0x0430)} "`
+    const { lines, counts } = tokenise(src, [], { scopes: [{ from: 0, to: src.length, scope: 'string' }] })
+    expect(flat(lines[0]!.tokens)).toBe(`string⟨"a⟩[U+200B]{${cp(0x0430)}~a}string⟨ "⟩`)
+    expect(counts.invisible).toBe(1)
+    expect(counts.confusable).toBe(1)
+  })
+
+  it('a bidi run keeps its mark under any scope', () => {
+    const src = `x${cp(0x202e)}abc`
+    const { lines } = tokenise(src, [], { scopes: [{ from: 0, to: src.length, scope: 'keyword' }] })
+    expect(flat(lines[0]!.tokens)).toBe('keyword⟨x⟩[U+202E]«abc»')
+  })
+
+  it('a scope reaches inside a link span without moving it', () => {
+    const link: FileLink = { line: 1, col: 4, len: 14, raw: '[x](refs/y.md)', kind: 'file', to: 'refs/y.md' }
+    const scopes: ScopeRange[] = [{ from: 4, to: 5, scope: 'mark' }, { from: 6, to: 8, scope: 'mark' }, { from: 17, to: 18, scope: 'mark' }]
+    const { lines } = tokenise('see [x](refs/y.md) now', [link], { scopes })
+    expect(flat(lines[0]!.tokens)).toBe('see <file:mark⟨[⟩xmark⟨](⟩refs/y.mdmark⟨)⟩> now')
+  })
+
+  it('a script is not markdown: `# x` is not a heading, a leading `---` is not front matter, ``` is not a fence', () => {
+    const src = '---\n# comment\n```\nx: 1'
+    expect(tokenise(src, [], { markdown: false }).lines.map((l) => l.cls)).toEqual(['plain', 'plain', 'plain', 'plain'])
+    expect(tokenise(src, []).lines.map((l) => l.cls)).toEqual(['frontmatter', 'frontmatter', 'frontmatter', 'frontmatter'])
+  })
+
+  it('no ranges is no scope on any token — the shape the reader had before colour', () => {
+    const { lines } = tokenise('plain text', [])
+    expect(lines[0]!.tokens).toEqual([{ kind: 'text', text: 'plain text', bidi: false }])
   })
 })

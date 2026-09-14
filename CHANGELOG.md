@@ -15,6 +15,28 @@ and a release that made a refusal clearer shipped something.
 
 ## Unreleased
 
+**The reader has a preview.** `p`, or the footer button, on a markdown file:
+headings as headings, lists, quotes, tables, fences as numbered code — built
+from the same parse the colour comes from, and with every run of text put
+through the same tokeniser as the source view. So the preview hides nothing
+the source shows: an invisible is still a chip inside a paragraph, a link is
+still the exporter's resolved span, an HTML comment is a labelled block, HTML
+is its own source, an image is its alt and target and never a request. Off
+by default; the source is the reader. `docs/READING.md` §Preview. Found on
+the way: an HTML comment's contents were kept raw in the source view, so an
+invisible inside a comment did not chip — it does now.
+
+**The reader colours the source.** Markdown, JavaScript and YAML files —
+and JS, TS and YAML inside a markdown fence — are read through a Lezer parser
+and tinted by scope: keywords, strings, comments, literals, names, marks. The
+rendering is the same source it was: every byte on screen, every escape a
+chip, every link the exporter's offset, and colour laid over that. Lezer
+because it emits a tree and never HTML, so the page's *nothing is set as
+HTML* and its CSP are untouched. And the markdown line classes — front
+matter, heading, fence — now apply to markdown only: before this, `# section`
+in a script read as a bold heading and a YAML file opening with `---` was
+greyed as front matter to its end. `docs/READING.md` §Colour.
+
 **Records and refusals name this tool's verbs, not the skills it was cut
 from.** `ORIGIN.md` opened *"Written by `skill-intake`"* on every skill this
 tool fetched, and cited `promote.mjs`; `promote` refused a skill with no
