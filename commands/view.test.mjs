@@ -11,7 +11,7 @@
 // from the tarball; this does it from the checkout.
 
 import { spawn, spawnSync } from 'node:child_process'
-import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, writeSync } from 'node:fs'
 import { createServer, request } from 'node:http'
 import { connect } from 'node:net'
 import { tmpdir } from 'node:os'
@@ -23,9 +23,26 @@ const ROOT = mkdtempSync(join(tmpdir(), 'view-test-'))
 
 let pass = 0
 const failures = []
+// Under the mutation harness the first failure is the whole answer — a mutant
+// is caught or it is not — so the suite stops there instead of running the
+// rest against a script already known to be broken. mutate.mjs sets this for
+// mutant runs only, never for the clean run, and points TMPDIR into the
+// sandbox it sweeps, so an early exit leaves nothing behind.
+const FAIL_FAST = process.env.QRNTN_FAIL_FAST === '1'
 const check = (name, cond, detail = '') => {
 	if (cond) pass++
-	else failures.push(`${name}${detail ? ` — ${detail}` : ''}`)
+	else {
+		failures.push(`${name}${detail ? ` — ${detail}` : ''}`)
+		if (FAIL_FAST) stopAtFirstFailure()
+	}
+}
+// writeSync, not console: stdout to a pipe is asynchronous on macOS, and a
+// line written just before process.exit can be lost — this is the line the
+// harness reads the assertion number from.
+const stopAtFirstFailure = () => {
+	writeSync(1, `\n${pass} passed, 1 failed — stopped at the first, QRNTN_FAIL_FAST\n`)
+	writeSync(2, `  FAIL  ${failures[0]}\n`)
+	process.exit(1)
 }
 
 // ── the sandbox: the package as it ships ────────────────────────────────────
@@ -149,6 +166,9 @@ function serve(script, args, env) {
 		p.on('exit', (code) => { if (!done) { done = true; resolveP({ p, first: null, code, out: () => out, err: () => err }) } })
 	})
 }
+
+/** How long a readiness wait is allowed to take before the suite gives up on that process. */
+const READY_BOUND_MS = 5000
 
 const stop = (p, signal = 'SIGINT') =>
 	new Promise((resolveP) => {
@@ -346,7 +366,10 @@ const rawRequest = (url, lines) =>
 	await new Promise((resolveP) => {
 		// Bounded: a mutant that prints nothing would otherwise stall the suite
 		// here rather than fail it, and a stalled suite reports nothing at all.
-		const timer = setTimeout(resolveP, 20000)
+		// Five seconds: the server is up and the block printed within 300ms of
+		// spawn, so only a mutant that never gets there pays the bound — and
+		// two of them did, at twenty, for 30s each in a suite that takes 9s.
+		const timer = setTimeout(resolveP, READY_BOUND_MS)
 		const done = () => { clearTimeout(timer); resolveP() }
 		// Waits for the LAST line of the block, not the URL. The URL is printed
 		// two lines before the end, and stdout arrives in chunks: resolving on
@@ -420,7 +443,7 @@ const rawRequest = (url, lines) =>
 		const opened = () => (existsSync(log) ? readFileSync(log, 'utf8').trim().split('\n').filter(Boolean) : [])
 
 		const wait = (p, until) => new Promise((resolveP) => {
-			const timer = setTimeout(resolveP, 20000)
+			const timer = setTimeout(resolveP, READY_BOUND_MS)
 			const done = () => { clearTimeout(timer); resolveP() }
 			let out = ''
 			p.stdout.on('data', (d) => { out += d; if (until.test(out)) done() })

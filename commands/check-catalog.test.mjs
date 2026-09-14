@@ -11,7 +11,7 @@
 //
 //   node scripts/check-catalog.test.mjs
 
-import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync, writeSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -24,13 +24,28 @@ const SCRIPT = join(HERE, 'check-catalog.mjs')
 
 let pass = 0
 const failures = []
+// Under the mutation harness the first failure is the whole answer — a mutant
+// is caught or it is not — so the suite stops there instead of running the
+// rest against a script already known to be broken. mutate.mjs sets this for
+// mutant runs only, never for the clean run, and points TMPDIR into the
+// sandbox it sweeps, so an early exit leaves nothing behind.
+const FAIL_FAST = process.env.QRNTN_FAIL_FAST === '1'
 const check = (name, fn) => {
 	try {
 		fn()
 		pass++
 	} catch (e) {
 		failures.push(`${name}: ${e.message}`)
+		if (FAIL_FAST) stopAtFirstFailure()
 	}
+}
+// writeSync, not console: stdout to a pipe is asynchronous on macOS, and a
+// line written just before process.exit can be lost — this is the line the
+// harness reads the assertion number from.
+const stopAtFirstFailure = () => {
+	writeSync(1, `\n${pass} passed, 1 failed — stopped at the first, QRNTN_FAIL_FAST\n`)
+	writeSync(2, `  FAIL  ${failures[0]}\n`)
+	process.exit(1)
 }
 const ok = (cond, what) => {
 	if (!cond) throw new Error(what)
@@ -164,7 +179,7 @@ function mkRepo(label, { skills = {}, catalog, edges = { edges: [] }, rejected =
 }
 
 function run(repo) {
-	const r = spawnSync('node', [join(repo, 'scripts', 'check-catalog.mjs')], { encoding: 'utf8', cwd: repo })
+	const r = spawnSync(process.execPath, [join(repo, 'scripts', 'check-catalog.mjs')], { encoding: 'utf8', cwd: repo })
 	return { code: r.status, out: r.stdout + r.stderr }
 }
 

@@ -31,20 +31,39 @@
 // which is the outcome a caught mutation produces, and it is reported as
 // having been stopped rather than counted in silence.
 //
-// WHAT IT BUYS, MEASURED, all eleven self-tests on an 11-core laptop:
+// WHAT IT BUYS, MEASURED, all eleven self-tests on an 11-core laptop, when
+// this was written:
 //
 //   workers   total     vs serial
 //   1         19m 23s
 //   4         10m 03s   1.9×
 //   8          8m 44s   2.2×
 //
-// Well short of 8×, and the reason is worth knowing before anyone reaches for
-// more cores. The audit scanner's suite is 44% of serial time and spawns
-// fifty processes a run; alone it takes 9s, four at once take 16s, eight take
-// 29s — throughput tops out near 2.5× because process creation, not CPU, is
-// the ceiling. intake's suite is bound by git's fsyncs the same way. The
-// larger win for those two is a cheaper suite per run, which is a different
-// change to suites that are deliberately black-box against the CLI.
+// Well short of 8×, and the reason was worth knowing before anyone reached
+// for more cores. The audit scanner's suite is 44% of serial time and spawns
+// a hundred processes a run; alone it took 9s, four at once 16s, eight 29s —
+// throughput topped out near 2.5×, and process creation, not CPU, looked
+// like the ceiling. Three things have moved since, each measured on
+// 2026-09-13 and each recorded where it was fixed: the suite spawned `node`
+// by name and now spawns it by path (its own comment on `audit()` has the
+// numbers); a mutant's suite stops at its first failure (below, at the
+// spawn); and the git shim, next paragraph. Eight copies of the scanner's
+// suite now take 9.3s, and its self-test 31s where it took 209s.
+//
+// THE GIT SUITES WERE NOT SLOW FOR THAT REASON, and the first version of this
+// header said they were ("bound by git's fsyncs"). Measured, not guessed, on
+// 2026-09-13: refresh's suite takes 3s alone and 8 at once take 52s — worse
+// than running the 8 in series — and the same 8 take 4.8s once `git` on PATH
+// is the real binary instead of `/usr/bin/git`. On a Mac with Xcode,
+// `/usr/bin/git` is a shim that asks xcselect which git to run, every call,
+// and that lookup is slow, serialised system-wide, and leaves process
+// creation degraded for a second or two afterwards — for every process, not
+// just git: a suite that ran `git --version` six times then spawned node
+// eight times took 4.2s across four parents where the same spawns took 0.5s
+// without the git calls. fsync was ruled out by benchmark (40 concurrent
+// commits, 0.35s) and so was git itself (the real binary, 1.0s). hostPath()
+// below is the fix, and check.mjs applies it to the suites for the same
+// reason.
 //
 // QRNTN_JOBS=1 makes it serial again, for bisecting a flake or reading output
 // in mutation order. The default is min(cores, 8): eight measured faster than
@@ -56,9 +75,35 @@
 // this is that.
 
 import { spawn, spawnSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { availableParallelism, tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
+
+/**
+ * PATH with a real `git` ahead of the Xcode shim, on macOS. Unchanged anywhere
+ * else, and unchanged on a Mac whose PATH already resolves `git` to something
+ * other than `/usr/bin/git` — Homebrew's, say — or to nothing at all: a suite
+ * that needs git and cannot find one should say so, not be handed one.
+ *
+ * The real binary lives under the developer directory xcode-select names,
+ * which is where the shim would have sent the call. `xcode-select -p` is a
+ * plain binary that reads a plist, 8ms, and it is asked once per process.
+ * Nothing under `commands/` shipped by the package reads this; the tool's own
+ * `git` calls are one at a time and the shim is merely slow for those, not
+ * wrong. This is for the runner and the harness, which run dozens at once.
+ */
+export function hostPath(env = process.env) {
+	const current = env.PATH ?? ''
+	if (process.platform !== 'darwin') return current
+	const dirs = current.split(':').filter(Boolean)
+	const found = dirs.map((d) => join(d, 'git')).find((p) => existsSync(p))
+	if (found !== '/usr/bin/git') return current
+	const developer = spawnSync('xcode-select', ['-p'], { encoding: 'utf8' })
+	if (developer.status !== 0) return current
+	const real = join(developer.stdout.trim(), 'usr', 'bin', 'git')
+	if (!existsSync(real)) return current
+	return `${dirname(real)}:${current}`
+}
 
 const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000
 
@@ -85,6 +130,8 @@ export async function mutate({ name, test, sources, build, mutations, jobs, time
 	const keys = Object.keys(sources)
 	const originals = Object.fromEntries(keys.map((k) => [k, readFileSync(sources[k], 'utf8')]))
 	const concurrency = Math.max(1, Number(process.env.QRNTN_JOBS) || jobs || Math.min(availableParallelism(), 8))
+	// Once per run, not per mutant: hostPath asks xcode-select, and that is a spawn.
+	const SUITE_ENV = { ...process.env, PATH: hostPath() }
 
 	let asExpected = 0
 	let unexpected = 0
@@ -122,15 +169,40 @@ export async function mutate({ name, test, sources, build, mutations, jobs, time
 	const runOne = ({ m, target }) =>
 		new Promise((resolveP) => {
 			const dir = mkdtempSync(join(tmpdir(), `${name}-self-`))
+			// The suite's own temp directory: BESIDE the sandbox, never inside
+			// it. Inside was the first version, and it passed here and failed on
+			// CI — usage.test asserts that `--out` into tmpdir() is refused as
+			// outside the library, and with tmpdir() under the sandbox it was
+			// inside. It passed on a Mac only because /var/folders is a symlink
+			// the containment check realpaths on one side and not the other.
+			const scratch = `${dir}-tmp`
+			mkdirSync(scratch, { recursive: true })
 			const files = { ...originals, [target]: originals[target].replace(m.find, m.replace) }
+			const discard = () => {
+				rmSync(dir, { recursive: true, force: true })
+				rmSync(scratch, { recursive: true, force: true })
+			}
 			let suite
 			try {
 				suite = build(dir, files)
 			} catch (e) {
-				rmSync(dir, { recursive: true, force: true })
+				discard()
 				return resolveP({ m, status: null, out: '', buildError: e })
 			}
-			const p = spawn(process.execPath, [suite], { detached: true, stdio: ['ignore', 'pipe', 'pipe'] })
+			const started = Date.now()
+			// A mutant's suite stops at its first failure (every suite reads
+			// QRNTN_FAIL_FAST at the seam where it records one), and its temp
+			// directories land in the scratch beside the sandbox, so what an
+			// early exit leaves behind is swept with everything else. Measured before this: the
+			// first failure fell at the 51st of the scanner suite's 100 spawns,
+			// on average, so half of every caught run was spent confirming what
+			// was already known. The clean run below gets neither — it has to
+			// finish, and its own cleanup has to be the thing that cleans up.
+			const p = spawn(process.execPath, [suite], {
+				detached: true,
+				stdio: ['ignore', 'pipe', 'pipe'],
+				env: { ...SUITE_ENV, QRNTN_FAIL_FAST: '1', TMPDIR: scratch }
+			})
 			let out = ''
 			let stopped = false
 			const timer = setTimeout(() => {
@@ -143,8 +215,8 @@ export async function mutate({ name, test, sources, build, mutations, jobs, time
 				clearTimeout(timer)
 				// Whatever the suite spawned and did not stop: gone with it.
 				sweep(p)
-				rmSync(dir, { recursive: true, force: true })
-				resolveP({ m, status, out, stopped })
+				discard()
+				resolveP({ m, status, out, stopped, seconds: (Date.now() - started) / 1000 })
 			})
 		})
 
@@ -159,7 +231,7 @@ export async function mutate({ name, test, sources, build, mutations, jobs, time
 		}
 	})
 
-	function report({ m, status, out, stopped, buildError }) {
+	function report({ m, status, out, stopped, buildError, seconds }) {
 		const expectSurvival = m.expect === 'survives'
 		if (buildError) {
 			console.error(`  ERROR     "${m.name}" — the sandbox could not be built: ${buildError.message}`)
@@ -169,9 +241,12 @@ export async function mutate({ name, test, sources, build, mutations, jobs, time
 		const survived = status === 0
 		if (survived === expectSurvival) {
 			asExpected++
-			const failed = (out.match(/(\d+) failed/) ?? [])[1] ?? '0'
-			const how = stopped ? '  (stopped after the time limit — the suite did not finish)' : expectSurvival ? '' : `  (${failed} assertion(s))`
-			console.log(`  ${expectSurvival ? 'survived  ' : 'caught    '}${m.name}${how}`)
+			// Which assertion caught it: the suite stopped there, so it is one
+			// past what passed. Low numbers are cheap mutants; a high one says
+			// the suite tests that property late, which is worth knowing.
+			const at = Number((out.match(/(\d+) passed/) ?? [])[1] ?? NaN) + 1
+			const how = stopped ? '  (stopped after the time limit — the suite did not finish)' : expectSurvival ? '' : `  (at assertion ${Number.isNaN(at) ? '?' : at})`
+			console.log(`  ${expectSurvival ? 'survived  ' : 'caught    '}${m.name}${how}  ${seconds.toFixed(1)}s`)
 		} else {
 			unexpected++
 			console.error(
@@ -195,7 +270,7 @@ export async function mutate({ name, test, sources, build, mutations, jobs, time
 
 	// The suite as it stands, unmutated, in place. A self-test whose clean
 	// run fails is not measuring the suite; it is measuring a broken tree.
-	const clean = spawnSync(process.execPath, [test], { encoding: 'utf8' })
+	const clean = spawnSync(process.execPath, [test], { encoding: 'utf8', env: SUITE_ENV })
 	console.log(`\nclean run: ${clean.status === 0 ? 'PASS' : 'FAIL'}`)
 	console.log(`self-test: ${asExpected} as expected, ${unexpected} not${concurrency > 1 ? `  · ${concurrency} at a time` : ''}`)
 	if (unexpected || clean.status !== 0) {

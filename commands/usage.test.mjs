@@ -14,7 +14,7 @@
 //   node scripts/usage.test.mjs
 
 import { spawnSync } from 'node:child_process'
-import { readFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync, existsSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, writeSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -28,6 +28,12 @@ const NOW = '2026-08-24T12:00:00.000Z'
 
 let pass = 0
 const failures = []
+// Under the mutation harness the first failure is the whole answer — a mutant
+// is caught or it is not — so the suite stops there instead of running the
+// rest against a script already known to be broken. mutate.mjs sets this for
+// mutant runs only, never for the clean run, and points TMPDIR into the
+// sandbox it sweeps, so an early exit leaves nothing behind.
+const FAIL_FAST = process.env.QRNTN_FAIL_FAST === '1'
 
 const check = (name, fn) => {
 	try {
@@ -35,7 +41,16 @@ const check = (name, fn) => {
 		pass++
 	} catch (e) {
 		failures.push(`${name}: ${e.message}`)
+		if (FAIL_FAST) stopAtFirstFailure()
 	}
+}
+// writeSync, not console: stdout to a pipe is asynchronous on macOS, and a
+// line written just before process.exit can be lost — this is the line the
+// harness reads the assertion number from.
+const stopAtFirstFailure = () => {
+	writeSync(1, `\n${pass} passed, 1 failed — stopped at the first, QRNTN_FAIL_FAST\n`)
+	writeSync(2, `  FAIL  ${failures[0]}\n`)
+	process.exit(1)
 }
 
 const eq = (got, want, what = '') => {

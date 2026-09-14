@@ -174,9 +174,28 @@ and its own process group, swept on exit so a mutant's server cannot outlive
 its run. That is where the gate time went — 95% of a full run, measured —
 and it is the only part of a run that is embarrassingly parallel. `QRNTN_JOBS=1`
 makes it serial again, which is how to read output in mutation order or
-bisect a flake; the default is `min(cores, 8)`. The ceiling is not the CPU:
-the audit scanner's suite spawns fifty processes a run and tops out near 2.5×
-throughput however many run at once, and intake's is bound by git's fsyncs.
+bisect a flake; the default is `min(cores, 8)`.
+
+**A mutant's suite stops at its first failure.** The harness sets
+`QRNTN_FAIL_FAST=1` for mutant runs — never for the clean run — and every
+suite reads it at the one seam where it records a failure. A mutant is caught
+or it is not; measured before this, the first failure fell at the 51st of the
+scanner suite's 100 spawns on average, so half of every caught run was spent
+confirming what was already known. The harness also points `TMPDIR` into the
+scratch directory it sweeps beside the sandbox, so an early exit leaves nothing
+in the temp directory. The report line says which assertion caught each mutant — `(at assertion 32)` —
+and a high number is worth a look: the suite tests that property late.
+
+**On a Mac, the gates run with the real `git`.** `/usr/bin/git` under Xcode is
+a shim that asks `xcselect` which binary to run on every call, and that lookup
+is slow, serialised system-wide, and degrades every process creation on the
+machine for a second or two after — eight copies of `refresh`'s suite took 52s
+through the shim and 4.8s without it. `hostPath()` in `mutate.mjs` puts the
+developer directory's own `git` first on PATH for every suite the harness or
+`check.mjs` spawns; a suite run by hand gets the shim, which is why one that
+builds git repositories is two to three times slower alone than under the
+runner. `source dev.sh` does not change PATH — the tool's own `git` calls are
+one at a time, and the shim is merely slow for those, not wrong.
 
 **`smoke.mjs` — does it work for someone who installs it.** See below.
 
@@ -193,9 +212,21 @@ whole project exists to worry about, and one a local run cannot ask about.
 | when | command | what it costs |
 |---|---|---|
 | changed one command | `node commands/<name>.test.mjs` | seconds |
-| before a commit | `npm run test:quick` | ~1 min · 18 gates |
+| before a commit | `npm run test:quick` | ~15 s · 18 gates |
 | touched what ships | `npm run smoke` | packs and installs |
-| before publishing | `npm test` | ~10 min · 32 gates, everything |
+| before publishing | `npm test` | ~2 min · 32 gates, everything |
+
+`check.mjs` runs its gates through one pool, under a budget of processes
+rather than of gates — a suite weighs one, a self-test weighs the workers it
+is told to use, half the budget each so two run side by side. The budget is
+the core count; `--jobs N` or `QRNTN_JOBS` sets it, and `1` is serial. The
+viewer build goes first and alone, because three suites and the smoke gate
+change what they can ask by whether `view/` exists; smoke then packs with
+`--as-built` so `prepack` does not rebuild the bundle under the other gates.
+Results print as they finish, with how long each took, and the failures'
+tails print together at the end. This was serial, eleven minutes at 1.4 cores
+on an eleven-core machine, and the header of `check.mjs` records what the
+other nine and a half minutes were.
 
 `npm run gates` names them without running them, which is the honest way to see
 what `--quick` is skipping: the self-tests, the bundle build, smoke, and the
@@ -248,8 +279,8 @@ get one. A README edit is not a behaviour change, and a gate that makes it
 pretend to be one becomes noise the next person adds a bypass for.
 
 `gh pr checks <n>` reads the remote result; `gh pr checks <n> --watch` waits
-for it. A full run is ten to twelve minutes, almost all of it the mutation
-self-tests.
+for it. A full run on a four-core runner is a few minutes, almost all of it
+the mutation self-tests.
 
 ## The question only `smoke` can answer
 
