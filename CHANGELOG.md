@@ -13,7 +13,7 @@ appears in a release.
 A version that only refuses better still gets an entry. Declining is a success,
 and a release that made a refusal clearer shipped something.
 
-## Unreleased
+## 0.5.1 — 2026-09-15
 
 **A held skill that is a symlink is held.** `~/.claude/skills/<name>` pointing
 at `../../.agents/skills/<name>` is a real layout — the skill lives where
