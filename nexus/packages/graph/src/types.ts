@@ -236,6 +236,8 @@ export interface GraphCanvasProps {
   /** Category ids to hide. Replaces the original's imperative `nodeOn`/`refilter()` — this is a controlled prop instead. */
   hiddenNodeCategories?: readonly string[];
   hiddenLinkCategories?: readonly string[];
+  /** Link category ids drawn only on edges that touch `selectedId` — hidden everywhere else, including when nothing is selected. For a dense computed layer (one edge per node) that answers a question about the selected node: revealed graph-wide it paints a picture of the measure, not of the graph. */
+  selectionScopedLinkCategories?: readonly string[];
   /** When set, only this node and its immediate neighbours are shown. */
   isolateId?: GraphNode["id"] | null;
   /** Currently selected node, controlled — mirrors `isolateId`. The canvas notifies clicks via `onSelect`; the consumer owns the actual state (same pattern the original's own `useEffect(() => api.current.select(...), [selected])` already implied, just made explicit as a controlled prop instead of an imperative-only sync). */

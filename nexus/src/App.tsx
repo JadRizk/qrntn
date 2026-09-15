@@ -37,19 +37,22 @@ const physics: PhysicsConfig = { ...DEFAULT_PHYSICS, sectorForce: 0.06, radiusFo
 // *identity* (hiddenNodeCategories/hiddenLinkCategories/isolateId), so a
 // fresh array literal on every App render would re-run it for no reason —
 // same reasoning hiddenNodeCategories below is already useMemo'd for.
-//
-// `overlaps` is on this list for the same readability reason and on different
-// grounds. The other three are relationships a person declared; that one is
-// measured (commands/overlap.mjs, via the exporter) and is drawn for each
-// skill's strongest undeclared coverer — at most one per node, but present for
-// every routable skill whether or not the number is large. Left in the default
-// view it would draw a line between every skill and its nearest neighbour in
-// trigger vocabulary, which is a picture of the measure rather than of the
-// library. Held back until a skill is selected it answers the question someone
-// selecting a skill is actually asking: what else competes for this one's
-// requests, and by how much — the drawer prints the share beside the name.
-const HIDDEN_RELATIONSHIP_KINDS: readonly string[] = ['operative', 'referential', 'alternative', 'overlaps']
+const HIDDEN_RELATIONSHIP_KINDS: readonly string[] = ['operative', 'referential', 'alternative']
 const EMPTY_LINK_CATEGORIES: readonly string[] = []
+// `overlaps` is held back further than the three above, and on different
+// grounds. Those are relationships a person declared, sparse enough that
+// revealing all of them on any selection reads fine. `overlaps` is measured
+// (commands/overlap.mjs, via the exporter) and drawn for each skill's
+// strongest undeclared coverer — at most one per node, but present for every
+// routable skill whether or not the number is large. Revealed graph-wide, as
+// the list above is on any selection, it drew a violet arc at every skill the
+// moment a category or the origin was clicked: a picture of the measure, not
+// of the library. Scoped to the selection, it is drawn only where it touches
+// the selected node, and so answers the question someone selecting a skill is
+// actually asking — what else competes for this one's requests, and by how
+// much; the drawer prints the share beside the name. Selecting anything that
+// is not a skill draws none of it, because none of it is about that node.
+const SELECTION_SCOPED_LINK_KINDS: readonly string[] = ['overlaps']
 // Same identity reasoning, for the drawer's edge annotations: a fresh `[]` on
 // every render would rebuild its lookup for nothing.
 const EMPTY_EDGES: readonly [] = []
@@ -536,6 +539,7 @@ export function App() {
           optics={optics}
           hiddenNodeCategories={hiddenNodeCategories}
           hiddenLinkCategories={hiddenLinkCategories}
+          selectionScopedLinkCategories={SELECTION_SCOPED_LINK_KINDS}
           isolateId={selectedId}
           selectedId={selectedId}
           fitInset={fitInset}

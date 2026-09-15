@@ -114,6 +114,17 @@ check('an operative edge at a rejected skill is an error — only a held skill c
 	ok(r.errors[0].includes('only point at a held skill'), r.errors[0])
 })
 
+check('a declared "overlaps" edge is an error — that kind is measured, never written down', () => {
+	// The graph draws `overlaps` from what `qrntn overlap` measures, in a
+	// register dimmer than any declaration. Written into edges.json it would
+	// be drawn as a measurement with no number behind it, and it would hide
+	// the real one: the measured layer stays out of any pair already declared.
+	const r = checkEdges({ skills: [skill('a'), skill('b')], edges: [edge('a', 'b', 'overlaps')], rejected: new Set() })
+	eq(r.errors.length, 1, 'error count')
+	ok(r.errors[0].includes('qrntn overlap'), r.errors[0])
+	ok(r.errors[0].includes('"alternative"'), 'the refusal names the edge someone probably meant')
+})
+
 check('an operative edge the prose never invokes is a warning, not an error', () => {
 	const r = checkEdges({ skills: [skill('a'), skill('b')], edges: [edge('a', 'b', 'operative')], rejected: new Set() })
 	eq(r.errors, [], 'errors')

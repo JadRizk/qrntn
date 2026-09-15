@@ -377,7 +377,7 @@ function rank({ repo = defaultLibrary(), skillsDir = null, candidate = null, all
 		const ab = coverage(a, b, w)
 		const ba = coverage(b, a, w)
 		// Reported in the swallowing direction: the wider description first.
-		const [from, to, cov] = ab >= ba ? [a.name, b.name, ab] : [b.name, a.name, ba]
+		const [from, to, cov, rev] = ab >= ba ? [a.name, b.name, ab, ba] : [b.name, a.name, ba, ab]
 		return {
 			a: a.name,
 			b: b.name,
@@ -385,6 +385,14 @@ function rank({ repo = defaultLibrary(), skillsDir = null, candidate = null, all
 			coverage: cov,
 			covers: from,
 			covered: to,
+			// The same measure the other way: the share of the COVERER's
+			// vocabulary the covered one claims. Never larger than `coverage`,
+			// by construction of the line above. The table does not print it —
+			// the headline is the swallowing direction — but nearestCoverer
+			// needs it, because a skill that is the wider description in every
+			// pair it belongs to would otherwise have no coverer at all, however
+			// much of its vocabulary a near-twin claims.
+			reverse: rev,
 			declared: declared.has(key(a.name, b.name)),
 			shared: drivers(a, b, w),
 		}
@@ -411,10 +419,17 @@ function rank({ repo = defaultLibrary(), skillsDir = null, candidate = null, all
 // for what nobody wrote down; the report's own header is explicit that a
 // declared edge is not a licence for any amount of overlap, so a caller that
 // wants them back passes includeDeclared and gets them.
+//
+// BOTH DIRECTIONS OF EVERY PAIR ARE CANDIDATES. rank() reports a pair once, in
+// the swallowing direction, and carries the other direction as `reverse`. A
+// reduction that read only the headline would never give a coverer to the
+// wider description of any pair — and two near-twins are exactly that shape:
+// one claims 100% of the other's vocabulary and the other claims 77% back,
+// and whichever of the two never fires is the one this exists to explain.
+// Reading one direction explained it only when the narrower one lost.
 const nearestCoverer = (pairs, { includeDeclared = false } = {}) => {
 	const best = new Map()
-	for (const p of pairs) {
-		if (p.declared && !includeDeclared) continue
+	const consider = (p) => {
 		// Zero is not a small number here, it is the absence of the thing being
 		// measured: two descriptions with no distinctive vocabulary in common
 		// at all. Dropping it is not the threshold this file refuses — a
@@ -422,13 +437,21 @@ const nearestCoverer = (pairs, { includeDeclared = false } = {}) => {
 		// whether there is any. Without it every skill in a library gets a
 		// "strongest coverer" whether or not one exists, which is the claim
 		// nobody is entitled to make, and the graph would draw a line for it.
-		if (p.coverage === 0) continue
+		if (!(p.coverage > 0)) return
 		const held = best.get(p.covered)
 		// Ties break on the coverer's name, so the answer does not depend on the
 		// order the pairs arrived in. rank() already sorts, and a caller that
 		// filtered or concatenated may not have.
 		if (!held || p.coverage > held.coverage || (p.coverage === held.coverage && p.covers < held.covers))
 			best.set(p.covered, p)
+	}
+	for (const p of pairs) {
+		if (p.declared && !includeDeclared) continue
+		consider(p)
+		// A pair from a caller that built it by hand may carry no `reverse`;
+		// that is one direction measured, not two, and the guard above treats
+		// the absence as it treats zero.
+		consider({ ...p, covers: p.covered, covered: p.covers, coverage: p.reverse, reverse: p.coverage })
 	}
 	return best
 }

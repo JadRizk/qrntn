@@ -210,6 +210,38 @@ check('nearestCoverer keeps one row per skill, and it is the strongest', () => {
 	eq(best.get('narrow').coverage, Math.max(...forNarrow.map((p) => p.coverage)), 'the strongest coverer')
 })
 
+check('the wider description of a pair still has a coverer', () => {
+	// Two near-twins: beta says everything alpha says and one thing more, so
+	// the pair is reported as beta covering alpha at 1.0 — and alpha still
+	// claims most of beta's distinctive vocabulary back. Whichever of the two
+	// never fires is the one the consumers exist to explain, and a reduction
+	// that read only the headline direction could explain it only when the
+	// narrower one lost. `elsewhere` keeps the shared terms distinctive.
+	const twins = mkdtempSync(join(tmpdir(), 'overlap-twins-'))
+	try {
+		const write = (name, description) => {
+			mkdirSync(join(twins, 'skills', name), { recursive: true })
+			writeFileSync(join(twins, 'skills', name, 'SKILL.md'), `---\nname: ${name}\ndescription: ${description}\n---\n\n# ${name}\n`)
+		}
+		write('alpha', 'animate a component with spring motion, gesture driven transitions and interruptible timing')
+		write('beta', 'animate a component with spring motion, gesture driven transitions, interruptible timing and reduced motion')
+		write('elsewhere', 'database migrations, query planning and index maintenance')
+		const { pairs } = rank({ repo: twins })
+		const headline = pairs.find((p) => p.covered === 'alpha' && p.covers === 'beta')
+		ok(headline, 'the pair is reported as beta covering alpha')
+		ok(headline.reverse > 0 && headline.reverse < headline.coverage, `reverse carries the other direction, got ${headline.reverse}`)
+		const best = nearestCoverer(pairs)
+		eq(best.get('alpha').covers, 'beta', 'alpha is covered by beta')
+		// The finding: beta has a coverer too, at the share alpha claims back.
+		ok(best.has('beta'), 'the wider twin was given no coverer')
+		eq(best.get('beta').covers, 'alpha', 'beta is covered by alpha')
+		eq(best.get('beta').coverage, headline.reverse, 'at the reverse share')
+		eq(best.get('beta').reverse, headline.coverage, 'and the flipped row carries the headline as its reverse')
+	} finally {
+		rmSync(twins, { recursive: true, force: true })
+	}
+})
+
 check('a declared pair is dropped by default and returned on request', () => {
 	// Synthetic rather than off the fixture, because the assertion is about the
 	// reduction and the fixture's declared pair is two skills with nothing in

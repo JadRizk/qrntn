@@ -26,7 +26,13 @@ tomorrow, and the graph would then draw a number `qrntn overlap` does not
 print. Both reduce the ranking the same way, and the reduction is a rank
 rather than a cutoff — for each skill, the one description that claims most of
 its distinctive vocabulary. There is no constant to tune anywhere in either,
-which was the whole objection to letting a score select anything.
+which was the whole objection to letting a score select anything. Found in
+review: the ranking reports each pair once, in the swallowing direction, and a
+reduction that read only that direction never gave a coverer to the wider
+description of any pair — two near-twins, one claiming 100% of the other and
+the other claiming 77% back, explained whichever never fired only when it was
+the narrower one. Each pair now carries the other direction as `reverse` in
+`--json`, and the reduction considers both; the table is unchanged.
 
 **`usage --report` says why a zero is a zero.** A skill that never fired has
 always had a row here — cost with no denominator, the row the report exists to
@@ -47,12 +53,17 @@ doing the covering to the one being covered — the direction the phenomenon
 has. It is the first edge in a fourth register: `measured` shares `semantic`'s
 arc, because an overlap is about meaning, at a fraction of its intensity,
 because it is nobody's claim; the drawer prints the share beside the name and
-the terms that drove it underneath. Hidden until a skill is selected, like the
-declared relationships it sits beside, and never drawn for a pair `edges.json`
-already joins — a declaration drawn twice would read as a finding against the
-person who made it. The spring is near zero on purpose, so the measure cannot
-rearrange the thing it is measuring. The export says how many pairs it did not
-draw; the rest are in `qrntn overlap`.
+the terms that drove it underneath. Drawn only where it touches the selected
+node — a step further back than the declared relationships, which any
+selection reveals graph-wide: those are sparse, and this one exists at nearly
+every skill, so selecting the origin drew a violet arc at all of them at once.
+Never drawn for a pair `edges.json` already joins — a declaration drawn twice
+would read as a finding against the person who made it — and, the other way
+round, `check` and the exporter both refuse an `edges.json` that declares an
+edge *as* `overlaps`: drawn, it would be a measurement with no measure behind
+it, and it would silence the real one. The spring is near zero on purpose, so
+the measure cannot rearrange the thing it is measuring. The export says how
+many pairs it did not draw; the rest are in `qrntn overlap`.
 
 **The reader has a preview.** `p`, or the footer button, on a markdown file:
 headings as headings, lists, quotes, tables, fences as numbered code — built

@@ -102,7 +102,7 @@ export const GraphCanvas = forwardRef<GraphController, GraphCanvasProps>(functio
     nodes, edges, nodeCategories, linkCategories,
     physics: physicsProp, optics: opticsProp,
     labelMode = "auto",
-    hiddenNodeCategories, hiddenLinkCategories, isolateId = null, selectedId = null,
+    hiddenNodeCategories, hiddenLinkCategories, selectionScopedLinkCategories, isolateId = null, selectedId = null,
     fitInset,
     running = true,
     onSelect, onFrame, onStats, onFatal,
@@ -130,6 +130,11 @@ export const GraphCanvas = forwardRef<GraphController, GraphCanvasProps>(functio
   const labelModeRef = useRef(labelMode); labelModeRef.current = labelMode;
   const hiddenNodeRef = useRef(hiddenNodeCategories); hiddenNodeRef.current = hiddenNodeCategories;
   const hiddenLinkRef = useRef(hiddenLinkCategories); hiddenLinkRef.current = hiddenLinkCategories;
+  const scopedLinkRef = useRef(selectionScopedLinkCategories); scopedLinkRef.current = selectionScopedLinkCategories;
+  // Read by refilter() rather than the engine's own selIdx, because the
+  // refilter effect below runs before the selection effect on the same render
+  // — selIdx would still be the previous selection at that moment.
+  const selectedRef = useRef(selectedId); selectedRef.current = selectedId;
   const isolateRef = useRef(isolateId); isolateRef.current = isolateId;
   const onFrameRef = useRef(onFrame); onFrameRef.current = onFrame;
   const onStatsRef = useRef(onStats); onStatsRef.current = onStats;
@@ -171,7 +176,7 @@ export const GraphCanvas = forwardRef<GraphController, GraphCanvasProps>(functio
   useEffect(() => {
     api.current.refilterInternal?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hiddenNodeCategories, hiddenLinkCategories, isolateId]);
+  }, [hiddenNodeCategories, hiddenLinkCategories, selectionScopedLinkCategories, isolateId, selectedId]);
 
   useEffect(() => {
     const idx = selectedId === null ? -1 : (idToIndexRef.current.get(selectedId) ?? -1);
@@ -674,6 +679,9 @@ export const GraphCanvas = forwardRef<GraphController, GraphCanvasProps>(functio
       function refilter() {
         const hiddenNode = new Set(hiddenNodeRef.current ?? []);
         const hiddenLink = new Set(hiddenLinkRef.current ?? []);
+        const scopedLink = new Set(scopedLinkRef.current ?? []);
+        const selId = selectedRef.current;
+        const sel = selId === null || selId === undefined ? -1 : (idToIndex.get(selId) ?? -1);
         const isoId = isolateRef.current;
         const iso = isoId === null || isoId === undefined ? -1 : (idToIndex.get(isoId) ?? -1);
         let allow: Set<number> | null = null;
@@ -689,7 +697,8 @@ export const GraphCanvas = forwardRef<GraphController, GraphCanvasProps>(functio
         drawnNodes = shownNodes;
         let shown = 0;
         for (let e = 0; e < m; e++) {
-          const vis = !hiddenLink.has(eCategoryId[e]!) && !nHide[eA[e]!] && !nHide[eB[e]!];
+          const scopedOut = scopedLink.has(eCategoryId[e]!) && eA[e] !== sel && eB[e] !== sel;
+          const vis = !hiddenLink.has(eCategoryId[e]!) && !scopedOut && !nHide[eA[e]!] && !nHide[eB[e]!];
           eP2[e * 4 + A_HIDE] = vis ? 0 : 1;
           if (vis) shown++;
         }

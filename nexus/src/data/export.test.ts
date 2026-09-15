@@ -305,12 +305,21 @@ describe('the measured layer', () => {
     const covered = overlaps.map((e) => e.to)
     expect(new Set(covered).size).toBe(covered.length)
 
-    // narrow says almost nothing wide does not also say; the reverse is false.
-    // Cosine would have split the difference — the direction is the finding.
+    // narrow says almost nothing wide does not also say; the reverse is much
+    // weaker. Cosine would have split the difference — the direction is the
+    // finding, and it is carried as a magnitude: the edge arriving at narrow
+    // comes from wide, and it outweighs anything arriving at wide. Both
+    // edges exist, because wide has a strongest coverer too — a skill is
+    // never left without one for being the wider side of every pair it is
+    // in (commands/overlap.mjs, nearestCoverer) — but the weights say which
+    // way the swallowing goes.
     const atNarrow = overlaps.filter((e) => e.to === 'narrow')
     expect(atNarrow).toHaveLength(1)
     expect(atNarrow[0]?.from).toBe('wide')
-    expect(overlaps.some((e) => e.to === 'wide' && e.from === 'narrow')).toBe(false)
+    const atWide = overlaps.filter((e) => e.to === 'wide')
+    expect(atWide).toHaveLength(1)
+    expect(atWide[0]?.from).toBe('narrow')
+    expect(atNarrow[0]?.weight ?? 0).toBeGreaterThan(atWide[0]?.weight ?? 0)
   })
 
   it('carries the measure and the terms that drove it', () => {
@@ -348,6 +357,23 @@ describe('the measured layer', () => {
       (e) => e.kind === 'overlaps' && ((e.from === 'wide' && e.to === 'twin') || (e.from === 'twin' && e.to === 'wide')),
     )
     expect(between).toHaveLength(0)
+  })
+
+  it('refuses a declared edge wearing the measured kind', () => {
+    // `overlaps` is what the exporter measures. Declared, it would be drawn
+    // as a measurement with no weight and would silence the real one, since
+    // the measured layer stays out of every pair edges.json already joins.
+    // check-catalog refuses it on `qrntn check`; this is the same refusal for
+    // a library that reached the exporter unchecked.
+    const lib = measuredLibrary()
+    writeFileSync(
+      join(lib, 'edges.json'),
+      JSON.stringify({ edges: [{ from: 'wide', to: 'narrow', type: 'overlaps' }] }, null, 2),
+    )
+    const r = exporter(['--library', lib, '--out', join(lib, '.graph', 'graph.json')])
+    expect(r.status).not.toBe(0)
+    expect(r.stderr).toContain('wide → narrow')
+    expect(r.stderr).toContain('never declared')
   })
 
   it('leaves manual-only skills out of both ends', () => {

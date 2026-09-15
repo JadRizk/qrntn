@@ -548,6 +548,19 @@ const nodes = [
 
 // ------------------------------------------------------------------ edges
 
+// A declared edge is passed through under the type someone wrote — with one
+// exception. `overlaps` is the measured kind below, and a declaration wearing
+// its name would be drawn as a measurement carrying no measure while silencing
+// the real one (nearestCoverer stays out of every declared pair). check-catalog
+// refuses it first; this is the same refusal for a library nobody checked.
+for (const e of rawEdges) {
+  if (e.type === 'overlaps') {
+    throw new Error(
+      `export-graph: edges.json declares ${e.from} → ${e.to} as "overlaps" — that kind is measured by \`qrntn overlap\`, never declared; two descriptions that compete is an "alternative" edge`,
+    )
+  }
+}
+
 const semanticEdges = rawEdges.map((e) => ({
   kind: e.type,
   from: e.from,
