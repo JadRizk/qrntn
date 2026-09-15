@@ -14,7 +14,7 @@
 // test that edits its own expectations.
 
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -249,6 +249,30 @@ describe('a held skill, hashed against the ledger qrntn wrote', () => {
       reportPath: 'skills/thin-one/AUDIT.md',
       missing: ['references/gone.md'],
     })
+  })
+})
+
+describe('a held skill that is a symlink', () => {
+  it('is drawn, and a dangling link is stepped over', () => {
+    // ~/.claude/skills/<name> -> ../../.agents/skills/<name> is a real
+    // layout. The ledger held it and `check` passed it; the exporter tested
+    // the Dirent, saw a link rather than a directory, and drew two skills
+    // fewer than the library held.
+    const lib = library('symlinked')
+    const real = join(lib, 'elsewhere', 'linked')
+    mkdirSync(real, { recursive: true })
+    writeFileSync(join(real, 'SKILL.md'), '---\nname: linked\ndescription: Lives elsewhere.\n---\n\n# linked\n')
+    symlinkSync(join('..', 'elsewhere', 'linked'), join(lib, 'skills', 'linked'))
+    symlinkSync(join('..', 'elsewhere', 'gone'), join(lib, 'skills', 'dangling'))
+    const backfill = node([join(COMMANDS, 'ledger.mjs'), '--backfill', '--library', lib])
+    expect(backfill.status, backfill.stdout + backfill.stderr).toBe(0)
+
+    const out = join(lib, '.graph', 'graph.json')
+    const r = exporter(['--library', lib, '--out', out])
+    expect(r.status, r.stdout + r.stderr).toBe(0)
+    const snapshot = GraphSnapshotSchema.parse(JSON.parse(readFileSync(out, 'utf8')))
+    expect(snapshot.nodes.some((n) => n.kind === 'skill' && n.id === 'linked')).toBe(true)
+    expect(snapshot.nodes.some((n) => n.id === 'dangling')).toBe(false)
   })
 })
 

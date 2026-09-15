@@ -435,7 +435,22 @@ export function heldSkills(dir = DEFAULT_SKILLS) {
 	}
 	const out = []
 	for (const e of entries) {
-		if (e.name.startsWith('.') || !e.isDirectory()) continue
+		if (e.name.startsWith('.')) continue
+		// THROUGH THE LINK. A Dirent answers isDirectory() for the entry
+		// itself, and a symlink is not a directory — so a held skill that is a
+		// link into another tree was skipped here, counted as "invoked but not
+		// held" a few lines down, and never had its install section written.
+		// `check` and `ledger` follow links (they stat), so the library said 18
+		// and this report said 16 — two populations under one heading, which
+		// is the mismatch the join in reportModel exists to prevent. A dangling
+		// link stats to nothing and is stepped over like any other non-skill.
+		let isDir = false
+		try {
+			isDir = statSync(join(dir, e.name)).isDirectory()
+		} catch {
+			continue
+		}
+		if (!isDir) continue
 		const file = join(dir, e.name, 'SKILL.md')
 		if (!existsSync(file)) continue
 		let text
