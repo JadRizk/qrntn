@@ -13,7 +13,7 @@ appears in a release.
 A version that only refuses better still gets an entry. Declining is a success,
 and a release that made a refusal clearer shipped something.
 
-## Unreleased
+## 0.5.0 — 2026-09-15
 
 **`overlap` grew two consumers.** It measured which descriptions compete for
 the same request and printed a table, and nothing read it — not `adopt`, not
