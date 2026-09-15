@@ -36,7 +36,7 @@
 // src/data/integrity.ts and are imported from there, not reimplemented.
 
 import { createHash } from 'node:crypto'
-import { existsSync, lstatSync, readFileSync, readdirSync, writeFileSync, mkdirSync } from 'node:fs'
+import { existsSync, lstatSync, readFileSync, readdirSync, statSync, writeFileSync, mkdirSync } from 'node:fs'
 import { basename, dirname, join, posix, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -254,9 +254,20 @@ const rawEdges = existsSync(edgesPath) ? (readJSON(edgesPath).edges ?? []) : []
 // ---------------------------------------------------------------- skills
 
 const skillsRoot = join(LIBRARY, 'skills')
-const skillDirs = readdirSync(skillsRoot, { withFileTypes: true })
-  .filter((e) => e.isDirectory() && !e.name.startsWith('.'))
-  .map((e) => e.name)
+// Through the link: a Dirent's isDirectory() is about the entry itself, and a
+// held skill that is a symlink into another tree is not a directory by that
+// test. `check` and `ledger` stat and so follow it; the graph was drawing two
+// fewer skills than the ledger held. A dangling link stats to nothing and is
+// stepped over like any other non-skill.
+const isDirThrough = (name) => {
+  try {
+    return statSync(join(skillsRoot, name)).isDirectory()
+  } catch {
+    return false
+  }
+}
+const skillDirs = readdirSync(skillsRoot)
+  .filter((name) => !name.startsWith('.') && isDirThrough(name))
   .filter((name) => existsSync(join(skillsRoot, name, 'SKILL.md')))
   .sort()
 

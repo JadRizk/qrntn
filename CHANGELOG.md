@@ -13,6 +13,20 @@ appears in a release.
 A version that only refuses better still gets an entry. Declining is a success,
 and a release that made a refusal clearer shipped something.
 
+## Unreleased
+
+**A held skill that is a symlink is held.** `~/.claude/skills/<name>` pointing
+at `../../.agents/skills/<name>` is a real layout — the skill lives where
+another tool put it and the library links to it — and `check` and `ledger`
+follow the link, so the library held eighteen. `usage` and the graph tested
+the directory entry itself, for which a link is not a directory, and saw
+sixteen: the two were dropped from the report's held table, listed a few
+lines down as *invoked but not held*, never had their install section
+written, and were absent from the canvas. Both readers stat through the link
+now; a dangling one stats to nothing and is stepped over like any other
+non-skill. Found by running the report against the library that has them,
+right after `0.5.0` shipped without it.
+
 ## 0.5.0 — 2026-09-15
 
 **`overlap` grew two consumers.** It measured which descriptions compete for

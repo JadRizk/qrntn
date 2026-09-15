@@ -14,7 +14,7 @@
 //   node scripts/usage.test.mjs
 
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, writeSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync, writeSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -444,6 +444,30 @@ check('heldSkills reads every SKILL.md under the directory and nothing else', ()
 	)
 	// README.md sits beside the directories and is not one.
 	ok(!h.some((s) => s.name === 'README.md'), 'a loose file was counted as a skill')
+})
+
+check('a held skill that is a symlink into another tree is held', () => {
+	// ~/.claude/skills/find-skills -> ../../.agents/skills/find-skills is a
+	// real layout: the skill lives where another tool put it and the library
+	// links to it. `check` and `ledger` follow the link, so the library held
+	// it; this report tested the Dirent, saw a link rather than a directory,
+	// and dropped it — then listed the same name under "invoked but not held".
+	// A dangling link is stepped over, not thrown on.
+	const tmp = mkdtempSync(join(tmpdir(), 'usage-symlink-'))
+	try {
+		const real = join(tmp, 'elsewhere', 'linked')
+		mkdirSync(real, { recursive: true })
+		writeFileSync(join(real, 'SKILL.md'), '---\nname: linked\ndescription: Lives elsewhere.\n---\n')
+		const skills = join(tmp, 'skills')
+		mkdirSync(skills)
+		symlinkSync(join('..', 'elsewhere', 'linked'), join(skills, 'linked'))
+		symlinkSync(join('..', 'elsewhere', 'gone'), join(skills, 'dangling'))
+		const names = heldSkills(skills).map((s) => s.name)
+		eq(names, ['linked'], 'the linked skill is held, the dangling link is not')
+		eq(heldSkills(skills)[0].dir, 'linked', 'joined on the link name, which is what the library calls it')
+	} finally {
+		rmSync(tmp, { recursive: true, force: true })
+	}
 })
 
 check('description cost is measured in UTF-8 bytes, not characters', () => {
