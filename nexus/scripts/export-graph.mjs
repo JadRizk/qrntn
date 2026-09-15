@@ -40,6 +40,23 @@ import { existsSync, lstatSync, readFileSync, readdirSync, writeFileSync, mkdirS
 import { basename, dirname, join, posix, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+// The one import from commands/, and the header's hard rule above is about
+// the OTHER direction. That rule names scripts/atlas-*.mjs, build-index.mjs
+// and ledger.mjs — the pre-split repository's own internal scripts, which
+// Nexus was forbidden from entangling itself with because they assumed the
+// tree they lived in. overlap.mjs is not one of those: it is a published verb
+// of the same tool this exporter now ships inside, it takes its library as an
+// argument, and it computes a number the viewer would otherwise have to
+// reimplement. SHIPPING.md §8 and build-view.mjs settle which of those is
+// worse — the exporter itself is BUNDLED into the CLI rather than re-typed
+// there, on the record, because a second implementation is the drift
+// SURFACE.md's "cannot drift" clause exists to prevent. A second copy of a
+// tokeniser, a stopword list and an IDF weighting would be the same mistake
+// with more moving parts, and the graph would then draw a number `qrntn
+// overlap` does not print. esbuild inlines this the same way it already
+// inlines the TypeScript imports below.
+import { nearestCoverer, rank } from '../../commands/overlap.mjs'
+
 import { GraphSnapshotSchema } from '../src/data/types.ts'
 import { chooseLibrary, originTitle, parseRejectedTable, resolveEntityKind } from '../src/data/integrity.ts'
 import { findAnchors, findLinks, pinFinding } from '../src/data/reading.ts'
@@ -531,6 +548,19 @@ const nodes = [
 
 // ------------------------------------------------------------------ edges
 
+// A declared edge is passed through under the type someone wrote — with one
+// exception. `overlaps` is the measured kind below, and a declaration wearing
+// its name would be drawn as a measurement carrying no measure while silencing
+// the real one (nearestCoverer stays out of every declared pair). check-catalog
+// refuses it first; this is the same refusal for a library nobody checked.
+for (const e of rawEdges) {
+  if (e.type === 'overlaps') {
+    throw new Error(
+      `export-graph: edges.json declares ${e.from} → ${e.to} as "overlaps" — that kind is measured by \`qrntn overlap\`, never declared; two descriptions that compete is an "alternative" edge`,
+    )
+  }
+}
+
 const semanticEdges = rawEdges.map((e) => ({
   kind: e.type,
   from: e.from,
@@ -539,6 +569,8 @@ const semanticEdges = rawEdges.map((e) => ({
   when: e.when ?? null,
   note: e.note ?? null,
   source: e.source ?? null,
+  // A declaration has no magnitude: someone wrote it down or did not.
+  weight: null,
 }))
 
 const containsEdges = skills.flatMap((s) => [
@@ -550,19 +582,20 @@ const containsEdges = skills.flatMap((s) => [
     when: null,
     note: null,
     source: null,
+    weight: null,
   })),
   ...(s.scripts.length
-    ? [{ kind: 'contains', from: s.id, to: `${s.id}//scripts`, render: true, when: null, note: null, source: null }]
+    ? [{ kind: 'contains', from: s.id, to: `${s.id}//scripts`, render: true, when: null, note: null, source: null, weight: null }]
     : []),
 ])
 
 const adoptedEdges = vendors.flatMap((v) =>
-  v.adopted.map((skillId) => ({ kind: 'adopted', from: v.id, to: skillId, render: true, when: null, note: null, source: null })),
+  v.adopted.map((skillId) => ({ kind: 'adopted', from: v.id, to: skillId, render: true, when: null, note: null, source: null, weight: null })),
 )
 
 const consideredEdges = [...declinedNodes, ...refusedNodes]
   .filter((n) => n.vendorId)
-  .map((n) => ({ kind: 'considered', from: n.vendorId, to: n.id, render: true, when: null, note: null, source: null }))
+  .map((n) => ({ kind: 'considered', from: n.vendorId, to: n.id, render: true, when: null, note: null, source: null, weight: null }))
 
 const clusterEdges = skills.map((s) => ({
   kind: 'category-clusters-skill',
@@ -572,6 +605,7 @@ const clusterEdges = skills.map((s) => ({
   when: null,
   note: null,
   source: null,
+  weight: null,
 }))
 
 // Every category (including the synthetic 'unfiled' one, if it exists —
@@ -586,9 +620,62 @@ const originEdges = categories.map((c) => ({
   when: null,
   note: null,
   source: null,
+  weight: null,
 }))
 
-const edges = [...semanticEdges, ...containsEdges, ...adoptedEdges, ...consideredEdges, ...clusterEdges, ...originEdges]
+// ------------------------------------------------------- measured overlap
+//
+// The only edges here nobody wrote down. Everything above is read out of a
+// file a person edited; this is computed from the descriptions themselves and
+// says that two of them compete for the same request whether or not anyone
+// noticed. `qrntn overlap` prints the same numbers as a ranked table, which is
+// the right shape for reading and the wrong shape for a canvas — so the
+// reduction is the one nearestCoverer makes, and the reason it is a rank and
+// not a cutoff is in overlap.mjs's own header: ONE edge per skill, its
+// strongest coverer. At most one per node however the library grows, bounded
+// by construction, and with no constant anywhere that anyone could tune until
+// their own skill stopped being drawn.
+//
+// Declared pairs are dropped, because edges.json has already drawn them. An
+// overlap someone argued for is a line on this canvas with a note attached;
+// drawing it a second time in the measured register would turn a declaration
+// into a finding.
+//
+// Degrades to nothing measured. A library this exporter can read is not
+// necessarily one the measure can — and the graph losing a layer is a worse
+// outcome than the graph not existing, so a failure here costs the layer and
+// nothing else.
+let overlapPairs = []
+try {
+  overlapPairs = rank({ repo: LIBRARY }).pairs
+} catch {
+  // Nothing measured, so nothing drawn.
+}
+const overlapEdges = [...nearestCoverer(overlapPairs).values()]
+  // Both endpoints must already be nodes. Every other edge kind can mint a
+  // ghost for a name that resolves to nothing — that is a real finding about a
+  // declaration pointing nowhere. A measurement pointing nowhere is not a
+  // finding about the library, it is a bug in this join, so it is dropped
+  // rather than drawn at something that does not exist.
+  .filter((p) => skillIds.has(p.covers) && skillIds.has(p.covered))
+  .sort((a, b) => a.covered.localeCompare(b.covered))
+  .map((p) => ({
+    kind: 'overlaps',
+    // Coverer first. The phenomenon has a direction — a long description
+    // covering many topics can swallow a short specific one and not the
+    // reverse — and the edge is drawn the way it happens.
+    from: p.covers,
+    to: p.covered,
+    render: true,
+    when: null,
+    // The terms are what makes the edge worth following: the number says read
+    // these two descriptions, and the terms say where to look.
+    note: p.shared.length ? `shared: ${p.shared.join(', ')}` : null,
+    source: null,
+    weight: p.coverage,
+  }))
+
+const edges = [...semanticEdges, ...containsEdges, ...adoptedEdges, ...consideredEdges, ...clusterEdges, ...originEdges, ...overlapEdges]
 
 // ------------------------------------------------------------------ write
 
@@ -603,4 +690,11 @@ console.log(
 	`export-graph: wrote ${nodes.length} nodes (${skills.length} skills, ${categories.length} categories, ` +
 		`${vendors.length} vendors, ${declinedNodes.length} declined, ${refusedNodes.length} refused, ${ghosts.length} ghost) ` +
 		`and ${edges.length} edges -> ${OUT_PATH}`,
+)
+// Said out loud, because the layer is a reduction and a reduction that does not
+// announce what it dropped reads as complete coverage. `qrntn overlap` is where
+// the rest of the ranking lives.
+console.log(
+	`export-graph: overlap — ${overlapPairs.length} routable pair(s) measured, ${overlapEdges.length} drawn ` +
+		`(each skill's strongest undeclared coverer); the rest are in \`qrntn overlap\``,
 )

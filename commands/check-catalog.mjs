@@ -106,6 +106,20 @@ export function checkEdges({ skills, edges, rejected }) {
 
 	for (const e of edges) {
 		const where = e.source ? ` (${e.source})` : ''
+		// `overlaps` is the one edge kind the graph draws that nobody writes
+		// down: `qrntn overlap` measures it from the descriptions and the
+		// viewer draws it in its own register, dimmer than any declaration.
+		// Declared here it would be drawn as a measurement with no measure
+		// behind it — and, worse, it would silence the real one, because the
+		// measured layer stays out of any pair edges.json already joins. An
+		// edge someone wants to declare between two competing descriptions is
+		// what `alternative` is for.
+		if (e.type === 'overlaps') {
+			errors.push(
+				`${e.from} → ${e.to} — typed "overlaps", which is measured by \`qrntn overlap\` and never declared; two descriptions that compete is an "alternative" edge${where}`
+			)
+			continue
+		}
 		const from = held.get(e.from)
 		if (!from) {
 			errors.push(`edge from "${e.from}" — no such skill is held${where}`)

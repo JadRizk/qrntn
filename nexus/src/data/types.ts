@@ -284,6 +284,15 @@ export const EdgeKindSchema = z.enum([
   'operative',
   'referential',
   'alternative',
+  // The one kind in this list nobody wrote down. Every other edge here comes
+  // from a file a person edited — edges.json, catalog.json, REJECTED.md — and
+  // says something the collection asserts about itself. This one is measured
+  // from the descriptions themselves (commands/overlap.mjs) and says only that
+  // two of them compete for the same request, whether or not anyone noticed.
+  // It is emitted ONLY where no declared edge already joins the pair: a
+  // relationship someone argued for is already drawn, and drawing it twice
+  // would make the declaration look like a finding.
+  'overlaps',
   'contains',
   'adopted',
   'considered',
@@ -306,6 +315,17 @@ export const EdgeRecordSchema = z.object({
   when: z.string().nullable(),
   note: z.string().nullable(),
   source: z.string().nullable(),
+  // What the edge measures, where it measures anything: `overlaps` carries the
+  // share of one skill's distinctive vocabulary the other also claims, and
+  // every declared kind carries null, because a declaration has no magnitude —
+  // someone either wrote it down or did not.
+  //
+  // `.default(null)` rather than a bare `.nullable()` so a snapshot exported
+  // before this field existed still parses. That is not a compatibility hack:
+  // absent and null mean the same thing here — no measure for this edge — and
+  // the alternative is a graph.json that becomes a parse error the day the
+  // schema learns a field every one of its edges would have set to null.
+  weight: z.number().nullable().default(null),
 })
 export type EdgeRecord = z.infer<typeof EdgeRecordSchema>
 

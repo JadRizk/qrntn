@@ -250,6 +250,7 @@ const EDGE_LABEL: Record<keyof typeof EDGE_TAXONOMY, string> = {
   operative: 'Operative',
   referential: 'Referential',
   alternative: 'Alternative',
+  overlaps: 'Overlaps',
   contains: 'Contains',
   adopted: 'Adopted',
   considered: 'Considered',
@@ -282,8 +283,14 @@ export const LINK_CATEGORY: Record<string, LinkCategory> = Object.fromEntries(
       width: reg.half,
       gain: reg.gain,
       routing: reg.routing,
-      dist: isSemantic ? 1.6 : kind === 'contains' ? 0.32 : 1.1,
-      strength: kind === 'contains' ? 0.9 : 0.4,
+      dist: isSemantic || spec.register === 'measured' ? 1.6 : kind === 'contains' ? 0.32 : 1.1,
+      // A measured edge pulls almost nothing. The layout is built out of what
+      // the collection declares about itself, and a spring strong enough to
+      // drag two skills together because their descriptions share vocabulary
+      // would let the measurement rearrange the thing it is measuring — the
+      // reader would then be looking at a picture of the lexical scoring, not
+      // at the library. It is drawn to be followed, not to arrange anything.
+      strength: kind === 'contains' ? 0.9 : spec.register === 'measured' ? 0.05 : 0.4,
       ...(spec.binding === 'segmented' ? { dash: SEGMENT_PERIOD_PX } : {}),
       ...(spec.flowAnimated ? { flow: 0.6 } : {}),
       ...(reg.routing === 'arc' ? { curve: ARC_BOW } : {}),

@@ -17,8 +17,9 @@ adding a dependency: the text becomes instructions before any code runs.
 auditing them, deciding about them, and keeping the decision. A browser-based
 graph viewer that shows the whole library at once — every skill, where it came
 from, what the audit found, whether it has ever fired, whether its upstream has
-moved — is served by `qrntn view` at `http://localhost:7768/`, in your browser,
-against any library you name.
+moved, and which other description competes hardest for its requests — is
+served by `qrntn view` at `http://localhost:7768/`, in your browser, against
+any library you name.
 
 ## It is not a scanner
 
@@ -63,7 +64,7 @@ move this tool exists to refuse. `0.2` is the version that gave them theirs.
 | **promote** | a script re-scans and moves it into the library — or refuses | `qrntn promote` |
 | **ledger** | one machine-written record per held skill: origin, hashes, audit verdict, contract, install, usage | `qrntn ledger` |
 | **refresh** | re-diff the pinned commit against upstream; report drift, never move the pin | `qrntn refresh` |
-| **usage** | count what actually fired, from local transcripts, reading no message text | `qrntn usage` |
+| **usage** | count what actually fired, from local transcripts, reading no message text — and, for a skill that never fired, whether another description covers it | `qrntn usage` |
 | **view** | the graph, served at `localhost:7768` and opened in your browser, against any skill library | `qrntn view` |
 
 ```

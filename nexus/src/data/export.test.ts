@@ -251,3 +251,163 @@ describe('a held skill, hashed against the ledger qrntn wrote', () => {
     })
   })
 })
+
+describe('the measured layer', () => {
+  // The only edges in a snapshot that nobody wrote down, so the assertions are
+  // about the PROPERTIES that make drawing them defensible — bounded without a
+  // threshold, pointed the way the phenomenon points, silent where a human has
+  // already spoken — and never about a particular number. A test pinning
+  // "wide covers narrow at 41%" would fail the next time anyone edited a
+  // fixture description, which is the thing the feature exists to encourage.
+  function measuredLibrary(): string {
+    const lib = library('overlaps')
+    const skill = (name: string, description: string, manual = false) => {
+      const dir = join(lib, 'skills', name)
+      mkdirSync(dir, { recursive: true })
+      writeFileSync(
+        join(dir, 'SKILL.md'),
+        `---\nname: ${name}\ndescription: ${description}\n${manual ? 'disable-model-invocation: true\n' : ''}---\n\n# ${name}\n`,
+      )
+    }
+    skill('wide', 'Animation motion transition spring gesture typography colour layout.')
+    skill('narrow', 'Animation motion transition.')
+    skill('twin', 'Typography colour layout spring gesture.')
+    // Present so the weighting has something to weigh. IDF is computed over
+    // the routable corpus, and a term in EVERY description is worth nothing as
+    // evidence of collision — in a corpus of three animation skills, the word
+    // "animation" carries zero weight and every pair scores zero. A fourth
+    // skill about something else is what makes the shared vocabulary
+    // distinctive, which is the whole mechanism.
+    skill('elsewhere', 'Database migrations, query planning and index maintenance.')
+    skill('manual', 'Animation motion transition spring gesture typography colour layout.', true)
+    // twin is the declared pair: someone wrote this relationship down and
+    // argued for it, so the measured layer must stay out of it.
+    writeFileSync(
+      join(lib, 'edges.json'),
+      JSON.stringify({ edges: [{ from: 'wide', to: 'twin', type: 'alternative', note: 'wide is the general one' }] }, null, 2),
+    )
+    const backfill = node([join(COMMANDS, 'ledger.mjs'), '--backfill', '--library', lib])
+    expect(backfill.status, backfill.stdout + backfill.stderr).toBe(0)
+    return lib
+  }
+
+  it('draws each skill one edge at most, and points it the way swallowing goes', () => {
+    const lib = measuredLibrary()
+    const out = join(lib, '.graph', 'graph.json')
+    const r = exporter(['--library', lib, '--out', out])
+    expect(r.status, r.stdout + r.stderr).toBe(0)
+    const snapshot = GraphSnapshotSchema.parse(JSON.parse(readFileSync(out, 'utf8')))
+    const overlaps = snapshot.edges.filter((e) => e.kind === 'overlaps')
+
+    expect(overlaps.length).toBeGreaterThan(0)
+    // The bound, and it holds by construction rather than by a cutoff: one
+    // incoming edge per skill, its strongest coverer. Nothing here is tunable.
+    const covered = overlaps.map((e) => e.to)
+    expect(new Set(covered).size).toBe(covered.length)
+
+    // narrow says almost nothing wide does not also say; the reverse is much
+    // weaker. Cosine would have split the difference — the direction is the
+    // finding, and it is carried as a magnitude: the edge arriving at narrow
+    // comes from wide, and it outweighs anything arriving at wide. Both
+    // edges exist, because wide has a strongest coverer too — a skill is
+    // never left without one for being the wider side of every pair it is
+    // in (commands/overlap.mjs, nearestCoverer) — but the weights say which
+    // way the swallowing goes.
+    const atNarrow = overlaps.filter((e) => e.to === 'narrow')
+    expect(atNarrow).toHaveLength(1)
+    expect(atNarrow[0]?.from).toBe('wide')
+    const atWide = overlaps.filter((e) => e.to === 'wide')
+    expect(atWide).toHaveLength(1)
+    expect(atWide[0]?.from).toBe('narrow')
+    expect(atNarrow[0]?.weight ?? 0).toBeGreaterThan(atWide[0]?.weight ?? 0)
+  })
+
+  it('carries the measure and the terms that drove it', () => {
+    const lib = measuredLibrary()
+    const out = join(lib, '.graph', 'graph.json')
+    expect(exporter(['--library', lib, '--out', out]).status).toBe(0)
+    const snapshot = GraphSnapshotSchema.parse(JSON.parse(readFileSync(out, 'utf8')))
+    const overlaps = snapshot.edges.filter((e) => e.kind === 'overlaps')
+
+    for (const e of overlaps) {
+      // A share, so it is a share: not a count, not a percentage, not
+      // unbounded. The drawer multiplies by a hundred and rounds.
+      expect(e.weight).toBeGreaterThan(0)
+      expect(e.weight).toBeLessThanOrEqual(1)
+      // The number says read these two; the note says where to look.
+      expect(e.note).toMatch(/^shared: /)
+    }
+    // And every declared edge still carries no measure, because a declaration
+    // has no magnitude — someone wrote it down or did not.
+    for (const e of snapshot.edges.filter((e) => e.kind !== 'overlaps')) expect(e.weight).toBeNull()
+  })
+
+  it('says nothing about a pair someone already declared', () => {
+    const lib = measuredLibrary()
+    const out = join(lib, '.graph', 'graph.json')
+    expect(exporter(['--library', lib, '--out', out]).status).toBe(0)
+    const snapshot = GraphSnapshotSchema.parse(JSON.parse(readFileSync(out, 'utf8')))
+
+    // The declared edge is drawn, once, as the claim it is.
+    expect(snapshot.edges.filter((e) => e.kind === 'alternative' && e.from === 'wide' && e.to === 'twin')).toHaveLength(1)
+    // And the measured layer does not draw it a second time. wide and twin
+    // overlap heavily by construction; a second line between them would turn
+    // somebody's decision into a finding against them.
+    const between = snapshot.edges.filter(
+      (e) => e.kind === 'overlaps' && ((e.from === 'wide' && e.to === 'twin') || (e.from === 'twin' && e.to === 'wide')),
+    )
+    expect(between).toHaveLength(0)
+  })
+
+  it('refuses a declared edge wearing the measured kind', () => {
+    // `overlaps` is what the exporter measures. Declared, it would be drawn
+    // as a measurement with no weight and would silence the real one, since
+    // the measured layer stays out of every pair edges.json already joins.
+    // check-catalog refuses it on `qrntn check`; this is the same refusal for
+    // a library that reached the exporter unchecked.
+    const lib = measuredLibrary()
+    writeFileSync(
+      join(lib, 'edges.json'),
+      JSON.stringify({ edges: [{ from: 'wide', to: 'narrow', type: 'overlaps' }] }, null, 2),
+    )
+    const r = exporter(['--library', lib, '--out', join(lib, '.graph', 'graph.json')])
+    expect(r.status).not.toBe(0)
+    expect(r.stderr).toContain('wide → narrow')
+    expect(r.stderr).toContain('never declared')
+  })
+
+  it('leaves manual-only skills out of both ends', () => {
+    const lib = measuredLibrary()
+    const out = join(lib, '.graph', 'graph.json')
+    expect(exporter(['--library', lib, '--out', out]).status).toBe(0)
+    const snapshot = GraphSnapshotSchema.parse(JSON.parse(readFileSync(out, 'utf8')))
+
+    // Nothing routes to a manual-only skill, so nothing can swallow its
+    // triggers and it can swallow nobody's — however much vocabulary it
+    // shares. The fixture's `manual` is a copy of `wide` precisely so this
+    // would fail loudly if the corpus rule were ever dropped.
+    expect(snapshot.nodes.some((n) => n.id === 'manual')).toBe(true)
+    expect(snapshot.edges.some((e) => e.kind === 'overlaps' && (e.from === 'manual' || e.to === 'manual'))).toBe(false)
+  })
+
+  it('says out loud how much of the ranking it did not draw', () => {
+    const lib = measuredLibrary()
+    const r = exporter(['--library', lib, '--out', join(lib, '.graph', 'graph.json')])
+    // A reduction that does not announce itself reads as complete coverage.
+    expect(r.stdout).toMatch(/overlap — \d+ routable pair\(s\) measured, \d+ drawn/)
+    expect(r.stdout).toContain('qrntn overlap')
+  })
+
+  it('is absent, rather than fatal, when there is nothing to measure', () => {
+    // An init-made library with no skills at all. The layer is the newest and
+    // least essential thing in the export; it must never be the reason a graph
+    // does not get written.
+    const lib = library('overlaps-empty')
+    const out = join(lib, '.graph', 'graph.json')
+    const r = exporter(['--library', lib, '--out', out])
+    expect(r.status, r.stdout + r.stderr).toBe(0)
+    const snapshot = GraphSnapshotSchema.parse(JSON.parse(readFileSync(out, 'utf8')))
+    expect(snapshot.edges.some((e) => e.kind === 'overlaps')).toBe(false)
+    expect(r.stdout).toContain('0 drawn')
+  })
+})

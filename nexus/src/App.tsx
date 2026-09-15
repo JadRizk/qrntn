@@ -39,6 +39,23 @@ const physics: PhysicsConfig = { ...DEFAULT_PHYSICS, sectorForce: 0.06, radiusFo
 // same reasoning hiddenNodeCategories below is already useMemo'd for.
 const HIDDEN_RELATIONSHIP_KINDS: readonly string[] = ['operative', 'referential', 'alternative']
 const EMPTY_LINK_CATEGORIES: readonly string[] = []
+// `overlaps` is held back further than the three above, and on different
+// grounds. Those are relationships a person declared, sparse enough that
+// revealing all of them on any selection reads fine. `overlaps` is measured
+// (commands/overlap.mjs, via the exporter) and drawn for each skill's
+// strongest undeclared coverer — at most one per node, but present for every
+// routable skill whether or not the number is large. Revealed graph-wide, as
+// the list above is on any selection, it drew a violet arc at every skill the
+// moment a category or the origin was clicked: a picture of the measure, not
+// of the library. Scoped to the selection, it is drawn only where it touches
+// the selected node, and so answers the question someone selecting a skill is
+// actually asking — what else competes for this one's requests, and by how
+// much; the drawer prints the share beside the name. Selecting anything that
+// is not a skill draws none of it, because none of it is about that node.
+const SELECTION_SCOPED_LINK_KINDS: readonly string[] = ['overlaps']
+// Same identity reasoning, for the drawer's edge annotations: a fresh `[]` on
+// every render would rebuild its lookup for nothing.
+const EMPTY_EDGES: readonly [] = []
 
 // DetailsDrawer's own width, plus the --nx-space-5 it insets from the right
 // edge and the same again as breathing room — how much of the canvas's right
@@ -522,6 +539,7 @@ export function App() {
           optics={optics}
           hiddenNodeCategories={hiddenNodeCategories}
           hiddenLinkCategories={hiddenLinkCategories}
+          selectionScopedLinkCategories={SELECTION_SCOPED_LINK_KINDS}
           isolateId={selectedId}
           selectedId={selectedId}
           fitInset={fitInset}
@@ -556,6 +574,7 @@ export function App() {
           lookup={lookupNode}
           onRead={readFile}
           linkCategories={canvasProps.linkCategories}
+          edges={snapshot?.edges ?? EMPTY_EDGES}
           onClose={() => setSelectedId(null)}
         />
         <ReadingPane

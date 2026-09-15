@@ -257,6 +257,26 @@ const MUTATIONS = [
 		replace: '	if (false) {',
 	},
 	{
+		name: 'the covered population stops being a subset of the never-invoked',
+		find: '	const covered = never',
+		replace: '	const covered = rows',
+	},
+	{
+		name: 'a covered row prints its own zeros instead of the coverers counts',
+		find: '				covererInvocations: invocationsOf.get(pair.covers) ?? null,',
+		replace: '				covererInvocations: invocationsOf.get(r.dir) ?? null,',
+	},
+	{
+		name: 'the overlap join is keyed on the display name rather than the directory',
+		find: '			const pair = coveredBy.get(r.dir)',
+		replace: '			const pair = coveredBy.get(r.name)',
+	},
+	{
+		name: 'the covered section prints its heading over an empty table',
+		find: '	if (model.covered.length) {',
+		replace: '	if (true) {',
+	},
+	{
 		name: "INERT CONTROL — the cost section's banner reworded, nothing else",
 		find: '// --------------------------------------------------------------------- cost',
 		replace: '// --------------------------------------------------- what a slot costs you',
@@ -298,6 +318,13 @@ await mutate({
 		cpSync(FIXTURES, join(scriptsDir, 'fixtures'), { recursive: true })
 		cpSync(join(HERE, 'TRANSCRIPTS.md'), join(scriptsDir, 'TRANSCRIPTS.md'))
 		cpSync(join(HERE, 'ledger.mjs'), join(scriptsDir, 'ledger.mjs'))
+		// The report's overlap join. usage.mjs imports the measure rather than
+		// restating it, so the sandbox needs it beside the mutant the same way
+		// it needs ledger.mjs — without it every mutant dies on
+		// ERR_MODULE_NOT_FOUND before a single assertion runs, which reads as
+		// a perfect score: 37 mutants "caught" by a module that never loaded.
+		// The two INERT CONTROL rows below are what catches that, and did.
+		cpSync(join(HERE, 'overlap.mjs'), join(scriptsDir, 'overlap.mjs'))
 		writeFileSync(join(scriptsDir, 'usage.mjs'), files['usage.mjs'])
 		return join(scriptsDir, 'usage.test.mjs')
 	},

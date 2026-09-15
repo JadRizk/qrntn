@@ -139,7 +139,16 @@ function resolveLibrary(argv = process.argv.slice(2)) {
 	return resolve(process.env.SKILL_LIBRARY ?? process.cwd())
 }
 
-const LIBRARY = resolveLibrary()
+// RESOLVED WHEN A CALLER NEEDS IT, NOT AT IMPORT. This was a module-level
+// `const LIBRARY = resolveLibrary()`, which was fine while the only consumer
+// was this file's own main(). It is not any more: usage.mjs imports this for
+// the report's fourth population and the viewer's exporter imports it for the
+// layer it draws, and a module-level resolve means importing the module runs
+// an argv parse that can `process.exit(2)` — before the importing command's
+// own refusal, against flags that belong to a different verb. The CLI reaches
+// the same value through the same function, so nothing about `qrntn overlap`
+// changes; what changes is that importing this file no longer does anything.
+const defaultLibrary = () => resolveLibrary()
 
 // -- the measure -------------------------------------------------------------
 
@@ -289,8 +298,13 @@ const frontmatterOf = (dir) => {
 
 const descriptionOf = (dir) => frontmatterOf(dir).description ?? null
 
-const heldSkills = (repo = LIBRARY) => {
-	const dir = join(repo, 'skills')
+// `skillsDir` is separate from `repo` because a caller can have the two apart:
+// usage.mjs takes `--skills <dir>` and `--library <dir>` as independent flags,
+// and a join that silently measured `<library>/skills` while the rows above it
+// came from somewhere else would put two different populations in one table.
+// Defaulted, so every existing caller is unchanged.
+const heldSkills = (repo = defaultLibrary(), skillsDir = null) => {
+	const dir = skillsDir ?? join(repo, 'skills')
 	if (!existsSync(dir)) return []
 	return readdirSync(dir)
 		.filter((n) => !n.startsWith('.'))
@@ -313,7 +327,7 @@ const heldSkills = (repo = LIBRARY) => {
 // argued for. It still appears — a declared edge is not a licence for any
 // amount of overlap — but it is marked, because the unmarked rows are what this
 // report exists to surface.
-const declaredPairs = (repo = LIBRARY) => {
+const declaredPairs = (repo = defaultLibrary()) => {
 	const p = join(repo, 'edges.json')
 	if (!existsSync(p)) return new Set()
 	try {
@@ -328,8 +342,8 @@ const declaredPairs = (repo = LIBRARY) => {
 
 const key = (a, b) => [a, b].sort().join(' ')
 
-function rank({ repo = LIBRARY, candidate = null, all = false } = {}) {
-	const everything = heldSkills(repo)
+function rank({ repo = defaultLibrary(), skillsDir = null, candidate = null, all = false } = {}) {
+	const everything = heldSkills(repo, skillsDir)
 	const declared = declaredPairs(repo)
 	// IDF is computed over the routable corpus, not the whole collection: the
 	// weights should describe the vocabulary a request is actually routed
@@ -363,7 +377,7 @@ function rank({ repo = LIBRARY, candidate = null, all = false } = {}) {
 		const ab = coverage(a, b, w)
 		const ba = coverage(b, a, w)
 		// Reported in the swallowing direction: the wider description first.
-		const [from, to, cov] = ab >= ba ? [a.name, b.name, ab] : [b.name, a.name, ba]
+		const [from, to, cov, rev] = ab >= ba ? [a.name, b.name, ab, ba] : [b.name, a.name, ba, ab]
 		return {
 			a: a.name,
 			b: b.name,
@@ -371,6 +385,14 @@ function rank({ repo = LIBRARY, candidate = null, all = false } = {}) {
 			coverage: cov,
 			covers: from,
 			covered: to,
+			// The same measure the other way: the share of the COVERER's
+			// vocabulary the covered one claims. Never larger than `coverage`,
+			// by construction of the line above. The table does not print it —
+			// the headline is the swallowing direction — but nearestCoverer
+			// needs it, because a skill that is the wider description in every
+			// pair it belongs to would otherwise have no coverer at all, however
+			// much of its vocabulary a near-twin claims.
+			reverse: rev,
 			declared: declared.has(key(a.name, b.name)),
 			shared: drivers(a, b, w),
 		}
@@ -378,6 +400,60 @@ function rank({ repo = LIBRARY, candidate = null, all = false } = {}) {
 	// Ranked by the asymmetric number, because that is the phenomenon.
 	pairs.sort((x, y) => y.coverage - x.coverage || `${x.a}${x.b}`.localeCompare(`${y.a}${y.b}`))
 	return { pairs, held, excluded, candidate: cand, all }
+}
+
+// THE REDUCTION BOTH CONSUMERS USE, AND WHY IT IS A RANK AND NOT A CUTOFF.
+// A ranking of every pair is the right shape for a person reading a table and
+// the wrong shape for anything downstream: `usage --report` needs one line per
+// skill and the graph needs a bounded number of edges, and the obvious way to
+// get either — keep the pairs above N% — is the threshold this file refuses on
+// the record, because a number that selects rows is a number someone tunes
+// until their own skill stops appearing.
+//
+// So: for each skill, the ONE other description that claims most of its
+// distinctive vocabulary. No constant, nothing to tune, at most one row per
+// skill however the collection grows, and it is the question the report was
+// already asking in prose — which two descriptions should I read side by side.
+//
+// `declared` pairs are dropped by default because both consumers are looking
+// for what nobody wrote down; the report's own header is explicit that a
+// declared edge is not a licence for any amount of overlap, so a caller that
+// wants them back passes includeDeclared and gets them.
+//
+// BOTH DIRECTIONS OF EVERY PAIR ARE CANDIDATES. rank() reports a pair once, in
+// the swallowing direction, and carries the other direction as `reverse`. A
+// reduction that read only the headline would never give a coverer to the
+// wider description of any pair — and two near-twins are exactly that shape:
+// one claims 100% of the other's vocabulary and the other claims 77% back,
+// and whichever of the two never fires is the one this exists to explain.
+// Reading one direction explained it only when the narrower one lost.
+const nearestCoverer = (pairs, { includeDeclared = false } = {}) => {
+	const best = new Map()
+	const consider = (p) => {
+		// Zero is not a small number here, it is the absence of the thing being
+		// measured: two descriptions with no distinctive vocabulary in common
+		// at all. Dropping it is not the threshold this file refuses — a
+		// threshold decides how much overlap is too much, and this decides
+		// whether there is any. Without it every skill in a library gets a
+		// "strongest coverer" whether or not one exists, which is the claim
+		// nobody is entitled to make, and the graph would draw a line for it.
+		if (!(p.coverage > 0)) return
+		const held = best.get(p.covered)
+		// Ties break on the coverer's name, so the answer does not depend on the
+		// order the pairs arrived in. rank() already sorts, and a caller that
+		// filtered or concatenated may not have.
+		if (!held || p.coverage > held.coverage || (p.coverage === held.coverage && p.covers < held.covers))
+			best.set(p.covered, p)
+	}
+	for (const p of pairs) {
+		if (p.declared && !includeDeclared) continue
+		consider(p)
+		// A pair from a caller that built it by hand may carry no `reverse`;
+		// that is one direction measured, not two, and the guard above treats
+		// the absence as it treats zero.
+		consider({ ...p, covers: p.covered, covered: p.covers, coverage: p.reverse, reverse: p.coverage })
+	}
+	return best
 }
 
 // -- report ------------------------------------------------------------------
@@ -479,4 +555,4 @@ function main(argv) {
 
 if (process.argv[1] && process.argv[1].endsWith('overlap.mjs')) process.exit(main(process.argv.slice(2)))
 
-export { tokens, stem, analyse, surfaceForms, idf, cosine, coverage, drivers, frontmatterOf, descriptionOf, heldSkills, declaredPairs, rank, render, STOP }
+export { tokens, stem, analyse, surfaceForms, idf, cosine, coverage, drivers, frontmatterOf, descriptionOf, heldSkills, declaredPairs, rank, nearestCoverer, render, STOP }

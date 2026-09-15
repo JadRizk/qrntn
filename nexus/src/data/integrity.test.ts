@@ -20,7 +20,7 @@ function skill(id: string, manualOnly = false): GraphNode {
 }
 
 function edge(partial: Pick<EdgeRecord, 'kind' | 'from' | 'to'>): EdgeRecord {
-  return { render: true, when: null, note: null, source: null, ...partial }
+  return { render: true, when: null, note: null, source: null, weight: null, ...partial }
 }
 
 describe('checkDanglingEdges', () => {

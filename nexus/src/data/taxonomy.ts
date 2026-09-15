@@ -412,8 +412,13 @@ export function radiusTargetOf(node: GraphNode): number | undefined {
  * - `semantic` — the claims the collection actually makes about itself.
  *   Drawn as an arc through open space.
  * - `verdict` — a vendor's judgment on a candidate. Drawn dead straight.
+ * - `measured` — not a claim at all: a number this tool computed about two
+ *   descriptions nobody connected. Shares the semantic register's arc,
+ *   because it is about meaning and belongs in open space, at a fraction of
+ *   its intensity — a measurement must never out-shout a decision someone
+ *   made and can be held to.
  */
-export type EdgeRegister = 'structure' | 'semantic' | 'verdict'
+export type EdgeRegister = 'structure' | 'semantic' | 'verdict' | 'measured'
 
 /**
  * One orthogonal channel, on top of register: how binding the relationship
@@ -441,6 +446,10 @@ export const EDGE_REGISTER = {
   structure: { half: 1.15, gain: 0.55, routing: 'etched' },
   semantic: { half: 1.55, gain: 2.2, routing: 'arc' },
   verdict: { half: 1.25, gain: 1.0, routing: 'straight' },
+  // Thinner and much dimmer than `semantic`, whose arc it shares. The ratio is
+  // the point: at 0.8 against 2.2 a measured pair reads as a suggestion beside
+  // the collection's own assertions, which is exactly what it is.
+  measured: { half: 1.0, gain: 0.8, routing: 'arc' },
 } as const satisfies Record<EdgeRegister, { half: number; gain: number; routing: LinkRouting }>
 
 /** Dash period for `segmented`, in SCREEN pixels — constant at any zoom. Was a per-kind free number measured against the world-space chord, which compressed dashes into a solid line as you zoomed out. */
@@ -475,6 +484,17 @@ export const EDGE_TAXONOMY = {
   operative: { register: 'semantic', color: 'hot', binding: 'solid', flowAnimated: true, visible: true },
   referential: { register: 'semantic', color: 'cool', binding: 'segmented', flowAnimated: false, visible: true },
   alternative: { register: 'semantic', color: 'alt', binding: 'segmented', flowAnimated: false, visible: true },
+  // Violet, the same hue as `alternative`, and deliberately: this is the same
+  // kind of thing one step earlier. `alternative` is "these two compete, and
+  // here is the note saying which to reach for"; `overlaps` is "these two
+  // compete and nobody has said that yet". The hue-sharing rule this file
+  // already keeps for leaf/scriptFold and refused/ghost is exactly that — one
+  // colour when two rows mean the same kind of thing — and the register
+  // (dimmer, thinner) carries the difference between a claim and a
+  // measurement. There was no unclaimed hue to give it anyway: `acid` is
+  // reserved for the UI's own active state and does not leak onto graph
+  // content, and `origin` above did not get a carve-out either.
+  overlaps: { register: 'measured', color: 'alt', binding: 'segmented', flowAnimated: false, visible: true },
   contains: { register: 'structure', color: 'etch', binding: 'solid', flowAnimated: false, visible: true },
   adopted: { register: 'verdict', color: 'affirmed', binding: 'solid', flowAnimated: false, visible: true },
   considered: { register: 'verdict', color: 'neutral', binding: 'segmented', flowAnimated: false, visible: true },
